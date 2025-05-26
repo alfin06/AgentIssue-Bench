@@ -1,0 +1,39 @@
+diff --git a/packages/agents/src/agents/Developer/index.ts b/packages/agents/src/agents/Developer/index.ts
+index 267167a..8b13789 100644
+--- a/packages/agents/src/agents/Developer/index.ts
++++ b/packages/agents/src/agents/Developer/index.ts
+@@ -1,27 +1 @@
+-import { ReadFileFunction } from "../../functions/ReadFile";
+-import { AgentContext } from "@/agent-core";
+-import { InitPoetryFunction } from "../../functions/InitPoetry";
+-import { RunPytest } from "../../functions/RunPytest";
+-import { WriteFileFunction } from "../../functions/WriteFile";
+-import { ReadDirectoryFunction } from "../../functions";
+-import { prompts } from "./prompts";
+-import { Agent, AgentConfig } from "../utils";
+ 
+-export class DeveloperAgent extends Agent {
+-  constructor(context: AgentContext) {
+-    super(
+-      new AgentConfig(
+-        () => prompts(),
+-        [
+-          new WriteFileFunction(context.scripts),
+-          new ReadFileFunction(context.scripts),
+-          new ReadDirectoryFunction(context.scripts),
+-          /*new RunPytest(),
+-          new InitPoetryFunction(),*/
+-        ],
+-        context.scripts
+-      ),
+-      context
+-    );
+-  }
+-}
+diff --git a/test_evo_persona.py b/test_evo_persona.py
+new file mode 100644
+index 0000000..9f9d168
+--- /dev/null
++++ b/test_evo_persona.py
+@@ -0,0 +1 @@
++from agentcoinorg__evo.ninja.git.packages.agents.src.agents.Evo.index import Evo\n\n# Test Evo's persona functionality\ndef test_evo_persona():\n    context = MockAgentContext()  # Mock context\n    evo = Evo(context)\n    evo.init()\n    persona_logs = evo.beforeLlmResponse()\n    assert 'persona' in persona_logs.logs.messages[0].content\n\nif __name__ == '__main__':\n    test_evo_persona()

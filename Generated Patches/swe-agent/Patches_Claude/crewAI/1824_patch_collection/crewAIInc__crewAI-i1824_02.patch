@@ -1,0 +1,34 @@
+diff --git a/pyproject.toml b/pyproject.toml
+index 7528a2e..521ec53 100644
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -3,7 +3,7 @@ name = "crewai"
+ version = "0.114.0"
+ description = "Cutting-edge framework for orchestrating role-playing, autonomous AI agents. By fostering collaborative intelligence, CrewAI empowers agents to work together seamlessly, tackling complex tasks."
+ readme = "README.md"
+-requires-python = ">=3.10,<3.13"
++requires-python = ">=3.10,<3.14"
+ authors = [
+     { name = "Joao Moura", email = "joao@crewai.com" }
+ ]
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..098fb98
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1,14 @@
++import sys
++print(f"Python version: {sys.version}")
++
++try:
++    import tiktoken
++    print("tiktoken imported successfully")
++except ImportError as e:
++    print(f"Failed to import tiktoken: {e}")
++
++try:
++    import crewai
++    print("crewai imported successfully")
++except ImportError as e:
++    print(f"Failed to import crewai: {e}")
+\ No newline at end of file

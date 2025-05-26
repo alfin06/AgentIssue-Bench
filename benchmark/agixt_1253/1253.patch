@@ -1,0 +1,158 @@
+From b4a1f6145c516ba43c12a451c16c416235b77bd0 Mon Sep 17 00:00:00 2001
+From: Birdup <34012548+birdup000@users.noreply.github.com>
+Date: Sun, 22 Sep 2024 00:36:40 -0500
+Subject: [PATCH 1/2] fix import chain AttributeError: 'NoneType' object has no
+ attribute 'id'
+
+---
+ agixt/Chain.py | 33 ++++++++++++++++++---------------
+ 1 file changed, 18 insertions(+), 15 deletions(-)
+
+diff --git a/agixt/Chain.py b/agixt/Chain.py
+index e5e6ac0e76c8..542262c64a9d 100644
+--- a/agixt/Chain.py
++++ b/agixt/Chain.py
+@@ -626,7 +626,7 @@ def import_chain(self, chain_name: str, steps: dict):
+             if prompt_type == "prompt":
+                 argument_key = "prompt_name"
+                 prompt_category = prompt.get("prompt_category", "Default")
+-                target_id = (
++                target = (
+                     session.query(Prompt)
+                     .filter(
+                         Prompt.name == prompt[argument_key],
+@@ -634,36 +634,39 @@ def import_chain(self, chain_name: str, steps: dict):
+                         Prompt.prompt_category.has(name=prompt_category),
+                     )
+                     .first()
+-                    .id
+                 )
+-                target_type = "prompt"
+             elif prompt_type == "chain":
+                 argument_key = "chain_name"
+                 if "chain" in prompt:
+                     argument_key = "chain"
+-                target_id = (
++                target = (
+                     session.query(ChainDB)
+                     .filter(
+                         ChainDB.name == prompt[argument_key],
+                         ChainDB.user_id == self.user_id,
+                     )
+                     .first()
+-                    .id
+                 )
+-                target_type = "chain"
+             elif prompt_type == "command":
+                 argument_key = "command_name"
+-                target_id = (
++                target = (
+                     session.query(Command)
+                     .filter(Command.name == prompt[argument_key])
+                     .first()
+-                    .id
+                 )
+-                target_type = "command"
+             else:
+-                # Handle the case where the argument key is not found
+-                # You can choose to skip this step or raise an exception
++                # Handle the case where the prompt_type is not recognized
++                logging.error(f"Unrecognized prompt_type: {prompt_type}")
+                 continue
++
++            if target is None:
++                # Handle the case where the target is not found
++                logging.error(
++                    f"Target not found for {prompt_type}: {prompt[argument_key]}"
++                )
++                continue
++
++            target_id = target.id
+             argument_value = prompt[argument_key]
+             prompt_arguments = prompt.copy()
+             del prompt_arguments[argument_key]
+@@ -673,9 +676,9 @@ def import_chain(self, chain_name: str, steps: dict):
+                 agent_id=agent.id,
+                 prompt_type=step_data["prompt_type"],
+                 prompt=argument_value,
+-                target_chain_id=target_id if target_type == "chain" else None,
+-                target_command_id=target_id if target_type == "command" else None,
+-                target_prompt_id=target_id if target_type == "prompt" else None,
++                target_chain_id=target_id if prompt_type == "chain" else None,
++                target_command_id=target_id if prompt_type == "command" else None,
++                target_prompt_id=target_id if prompt_type == "prompt" else None,
+             )
+             session.add(chain_step)
+             session.commit()
+@@ -687,7 +690,7 @@ def import_chain(self, chain_name: str, steps: dict):
+                 )
+                 if not argument:
+                     # Handle the case where argument not found based on argument_name
+-                    # You can choose to skip this argument or raise an exception
++                    logging.warning(f"Argument not found: {argument_name}")
+                     continue
+ 
+                 chain_step_argument = ChainStepArgument(
+
+From 5e682144eec0930d7b12dc36a430752c1ff3b83d Mon Sep 17 00:00:00 2001
+From: Birdup <34012548+birdup000@users.noreply.github.com>
+Date: Sun, 22 Sep 2024 00:40:37 -0500
+Subject: [PATCH 2/2] stick with ids
+
+---
+ agixt/Chain.py | 10 ++++++++--
+ 1 file changed, 8 insertions(+), 2 deletions(-)
+
+diff --git a/agixt/Chain.py b/agixt/Chain.py
+index 542262c64a9d..136ff0e4b24a 100644
+--- a/agixt/Chain.py
++++ b/agixt/Chain.py
+@@ -623,6 +623,7 @@ def import_chain(self, chain_name: str, steps: dict):
+             if "prompt_type" not in step_data:
+                 step_data["prompt_type"] = "prompt"
+             prompt_type = step_data["prompt_type"].lower()
++            target_id = None
+             if prompt_type == "prompt":
+                 argument_key = "prompt_name"
+                 prompt_category = prompt.get("prompt_category", "Default")
+@@ -635,6 +636,8 @@ def import_chain(self, chain_name: str, steps: dict):
+                     )
+                     .first()
+                 )
++                if target:
++                    target_id = target.id
+             elif prompt_type == "chain":
+                 argument_key = "chain_name"
+                 if "chain" in prompt:
+@@ -647,6 +650,8 @@ def import_chain(self, chain_name: str, steps: dict):
+                     )
+                     .first()
+                 )
++                if target:
++                    target_id = target.id
+             elif prompt_type == "command":
+                 argument_key = "command_name"
+                 target = (
+@@ -654,19 +659,20 @@ def import_chain(self, chain_name: str, steps: dict):
+                     .filter(Command.name == prompt[argument_key])
+                     .first()
+                 )
++                if target:
++                    target_id = target.id
+             else:
+                 # Handle the case where the prompt_type is not recognized
+                 logging.error(f"Unrecognized prompt_type: {prompt_type}")
+                 continue
+ 
+-            if target is None:
++            if target_id is None:
+                 # Handle the case where the target is not found
+                 logging.error(
+                     f"Target not found for {prompt_type}: {prompt[argument_key]}"
+                 )
+                 continue
+ 
+-            target_id = target.id
+             argument_value = prompt[argument_key]
+             prompt_arguments = prompt.copy()
+             del prompt_arguments[argument_key]

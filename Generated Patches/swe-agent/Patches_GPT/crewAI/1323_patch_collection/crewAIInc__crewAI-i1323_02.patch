@@ -1,0 +1,20 @@
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..8f6dcbb
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1,13 @@
++from crewai.llm import LLM
++
++def main():
++    llm = LLM(model="o1-preview", temperature=1, stop=["stop"])
++    messages = "Test message"
++    try:
++        params = llm._prepare_completion_params(messages)
++        print("Prepared params:", params)
++    except Exception as e:
++        print("Error:", e)
++
++if __name__ == "__main__":
++    main()
+\ No newline at end of file

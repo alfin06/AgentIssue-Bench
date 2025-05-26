@@ -1,0 +1,96 @@
+diff --git a/agixt/extensions/voice_chat.py b/agixt/extensions/voice_chat.py
+new file mode 100644
+index 0000000..7523a3a
+--- /dev/null
++++ b/agixt/extensions/voice_chat.py
+@@ -0,0 +1,53 @@
++from Extensions import Extensions
++import requests
++import base64
++import os
++import logging
++
++class voice_chat(Extensions):
++    """
++    The voice chat extension provides text-to-speech capabilities using Streamlabs TTS.
++    """
++
++    def __init__(self, **kwargs):
++        self.streamlabs_tts = False
++        self.streamlabs_voice = "Brian"
++        
++        # Handle USE_STREAMLABS_TTS as either string or boolean
++        if "USE_STREAMLABS_TTS" in kwargs:
++            if isinstance(kwargs["USE_STREAMLABS_TTS"], bool):
++                self.streamlabs_tts = kwargs["USE_STREAMLABS_TTS"]
++            elif isinstance(kwargs["USE_STREAMLABS_TTS"], str):
++                self.streamlabs_tts = kwargs["USE_STREAMLABS_TTS"].lower() == "true"
++        
++        if "STREAMLABS_VOICE" in kwargs:
++            self.streamlabs_voice = kwargs["STREAMLABS_VOICE"]
++
++    async def text_to_speech(self, text: str) -> str:
++        """
++        Convert text to speech using Streamlabs TTS.
++        
++        Args:
++            text (str): The text to convert to speech
++            
++        Returns:
++            str: Path to the generated audio file or error message
++        """
++        if not self.streamlabs_tts:
++            return "Streamlabs TTS is not enabled"
++            
++        try:
++            url = f"https://streamlabs.com/polly/speak?voice={self.streamlabs_voice}&text={text}"
++            response = requests.get(url)
++            if response.status_code == 200:
++                # Save the audio file
++                filename = f"tts_{base64.b64encode(text[:30].encode()).decode()}.mp3"
++                filepath = os.path.join(os.getcwd(), filename)
++                with open(filepath, "wb") as f:
++                    f.write(response.content)
++                return filepath
++            else:
++                return f"Failed to generate speech: HTTP {response.status_code}"
++        except Exception as e:
++            logging.error(f"Error in text_to_speech: {str(e)}")
++            return f"Error generating speech: {str(e)}"
+\ No newline at end of file
+diff --git a/test_voice_chat.py b/test_voice_chat.py
+new file mode 100644
+index 0000000..0f80ef2
+--- /dev/null
++++ b/test_voice_chat.py
+@@ -0,0 +1,29 @@
++import sys
++import os
++sys.path.append(os.path.join(os.path.dirname(__file__), 'agixt'))
++
++from extensions.voice_chat import voice_chat
++
++def test_voice_chat():
++    print("Testing with string 'true'...")
++    vc1 = voice_chat(USE_STREAMLABS_TTS="true")
++    print(f"streamlabs_tts enabled: {vc1.streamlabs_tts}")
++
++    print("\nTesting with string 'false'...")
++    vc2 = voice_chat(USE_STREAMLABS_TTS="false")
++    print(f"streamlabs_tts enabled: {vc2.streamlabs_tts}")
++
++    print("\nTesting with boolean True...")
++    vc3 = voice_chat(USE_STREAMLABS_TTS=True)
++    print(f"streamlabs_tts enabled: {vc3.streamlabs_tts}")
++
++    print("\nTesting with boolean False...")
++    vc4 = voice_chat(USE_STREAMLABS_TTS=False)
++    print(f"streamlabs_tts enabled: {vc4.streamlabs_tts}")
++
++    print("\nTesting with no USE_STREAMLABS_TTS...")
++    vc5 = voice_chat()
++    print(f"streamlabs_tts enabled: {vc5.streamlabs_tts}")
++
++if __name__ == "__main__":
++    test_voice_chat()
+\ No newline at end of file

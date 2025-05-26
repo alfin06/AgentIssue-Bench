@@ -1,0 +1,45 @@
+diff --git a/agixt/Models.py b/agixt/Models.py
+index ad8b60a..64588ad 100644
+--- a/agixt/Models.py
++++ b/agixt/Models.py
+@@ -353,7 +353,7 @@ class ChainNewName(BaseModel):
+ 
+ 
+ class ChainName(BaseModel):
+-    chain_name: str
++    chain_name: str = Field(..., min_length=1)  # Enforce non-empty string
+     description: Optional[str] = None
+ 
+ 
+diff --git a/test_empty_chain.py b/test_empty_chain.py
+new file mode 100644
+index 0000000..79f12e6
+--- /dev/null
++++ b/test_empty_chain.py
+@@ -0,0 +1,25 @@
++import requests
++import json
++
++# Test empty chain name in POST /api/chain endpoint
++def test_empty_chain_post():
++    headers = {
++        'Content-Type': 'application/json',
++        'Authorization': 'test_key'  # Replace with actual API key if needed
++    }
++    
++    # Test case 1: Empty chain name
++    data = {
++        "chain_name": "",
++        "description": "Test chain"
++    }
++    
++    try:
++        response = requests.post('http://localhost:8001/api/chain', headers=headers, json=data)
++        print(f"POST /api/chain with empty name response: {response.status_code}")
++        print(f"Response body: {response.text}")
++    except Exception as e:
++        print(f"Error making request: {e}")
++
++if __name__ == "__main__":
++    test_empty_chain_post()
+\ No newline at end of file

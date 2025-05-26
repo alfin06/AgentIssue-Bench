@@ -1,0 +1,40 @@
+diff --git a/reproduce_enum_error.py b/reproduce_enum_error.py
+new file mode 100644
+index 0000000..b37c3c3
+--- /dev/null
++++ b/reproduce_enum_error.py
+@@ -0,0 +1,33 @@
++from enum import Enum
++from crewai import Crew, Task, Agent
++from crewai.memory.storage.kickoff_task_outputs_storage import KickoffTaskOutputsSQLiteStorage
++
++class CrewStatus(Enum):
++    TODO = "To Do"
++    SUCCESSFUL = "Successful"
++    FAILED = "Failed"
++
++# Create a simple agent
++agent = Agent(
++    name="Test Agent",
++    goal="Test the enum serialization",
++    backstory="I'm a test agent",
++    allow_delegation=False
++)
++
++# Create a task with CrewStatus as output_pydantic
++task = Task(
++    description="Test task",
++    agent=agent,
++    output_pydantic=CrewStatus,
++)
++
++# Create a crew with memory=True
++crew = Crew(
++    agents=[agent],
++    tasks=[task],
++    memory=True
++)
++
++# Try to kickoff the crew
++crew.kickoff()
+\ No newline at end of file

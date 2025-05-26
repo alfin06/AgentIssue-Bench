@@ -1,0 +1,58 @@
+diff --git a/reproduce_issue.py b/reproduce_issue.py
+new file mode 100644
+index 0000000..1fb9383
+--- /dev/null
++++ b/reproduce_issue.py
+@@ -0,0 +1,51 @@
++import asyncio
++from agixt.Agent import Agent
++from agixt.Extensions import Extensions
++from agixt.DB import get_session, Command, Extension, AgentCommand, AgentModel, User
++from agixt.Globals import DEFAULT_USER
++
++async def main():
++    # Create test agent
++    agent_name = "test_agent"
++    user = DEFAULT_USER
++    
++    # First delete the test agent if it exists
++    session = get_session()
++    user_id = session.query(User).filter(User.email == user).first().id
++    agent = session.query(AgentModel).filter(AgentModel.name == agent_name, AgentModel.user_id == user_id).first()
++    if agent:
++        session.delete(agent)
++        session.commit()
++    session.close()
++    
++    # Create new agent
++    agent = Agent(agent_name=agent_name, user=user)
++    
++    # Get available extensions and commands
++    extensions = agent.get_agent_extensions()
++    
++    # Enable some commands
++    commands_to_enable = {
++        "Browse Website": "true",  # From web_browsing extension
++        "Read File": "true",      # From file_system extension
++        "Write File": "true"      # From file_system extension
++    }
++    
++    # Update agent config with enabled commands
++    agent.update_agent_config(commands_to_enable, "commands")
++    
++    # Get agent config after update
++    agent_config = agent.get_agent_config()
++    print("\nAgent config after enabling commands:")
++    print(agent_config)
++    
++    # Get agent extensions to verify commands are enabled
++    extensions = agent.get_agent_extensions()
++    print("\nEnabled commands in extensions:")
++    for ext in extensions:
++        for cmd in ext["commands"]:
++            if cmd["enabled"]:
++                print(f"{cmd['friendly_name']}: {cmd['enabled']}")
++
++if __name__ == "__main__":
++    asyncio.run(main())
+\ No newline at end of file

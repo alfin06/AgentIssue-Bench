@@ -1,0 +1,352 @@
+{
+  "gpt-engineer__gpt-engineer-1197": {
+    "repo_path": "repo/gpt-engineer-1197",
+    "env_name": "gpt-engineer__gpt-engineer-1197",
+    "pre_install": [],
+    "install": "pip install .",
+    "test_cmd": "pytest"
+  },
+  "pythagora__pythagora-55": {
+    "repo_path": "repo/pythagora-55",
+    "env_name": "pythagora__pythagora-55",
+    "pre_install": [],
+    "install": "pip install .",
+    "test_cmd": "pytest"
+  },
+  "lagent__lagent-279": {
+    "repo_path": "repo/lagent-279",
+    "env_name": "lagent__lagent-279",
+    "pre_install": [],
+    "install": "pip install .",
+    "test_cmd": "pytest"
+  },
+  "lagent__lagent-239": {
+    "repo_path": "repo/lagent-239",
+    "env_name": "lagent__lagent-239",
+    "pre_install": [],
+    "install": "pip install .",
+    "test_cmd": "pytest"
+  },
+  "lagent__lagent-244": {
+    "repo_path": "repo/lagent-244",
+    "env_name": "lagent__lagent-244",
+    "pre_install": [],
+    "install": "pip install .",
+    "test_cmd": "pytest"
+  },
+  "superagent__superagent-953": {
+    "repo_path": "repo/superagent-953",
+    "env_name": "superagent__superagent-953",
+    "pre_install": [],
+    "install": "pip install .",
+    "test_cmd": "pytest"
+  },
+  "gpt-researcher__gpt-researcher-1027": {
+    "repo_path": "repo/gpt-researcher-1027",
+    "env_name": "gpt-researcher__gpt-researcher-1027",
+    "pre_install": [],
+    "install": "pip install .",
+    "test_cmd": "pytest"
+  },
+  "evo.ninja__evo.ninja-652": {
+    "repo_path": "repo/evo.ninja-652",
+    "env_name": "evo.ninja__evo.ninja-652",
+    "pre_install": [],
+    "install": "pip install .",
+    "test_cmd": "pytest"
+  },
+  "evo.ninja__evo.ninja-594": {
+    "repo_path": "repo/evo.ninja-594",
+    "env_name": "evo.ninja__evo.ninja-594",
+    "pre_install": [],
+    "install": "pip install .",
+    "test_cmd": "pytest"
+  },
+  "evo.ninja__evo.ninja-525": {
+    "repo_path": "repo/evo.ninja-525",
+    "env_name": "evo.ninja__evo.ninja-525",
+    "pre_install": [],
+    "install": "pip install .",
+    "test_cmd": "pytest"
+  },
+  "evo.ninja__evo.ninja-515": {
+    "repo_path": "repo/evo.ninja-515",
+    "env_name": "evo.ninja__evo.ninja-515",
+    "pre_install": [],
+    "install": "pip install .",
+    "test_cmd": "pytest"
+  },
+  "evo.ninja__evo.ninja-504": {
+    "repo_path": "repo/evo.ninja-504",
+    "env_name": "evo.ninja__evo.ninja-504",
+    "pre_install": [],
+    "install": "pip install .",
+    "test_cmd": "pytest"
+  },
+  "evo.ninja__evo.ninja-445": {
+    "repo_path": "repo/evo.ninja-445",
+    "env_name": "evo.ninja__evo.ninja-445",
+    "pre_install": [],
+    "install": "pip install .",
+    "test_cmd": "pytest"
+  },
+  "AGiXT__AGiXT-1253": {
+    "repo_path": "repo/AGiXT-1253",
+    "env_name": "AGiXT__AGiXT-1253",
+    "pre_install": [],
+    "install": "pip install .",
+    "test_cmd": "pytest"
+  },
+  "AGiXT__AGiXT-1030": {
+    "repo_path": "repo/AGiXT-1030",
+    "env_name": "AGiXT__AGiXT-1030",
+    "pre_install": [],
+    "install": "pip install .",
+    "test_cmd": "pytest"
+  },
+  "AGiXT__AGiXT-1026": {
+    "repo_path": "repo/AGiXT-1026",
+    "env_name": "AGiXT__AGiXT-1026",
+    "pre_install": [],
+    "install": "pip install .",
+    "test_cmd": "pytest"
+  },
+  "AGiXT__AGiXT-1256": {
+    "repo_path": "repo/AGiXT-1256",
+    "env_name": "AGiXT__AGiXT-1256",
+    "pre_install": [],
+    "install": "pip install .",
+    "test_cmd": "pytest"
+  },
+  "AGiXT__AGiXT-1369": {
+    "repo_path": "repo/AGiXT-1369",
+    "env_name": "AGiXT__AGiXT-1369",
+    "pre_install": [],
+    "install": "pip install .",
+    "test_cmd": "pytest"
+  },
+  "AGiXT__AGiXT-1371": {
+    "repo_path": "repo/AGiXT-1371",
+    "env_name": "AGiXT__AGiXT-1371",
+    "pre_install": [],
+    "install": "pip install .",
+    "test_cmd": "pytest"
+  },
+  "MetaGPT__MetaGPT-1313": {
+    "repo_path": "repo/MetaGPT-1313",
+    "env_name": "MetaGPT__MetaGPT-1313",
+    "pre_install": [],
+    "install": "pip install .",
+    "test_cmd": "pytest"
+  },
+  "SWE-agent__SWE-agent-741": {
+    "repo_path": "repo/SWE-agent-741",
+    "env_name": "SWE-agent__SWE-agent-741",
+    "pre_install": [],
+    "install": "pip install .",
+    "test_cmd": "pytest"
+  },
+  "SWE-agent__SWE-agent-333": {
+    "repo_path": "repo/SWE-agent-333",
+    "env_name": "SWE-agent__SWE-agent-333",
+    "pre_install": [],
+    "install": "pip install .",
+    "test_cmd": "pytest"
+  },
+  "SWE-agent__SWE-agent-362": {
+    "repo_path": "repo/SWE-agent-362",
+    "env_name": "SWE-agent__SWE-agent-362",
+    "pre_install": [],
+    "install": "pip install .",
+    "test_cmd": "pytest"
+  },
+  "camel__camel-1145": {
+    "repo_path": "repo/camel-1145",
+    "env_name": "camel__camel-1145",
+    "pre_install": [],
+    "install": "pip install .",
+    "test_cmd": "pytest"
+  },
+  "camel__camel-1309": {
+    "repo_path": "repo/camel-1309",
+    "env_name": "camel__camel-1309",
+    "pre_install": [],
+    "install": "pip install .",
+    "test_cmd": "pytest"
+  },
+  "camel__camel-1273": {
+    "repo_path": "repo/camel-1273",
+    "env_name": "camel__camel-1273",
+    "pre_install": [],
+    "install": "pip install .",
+    "test_cmd": "pytest"
+  },
+  "camel__camel-88": {
+    "repo_path": "repo/camel-88",
+    "env_name": "camel__camel-88",
+    "pre_install": [],
+    "install": "pip install .",
+    "test_cmd": "pytest"
+  },
+  "camel__camel-1614": {
+    "repo_path": "repo/camel-1614",
+    "env_name": "camel__camel-1614",
+    "pre_install": [],
+    "install": "pip install .",
+    "test_cmd": "pytest"
+  },
+  "autogen__autogen-5012": {
+    "repo_path": "repo/autogen-5012",
+    "env_name": "autogen__autogen-5012",
+    "pre_install": [],
+    "install": "pip install .",
+    "test_cmd": "pytest"
+  },
+  "autogen__autogen-5007": {
+    "repo_path": "repo/autogen-5007",
+    "env_name": "autogen__autogen-5007",
+    "pre_install": [],
+    "install": "pip install .",
+    "test_cmd": "pytest"
+  },
+  "autogen__autogen-4785": {
+    "repo_path": "repo/autogen-4785",
+    "env_name": "autogen__autogen-4785",
+    "pre_install": [],
+    "install": "pip install .",
+    "test_cmd": "pytest"
+  },
+  "autogen__autogen-4733": {
+    "repo_path": "repo/autogen-4733",
+    "env_name": "autogen__autogen-4733",
+    "pre_install": [],
+    "install": "pip install .",
+    "test_cmd": "pytest"
+  },
+  "autogen__autogen-4382": {
+    "repo_path": "repo/autogen-4382",
+    "env_name": "autogen__autogen-4382",
+    "pre_install": [],
+    "install": "pip install .",
+    "test_cmd": "pytest"
+  },
+  "autogen__autogen-4197": {
+    "repo_path": "repo/autogen-4197",
+    "env_name": "autogen__autogen-4197",
+    "pre_install": [],
+    "install": "pip install .",
+    "test_cmd": "pytest"
+  },
+  "autogen__autogen-3361": {
+    "repo_path": "repo/autogen-3361",
+    "env_name": "autogen__autogen-3361",
+    "pre_install": [],
+    "install": "pip install .",
+    "test_cmd": "pytest"
+  },
+  "autogen__autogen-1844": {
+    "repo_path": "repo/autogen-1844",
+    "env_name": "autogen__autogen-1844",
+    "pre_install": [],
+    "install": "pip install .",
+    "test_cmd": "pytest"
+  },
+  "autogen__autogen-1174": {
+    "repo_path": "repo/autogen-1174",
+    "env_name": "autogen__autogen-1174",
+    "pre_install": [],
+    "install": "pip install .",
+    "test_cmd": "pytest"
+  },
+  "autogen__autogen-5124": {
+    "repo_path": "repo/autogen-5124",
+    "env_name": "autogen__autogen-5124",
+    "pre_install": [],
+    "install": "pip install .",
+    "test_cmd": "pytest"
+  },
+  "crewAI__crewAI-1532": {
+    "repo_path": "repo/crewAI-1532",
+    "env_name": "crewAI__crewAI-1532",
+    "pre_install": [],
+    "install": "pip install .",
+    "test_cmd": "pytest"
+  },
+  "crewAI__crewAI-1463": {
+    "repo_path": "repo/crewAI-1463",
+    "env_name": "crewAI__crewAI-1463",
+    "pre_install": [],
+    "install": "pip install .",
+    "test_cmd": "pytest"
+  },
+  "crewAI__crewAI-1370": {
+    "repo_path": "repo/crewAI-1370",
+    "env_name": "crewAI__crewAI-1370",
+    "pre_install": [],
+    "install": "pip install .",
+    "test_cmd": "pytest"
+  },
+  "crewAI__crewAI-1323": {
+    "repo_path": "repo/crewAI-1323",
+    "env_name": "crewAI__crewAI-1323",
+    "pre_install": [],
+    "install": "pip install .",
+    "test_cmd": "pytest"
+  },
+  "crewAI__crewAI-1270": {
+    "repo_path": "repo/crewAI-1270",
+    "env_name": "crewAI__crewAI-1270",
+    "pre_install": [],
+    "install": "pip install .",
+    "test_cmd": "pytest"
+  },
+  "crewAI__crewAI-1723": {
+    "repo_path": "repo/crewAI-1723",
+    "env_name": "crewAI__crewAI-1723",
+    "pre_install": [],
+    "install": "pip install .",
+    "test_cmd": "pytest"
+  },
+  "crewAI__crewAI-1753": {
+    "repo_path": "repo/crewAI-1753",
+    "env_name": "crewAI__crewAI-1753",
+    "pre_install": [],
+    "install": "pip install .",
+    "test_cmd": "pytest"
+  },
+  "crewAI__crewAI-1824": {
+    "repo_path": "repo/crewAI-1824",
+    "env_name": "crewAI__crewAI-1824",
+    "pre_install": [],
+    "install": "pip install .",
+    "test_cmd": "pytest"
+  },
+  "crewAI__crewAI-1934": {
+    "repo_path": "repo/crewAI-1934",
+    "env_name": "crewAI__crewAI-1934",
+    "pre_install": [],
+    "install": "pip install .",
+    "test_cmd": "pytest"
+  },
+  "ChatDev__ChatDev-465": {
+    "repo_path": "repo/ChatDev-465",
+    "env_name": "ChatDev__ChatDev-465",
+    "pre_install": [],
+    "install": "pip install .",
+    "test_cmd": "pytest"
+  },
+  "ChatDev__ChatDev-318": {
+    "repo_path": "repo/ChatDev-318",
+    "env_name": "ChatDev__ChatDev-318",
+    "pre_install": [],
+    "install": "pip install .",
+    "test_cmd": "pytest"
+  },
+  "ChatDev__ChatDev-413": {
+    "repo_path": "repo/ChatDev-413",
+    "env_name": "ChatDev__ChatDev-413",
+    "pre_install": [],
+    "install": "pip install .",
+    "test_cmd": "pytest"
+  }
+}

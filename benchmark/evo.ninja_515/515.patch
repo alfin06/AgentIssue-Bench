@@ -1,0 +1,72 @@
+From 1944991185b17d21a204394f8450879f4b688cd0 Mon Sep 17 00:00:00 2001
+From: nerfZael <bogunovij@gmail.com>
+Date: Thu, 7 Dec 2023 20:14:26 +0100
+Subject: [PATCH] evo now knows about its personas
+
+---
+ packages/agents/src/agents/Evo/findBestAgent.ts |  3 +--
+ packages/agents/src/agents/Evo/index.ts         |  3 ++-
+ packages/agents/src/agents/Evo/prompts.ts       | 14 +++++++++++++-
+ 3 files changed, 16 insertions(+), 4 deletions(-)
+
+diff --git a/packages/agents/src/agents/Evo/findBestAgent.ts b/packages/agents/src/agents/Evo/findBestAgent.ts
+index e9e52c27..dab3feea 100644
+--- a/packages/agents/src/agents/Evo/findBestAgent.ts
++++ b/packages/agents/src/agents/Evo/findBestAgent.ts
+@@ -28,11 +28,10 @@ export const findBestAgent = async (
+   AgentFunctionBase<unknown>[]
+ ]> => {
+   const allAgents: Agent[] = [
+-    DeveloperAgent,
+     CsvAnalystAgent,
+     ResearcherAgent,
+     SynthesizerAgent,
+-  ].map(agentClass => new agentClass(context.cloneEmpty()));
++  ].map((agentClass) => new agentClass(context.cloneEmpty()));
+ 
+   const agentsWithPrompts = allAgents.map(agent => {
+     return {
+diff --git a/packages/agents/src/agents/Evo/index.ts b/packages/agents/src/agents/Evo/index.ts
+index 01e3211b..02397494 100644
+--- a/packages/agents/src/agents/Evo/index.ts
++++ b/packages/agents/src/agents/Evo/index.ts
+@@ -71,8 +71,9 @@ export class Evo extends Agent<GoalRunArgs> {
+       buildDirectoryPreviewMsg(this.context.workspace),
+       { role: "user", content: prompts.exhaustAllApproaches },
+       { role: "user", content: prompts.variablesExplainer },
++      { role: "user", content: prompts.evoExplainer },
+       { role: "user", content: args.goal },
+-    ]
++    ];
+ 
+     await chat.persistent(initialMessages);
+     this.goal = args.goal;
+diff --git a/packages/agents/src/agents/Evo/prompts.ts b/packages/agents/src/agents/Evo/prompts.ts
+index 16fba7a4..b00dc663 100644
+--- a/packages/agents/src/agents/Evo/prompts.ts
++++ b/packages/agents/src/agents/Evo/prompts.ts
+@@ -1,6 +1,9 @@
+-import { ChatMessage } from "@/agent-core";
++import { ChatMessage, Prompt } from "@/agent-core";
+ import { GoalRunArgs } from "../../agents/utils";
+ import { AgentPrompts } from "../../agents/utils";
++import { prompts as csvAnalystPrompts } from "../CsvAnalyst/prompts";
++import { prompts as researcherPrompts } from "../Researcher/prompts";
++import { prompts as synthesizerPrompts } from "../Synthesizer/prompts";
+ 
+ export const agentPrompts = (): AgentPrompts<GoalRunArgs> => ({
+   name: "Evo",
+@@ -16,4 +19,13 @@ export const prompts = {
+     "If you can not achieve a goal, first try to exhaust different approaches before giving up.",
+   variablesExplainer:
+     "Function results will be stored in variables if they are very large. Variables are declared using the syntax ${variable-name}. Variables are created as needed, DO NOT use variable names that are not previously stated. When using variables within function arguments, YOU MUST use the ${variable-name} syntax. Relevant chunks of variable data will be shown to you as needed.",
++  evoExplainer: new Prompt(`
++      If asked about your expertise, you should say that you are an expert assistant capable of accomplishing a multitude of tasks.
++      Depending on the goal, you adopt a persona that is most suitable for the goal.
++      The personas available to you are: CsvAnalyst, Researcher, Synthesizer.
++    `)
++    .line(`CsvAnalyst expertise: ` + csvAnalystPrompts.expertise)
++    .line(`Researcher expertise: ` + researcherPrompts.expertise)
++    .line(`Synthesizer expertise: ` + synthesizerPrompts.expertise)
++    .toString(),
+ };

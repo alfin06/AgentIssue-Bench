@@ -1,0 +1,114 @@
+From 2a088d2a9e5b4d49917ec0b55459968b9b80ab82 Mon Sep 17 00:00:00 2001
+From: Johan Forngren <johan.forngren@decerno.se>
+Date: Sat, 11 Jan 2025 18:54:12 +0100
+Subject: [PATCH 1/2] Add tiktoken as a dependency in pyproject.toml
+
+Signed-off-by: Johan Forngren <johan.forngren@decerno.se>
+
+Update uv.lock with tiktoken dependency from fbfdc9f652384b70f7461c90ada13f87e83677e0
+
+Signed-off-by: Johan Forngren <johan.forngren@decerno.se>
+---
+ python/packages/autogen-studio/pyproject.toml | 1 +
+ python/uv.lock                                | 2 ++
+ 2 files changed, 3 insertions(+)
+
+diff --git a/python/packages/autogen-studio/pyproject.toml b/python/packages/autogen-studio/pyproject.toml
+index 869bdb78b8f6..6e5a8677816f 100644
+--- a/python/packages/autogen-studio/pyproject.toml
++++ b/python/packages/autogen-studio/pyproject.toml
+@@ -37,6 +37,7 @@ dependencies = [
+     "autogen-agentchat==0.4.0",
+     "autogen-ext[magentic-one]==0.4.0",
+     "azure-identity",
++    "tiktoken"
+ ]
+ optional-dependencies = {web = ["fastapi", "uvicorn"], database = ["psycopg"]}
+ 
+diff --git a/python/uv.lock b/python/uv.lock
+index 95db2f3c8185..bdecfd1f9ff0 100644
+--- a/python/uv.lock
++++ b/python/uv.lock
+@@ -670,6 +670,7 @@ dependencies = [
+     { name = "python-dotenv" },
+     { name = "pyyaml" },
+     { name = "sqlmodel" },
++    { name = "tiktoken" },
+     { name = "typer" },
+     { name = "uvicorn" },
+     { name = "websockets" },
+@@ -703,6 +704,7 @@ requires-dist = [
+     { name = "python-dotenv" },
+     { name = "pyyaml" },
+     { name = "sqlmodel" },
++    { name = "tiktoken" },
+     { name = "typer" },
+     { name = "uvicorn" },
+     { name = "uvicorn", marker = "extra == 'web'" },
+
+From 5b594308fedebf7e0cfc3e94053bfa4f277e716f Mon Sep 17 00:00:00 2001
+From: Johan Forngren <johan.forngren@decerno.se>
+Date: Mon, 13 Jan 2025 10:38:17 +0100
+Subject: [PATCH 2/2] Updating autogen-ext dependencies per
+ https://github.com/microsoft/autogen/pull/5008#issuecomment-2585383877
+
+Signed-off-by: Johan Forngren <johan.forngren@decerno.se>
+---
+ python/packages/autogen-studio/pyproject.toml | 5 ++---
+ python/uv.lock                                | 6 ++----
+ 2 files changed, 4 insertions(+), 7 deletions(-)
+
+diff --git a/python/packages/autogen-studio/pyproject.toml b/python/packages/autogen-studio/pyproject.toml
+index 6e5a8677816f..5c9cbcc6cf47 100644
+--- a/python/packages/autogen-studio/pyproject.toml
++++ b/python/packages/autogen-studio/pyproject.toml
+@@ -35,9 +35,8 @@ dependencies = [
+     "pyyaml",
+     "autogen-core==0.4.0",
+     "autogen-agentchat==0.4.0",
+-    "autogen-ext[magentic-one]==0.4.0",
+-    "azure-identity",
+-    "tiktoken"
++    "autogen-ext[magentic-one, openai, azure]==0.4.0",
++    "azure-identity"
+ ]
+ optional-dependencies = {web = ["fastapi", "uvicorn"], database = ["psycopg"]}
+ 
+diff --git a/python/uv.lock b/python/uv.lock
+index bdecfd1f9ff0..156a298cc262 100644
+--- a/python/uv.lock
++++ b/python/uv.lock
+@@ -659,7 +659,7 @@ dependencies = [
+     { name = "alembic" },
+     { name = "autogen-agentchat" },
+     { name = "autogen-core" },
+-    { name = "autogen-ext", extra = ["magentic-one"] },
++    { name = "autogen-ext", extra = ["azure", "magentic-one", "openai"] },
+     { name = "azure-identity" },
+     { name = "fastapi" },
+     { name = "loguru" },
+@@ -670,7 +670,6 @@ dependencies = [
+     { name = "python-dotenv" },
+     { name = "pyyaml" },
+     { name = "sqlmodel" },
+-    { name = "tiktoken" },
+     { name = "typer" },
+     { name = "uvicorn" },
+     { name = "websockets" },
+@@ -691,7 +690,7 @@ requires-dist = [
+     { name = "alembic" },
+     { name = "autogen-agentchat", editable = "packages/autogen-agentchat" },
+     { name = "autogen-core", editable = "packages/autogen-core" },
+-    { name = "autogen-ext", extras = ["magentic-one"], editable = "packages/autogen-ext" },
++    { name = "autogen-ext", extras = ["azure", "magentic-one", "openai"], editable = "packages/autogen-ext" },
+     { name = "azure-identity" },
+     { name = "fastapi" },
+     { name = "fastapi", marker = "extra == 'web'" },
+@@ -704,7 +703,6 @@ requires-dist = [
+     { name = "python-dotenv" },
+     { name = "pyyaml" },
+     { name = "sqlmodel" },
+-    { name = "tiktoken" },
+     { name = "typer" },
+     { name = "uvicorn" },
+     { name = "uvicorn", marker = "extra == 'web'" },

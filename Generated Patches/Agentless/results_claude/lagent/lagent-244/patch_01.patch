@@ -1,0 +1,12 @@
+diff --git a/lagent/llms/huggingface.py b/lagent/llms/huggingface.py
+index 272a8b4..de9e0f3 100644
+--- a/lagent/llms/huggingface.py
++++ b/lagent/llms/huggingface.py
+@@ -200,6 +200,7 @@ class HFTransformer(BaseModel):
+                 encoder_input_ids=input_ids,
+                 prefix_allowed_tokens_fn=self.prefix_allowed_tokens_fn,
+                 logits_processor=logits_processor,
++                eos_token_id_tensor=eos_token_id_tensor,
+             )
+ 
+             stopping_criteria = self.model._get_stopping_criteria(

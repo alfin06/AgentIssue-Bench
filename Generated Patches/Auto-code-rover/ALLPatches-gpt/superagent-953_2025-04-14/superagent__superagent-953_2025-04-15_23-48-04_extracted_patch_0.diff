@@ -1,0 +1,13 @@
+diff --git a/libs/superagent/app/vectorstores/supabase.py b/libs/superagent/app/vectorstores/supabase.py
+index 2920fd02..e90d5a58 100644
+--- a/libs/superagent/app/vectorstores/supabase.py
++++ b/libs/superagent/app/vectorstores/supabase.py
+@@ -41,7 +41,7 @@ class SupabaseVectorStore(VectorStoreBase):
+         for var, value in variables.items():
+             if not value:
+                 raise ValueError(
+-                    f"Please provide a {var} via the " f"`{var}` environment variable."
++                    f"Configuration Error: {var} is missing. Please provide a {var} via the configuration options or environment variables."
+                 )
+ 
+         # create vector store client

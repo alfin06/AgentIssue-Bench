@@ -1,0 +1,38 @@
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..46c8e33
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1,31 @@
++from packages.agents.src.agents.utils.Agent import Agent
++from packages.agents.src.agent_core.llm.OpenAILlmApi import OpenAILlmApi
++from packages.agents.src.agent_core.llm.LlmApi import LlmModels
++
++# Mock Evo configuration
++class MockAgentConfig:
++    def __init__(self, model):
++        self.model = model
++
++# Mock AgentContext
++class MockAgentContext:
++    def __init__(self):
++        self.llm = OpenAILlmApi(
++            _apiKey="mock-api-key",
++            _defaultModel=LlmModels.GPT3,
++            _defaultMaxTokens=4096,
++            _defaultMaxResponseTokens=512,
++            _logger=None
++        )
++
++# Test the Agent with Evo configuration
++config = MockAgentConfig(model=LlmModels.GPT4)
++context = MockAgentContext()
++agent = Agent(config=config, context=context)
++
++# Attempt to use the model from Evo configuration
++try:
++    response = agent.askLlm("What is the next step?", opts={"model": config.model})
++    print("Response:", response)
++except Exception as e:
++    print("Error:", e)
+\ No newline at end of file

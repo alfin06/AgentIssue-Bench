@@ -1,0 +1,37 @@
+diff --git a/camel/models/deepseek_model.py b/camel/models/deepseek_model.py
+index 32c2102..8a25be3 100644
+--- a/camel/models/deepseek_model.py
++++ b/camel/models/deepseek_model.py
+@@ -141,9 +141,6 @@ class DeepSeekModel(BaseModelBackend):
+                 if key in self.model_config_dict:
+                     del self.model_config_dict[key]
+ 
+-            # Remove thinking content from messages before sending to API
+-            # This ensures only the final response is sent, excluding
+-            # intermediate thought processes
+             messages = [
+                 {  # type: ignore[misc]
+                     **msg,
+@@ -152,16 +149,16 @@ class DeepSeekModel(BaseModelBackend):
+                         '',
+                         msg['content'],  # type: ignore[arg-type]
+                         flags=re.DOTALL,
+-                    ).strip(),
++                    ).strip() if 'content' in msg else msg['content'],
+                 }
+                 for msg in messages
+             ]
+ 
+-        response = self._client.chat.completions.create(
+-            messages=messages,
+-            model=self.model_type,
+-            **self.model_config_dict,
+-        )
++            response = self._client.chat.completions.create(
++                messages=messages,
++                model=self.model_type,
++                **self.model_config_dict,
++            )
+ 
+         # Handle reasoning content with <think> tags at the beginning
+         if (

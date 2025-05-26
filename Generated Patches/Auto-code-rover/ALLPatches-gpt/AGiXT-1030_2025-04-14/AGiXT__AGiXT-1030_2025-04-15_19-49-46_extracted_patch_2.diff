@@ -1,0 +1,31 @@
+diff --git a/agixt/Websearch.py b/agixt/Websearch.py
+index ff00e65c..a862cb5f 100644
+--- a/agixt/Websearch.py
++++ b/agixt/Websearch.py
+@@ -255,7 +255,7 @@ class Websearch:
+         await self.browse_links_in_input(
+             user_input=user_input, search_depth=websearch_depth
+         )
+-        if websearch_depth > 0:
++        if int(websearch_depth) > 0:
+             search_string = ApiClient.prompt_agent(
+                 agent_name=self.agent_name,
+                 prompt_name="WebSearch",
+@@ -272,7 +272,7 @@ class Websearch:
+                 else:
+                     links = await self.ddg_search(query=search_string)
+                 logging.info(f"Found {len(links)} results for {search_string}")
+-                if len(links) > websearch_depth:
++                if len(links) > int(websearch_depth):
+                     links = links[:websearch_depth]
+                 if links is not None and len(links) > 0:
+                     task = asyncio.create_task(
+@@ -280,7 +280,7 @@ class Websearch:
+                     )
+                     self.tasks.append(task)
+ 
+-                if int(websearch_timeout) == 0:
++                if websearch_timeout == 0:
+                     await asyncio.gather(*self.tasks)
+                 else:
+                     logging.info(

@@ -1,0 +1,21 @@
+diff --git a/src/crewai/flow/flow.py b/src/crewai/flow/flow.py
+index d29e54c..181bd30 100644
+--- a/src/crewai/flow/flow.py
++++ b/src/crewai/flow/flow.py
+@@ -54,6 +54,16 @@ def listen(condition):
+         elif callable(condition) and hasattr(condition, "__name__"):
+             func.__trigger_methods__ = [condition.__name__]
+             func.__condition_type__ = "OR"
++        elif isinstance(condition, (list, tuple)):
++            # Handle multiple conditions as OR by default
++            func.__trigger_methods__ = [
++                c.__name__ if callable(c) else c for c in condition
++            ]
++            func.__condition_type__ = "OR"
++        elif hasattr(condition, "__trigger_methods__") and hasattr(condition, "__condition_type__"):
++            # Handle and_() and or_() results
++            func.__trigger_methods__ = condition.__trigger_methods__
++            func.__condition_type__ = condition.__condition_type__
+         else:
+             raise ValueError(
+                 "Condition must be a method, string, or a result of or_() or and_()"

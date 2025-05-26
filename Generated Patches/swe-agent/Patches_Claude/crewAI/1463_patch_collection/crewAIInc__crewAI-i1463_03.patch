@@ -1,0 +1,44 @@
+diff --git a/test_flow.py b/test_flow.py
+new file mode 100644
+index 0000000..ab3d20d
+--- /dev/null
++++ b/test_flow.py
+@@ -0,0 +1,37 @@
++import asyncio
++
++from crewai.flow.flow import Flow, and_, listen, start
++
++
++class DummyFlow(Flow):
++    @start()
++    def step_1_1(self):
++        print("Starting 'step_1_1' method.")
++    
++    @start()
++    def step_1_2(self):
++        print("Starting 'step_1_2' method.")
++    
++    @listen(step_1_1)
++    def step_2(self):
++        print("Starting 'step_2' method.")
++        
++    @listen(step_2)
++    def step_3(self):
++        print("Starting 'step_3' method.")
++        
++    @listen(and_(step_1_1, step_3))
++    def step_4_1(self):
++        print("Starting 'step_4_1' method.")
++
++    @listen(and_("step_1_1", "step_3"))
++    def step_4_2(self):
++        print("Starting 'step_4_2' method.")
++        
++
++async def main():
++    podcast_flow = DummyFlow()
++    await podcast_flow.kickoff()
++
++
++asyncio.run(main())
+\ No newline at end of file

@@ -1,0 +1,26 @@
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..4108121
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1,19 @@
++from gpt_engineer.core.default.steps import handle_improve_mode
++from gpt_engineer.core.files_dict import FilesDict
++from gpt_engineer.core.prompt import Prompt
++from gpt_engineer.core.default.disk_memory import DiskMemory
++from gpt_engineer.core.default.simple_agent import SimpleAgent
++
++# Simulate the missing key error
++files_dict = FilesDict({
++    "src/main/resources/application-local.yml": "key: value"
++})
++
++prompt = Prompt("Improve the code")
++memory = DiskMemory("/tmp/memory")
++agent = SimpleAgent()
++
++try:
++    handle_improve_mode(prompt, agent, memory, files_dict)
++except KeyError as e:
++    print(f"Caught KeyError: {e}")
+\ No newline at end of file

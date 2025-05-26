@@ -1,0 +1,123 @@
+From 6c7c3d9b7ecff15c068c7a850489cfe4964d004e Mon Sep 17 00:00:00 2001
+From: dOrgJelli <jelli@dorg.tech>
+Date: Fri, 22 Dec 2023 00:25:58 +0100
+Subject: [PATCH] fix: properly reset workspace when disconnecting EvoThread
+
+---
+ apps/browser/components/Workspace.tsx             | 12 ++++--------
+ apps/browser/lib/hooks/useEvoService.ts           |  2 +-
+ apps/browser/lib/hooks/useWorkspaceFilesUpdate.ts |  7 ++++++-
+ apps/browser/lib/services/evo/EvoThread.ts        |  8 ++++----
+ 4 files changed, 15 insertions(+), 14 deletions(-)
+
+diff --git a/apps/browser/components/Workspace.tsx b/apps/browser/components/Workspace.tsx
+index 536b33cd..9b407d89 100644
+--- a/apps/browser/components/Workspace.tsx
++++ b/apps/browser/components/Workspace.tsx
+@@ -8,7 +8,7 @@ import { DownloadSimple, FilePlus } from "@phosphor-icons/react";
+ import Button from "./Button";
+ import { useWorkspaceUploadDrop } from "@/lib/hooks/useWorkspaceUploadDrop";
+ import { useAtom } from "jotai";
+-import { workspaceFilesAtom, workspaceUploadsAtom, welcomeModalAtom } from "@/lib/store";
++import { workspaceFilesAtom, isChatLoadingAtom, welcomeModalAtom } from "@/lib/store";
+ import { useDownloadWorkspaceAsZip } from "@/lib/hooks/useDownloadWorkspaceAsZip";
+ import { useFirstTimeUser } from "@/lib/hooks/useFirstTimeUser";
+ 
+@@ -20,7 +20,7 @@ function Workspace({ onUpload }: WorkspaceProps) {
+   const { getRootProps, getInputProps, isDragAccept, open } =
+     useWorkspaceUploadDrop(onUpload);
+   const [workspaceFiles] = useAtom(workspaceFilesAtom);
+-  const [workspaceUploads] = useAtom(workspaceUploadsAtom);
++  const [isChatLoading] = useAtom(isChatLoadingAtom);
+   const downloadFilesAsZip = useDownloadWorkspaceAsZip();
+   const [showFile, setShowFile] = useState<InMemoryFile | null>(null);
+   const [showFileModal, setShowFileModal] = useState<boolean>(false);
+@@ -40,8 +40,6 @@ function Workspace({ onUpload }: WorkspaceProps) {
+     open();
+   }
+ 
+-  const workspaceLoading = workspaceUploads.length > 0;
+-
+   const handleFileClick = (file: InMemoryFile | null) => {
+     setShowFile(file);
+     setShowFileModal(true);
+@@ -70,10 +68,8 @@ function Workspace({ onUpload }: WorkspaceProps) {
+         </div>
+       </div>
+       <div className="relative h-full max-h-[24vh] overflow-y-auto [scrollbar-gutter:stable]">
+-        {workspaceLoading ? (
+-          <div className="flex h-full w-full items-center justify-center">
+-            <div className="h-9 w-9 animate-spin rounded-full border-4 border-black/10 border-l-cyan-600" />
+-          </div>
++        {isChatLoading ? (
++          <div className="mt-1 h-24 w-full animate-pulse rounded-lg bg-zinc-700" />
+         ) : (
+           <>
+             {workspaceFiles.length === 0 ? (
+diff --git a/apps/browser/lib/hooks/useEvoService.ts b/apps/browser/lib/hooks/useEvoService.ts
+index b002be88..caf0f593 100644
+--- a/apps/browser/lib/hooks/useEvoService.ts
++++ b/apps/browser/lib/hooks/useEvoService.ts
+@@ -149,7 +149,7 @@ export const useEvoService = (
+     return workspace;
+   };
+ 
+-  const setWorkspace = async (workspace: Workspace) => {
++  const setWorkspace = async (workspace: Workspace | undefined) => {
+     setWorkspaceAtom(workspace);
+     await workspaceFilesUpdate(workspace);
+   };
+diff --git a/apps/browser/lib/hooks/useWorkspaceFilesUpdate.ts b/apps/browser/lib/hooks/useWorkspaceFilesUpdate.ts
+index 54de752c..62f6492b 100644
+--- a/apps/browser/lib/hooks/useWorkspaceFilesUpdate.ts
++++ b/apps/browser/lib/hooks/useWorkspaceFilesUpdate.ts
+@@ -6,7 +6,12 @@ import { workspaceFilesAtom } from "@/lib/store";
+ export const useWorkspaceFilesUpdate = () => {
+   const [, setWorkspaceFiles] = useAtom(workspaceFilesAtom);
+ 
+-  return async (workspace: Workspace) => {
++  return async (workspace: Workspace | undefined) => {
++    if (!workspace) {
++      setWorkspaceFiles([]);
++      return;
++    }
++
+     const files: InMemoryFile[] = [];
+     const encoder = new TextEncoder();
+     const entries = await workspace.readdir("./");
+diff --git a/apps/browser/lib/services/evo/EvoThread.ts b/apps/browser/lib/services/evo/EvoThread.ts
+index f1f19730..9aaf1ad3 100644
+--- a/apps/browser/lib/services/evo/EvoThread.ts
++++ b/apps/browser/lib/services/evo/EvoThread.ts
+@@ -34,7 +34,7 @@ export interface EvoThreadCallbacks {
+   setStatus: (status?: string) => void;
+   setIsRunning: (value: boolean) => void;
+   setChatLog: (chatLog: ChatLog[]) => void;
+-  setWorkspace: (workspace: Workspace) => void;
++  setWorkspace: (workspace: Workspace | undefined) => Promise<void>;
+   onGoalCapReached: () => void;
+   onError: (error: string) => void;
+ }
+@@ -78,11 +78,11 @@ export class EvoThread {
+       return;
+     }
+ 
+-    // Dispatch init values
++    // Dispatch reset values
+     this._callbacks.setStatus(INIT_STATE.status);
+     this._callbacks.setIsRunning(INIT_STATE.isRunning);
+     this._callbacks.setChatLog(INIT_STATE.logs);
+-    this._callbacks.setWorkspace(INIT_STATE.workspace);
++    this._callbacks.setWorkspace(undefined);
+ 
+     // Disconnect all callbacks
+     this._callbacks = undefined;
+@@ -103,7 +103,7 @@ export class EvoThread {
+     this._callbacks.setStatus(this._state.status);
+     this._callbacks.setIsRunning(this._state.isRunning);
+     this._callbacks.setChatLog(this._state.logs);
+-    this._callbacks.setWorkspace(this._state.workspace);
++    await this._callbacks.setWorkspace(this._state.workspace);
+   }
+ 
+   async start(options: EvoThreadStartOptions): Promise<void> {

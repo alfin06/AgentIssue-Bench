@@ -1,0 +1,50 @@
+From 825dcfa80571c3dfae07db449d69359573c608d1 Mon Sep 17 00:00:00 2001
+From: Jamie <jamiechoi1995@users.noreply.github.com>
+Date: Mon, 2 Sep 2024 17:19:17 +0800
+Subject: [PATCH 1/2] Update optional.txt
+
+---
+ requirements/optional.txt | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/requirements/optional.txt b/requirements/optional.txt
+index 003acdb6..bcecba0a 100644
+--- a/requirements/optional.txt
++++ b/requirements/optional.txt
+@@ -4,5 +4,5 @@ pillow
+ python-pptx
+ timeout_decorator
+ torch
+-transformers>=4.34
++transformers>=4.34,<=4.40
+ vllm>=0.3.3
+
+From 4087cb0013e8906898359ecc7e37ea5380073a60 Mon Sep 17 00:00:00 2001
+From: Jamie <jamiechoi1995@users.noreply.github.com>
+Date: Mon, 2 Sep 2024 17:19:55 +0800
+Subject: [PATCH 2/2] Update runtime.txt
+
+---
+ requirements/runtime.txt | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/requirements/runtime.txt b/requirements/runtime.txt
+index 868aaa3e..fc30c3b1 100644
+--- a/requirements/runtime.txt
++++ b/requirements/runtime.txt
+@@ -2,7 +2,7 @@ arxiv
+ distro
+ filelock
+ func_timeout
+-griffe
++griffe<1.0
+ json5
+ jsonschema
+ jupyter
+@@ -13,4 +13,4 @@ streamlit
+ tiktoken
+ timeout-decorator
+ typing-extensions
+-duckduckgo_search==5.3.1b1
+\ No newline at end of file
++duckduckgo_search==5.3.1b1

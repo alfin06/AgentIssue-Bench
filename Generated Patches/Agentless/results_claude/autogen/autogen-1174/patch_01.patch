@@ -1,0 +1,26 @@
+diff --git a/autogen/oai/completion.py b/autogen/oai/completion.py
+index e4aab2a..7f3401b 100644
+--- a/autogen/oai/completion.py
++++ b/autogen/oai/completion.py
+@@ -219,10 +219,18 @@ class Completion(openai_Completion):
+         retry_wait_time = config.pop("retry_wait_time", cls.retry_wait_time)
+         while True:
+             try:
+-                if "request_timeout" in config:
+-                    response = openai_completion.create(**config)
++                # Clean up config to remove unexpected properties
++                api_config = config.copy()
++                if "messages" in api_config:
++                    messages = api_config["messages"]
++                    for msg in messages:
++                        if "tool_responses" in msg:
++                            del msg["tool_responses"]
++                
++                if "request_timeout" in api_config:
++                    response = openai_completion.create(**api_config)
+                 else:
+-                    response = openai_completion.create(request_timeout=request_timeout, **config)
++                    response = openai_completion.create(request_timeout=request_timeout, **api_config)
+             except APIConnectionError:
+                 # transient error
+                 logger.info(f"retrying in {retry_wait_time} seconds...", exc_info=1)

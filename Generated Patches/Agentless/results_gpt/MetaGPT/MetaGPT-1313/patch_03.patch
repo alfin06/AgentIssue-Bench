@@ -1,0 +1,31 @@
+diff --git a/metagpt/ext/werewolf/roles/base_player.py b/metagpt/ext/werewolf/roles/base_player.py
+index a6ae95c..cb9ab77 100644
+--- a/metagpt/ext/werewolf/roles/base_player.py
++++ b/metagpt/ext/werewolf/roles/base_player.py
+@@ -60,6 +60,8 @@ class BasePlayer(Role):
+             news = self.rc.msg_buffer.pop_all()
+         old_messages = [] if ignore_memory else self.rc.memory.get()
+         for m in news:
++            if m.restricted_to is None:
++                m.restricted_to = []
+             if len(m.restricted_to) and self.profile not in m.restricted_to and self.name not in m.restricted_to:
+                 # if the msg is not send to the whole audience ("") nor this role (self.profile or self.name),
+                 # then this role should not be able to receive it and record it into its memory
+diff --git a/metagpt/roles/role.py b/metagpt/roles/role.py
+index e93b3b9..4db41c3 100644
+--- a/metagpt/roles/role.py
++++ b/metagpt/roles/role.py
+@@ -534,11 +534,11 @@ class Role(SerializationMixin, ContextMixin, BaseModel):
+         if with_message:
+             msg = None
+             if isinstance(with_message, str):
+-                msg = Message(content=with_message)
++                msg = Message(content=with_message, restricted_to=[])
+             elif isinstance(with_message, Message):
+                 msg = with_message
+             elif isinstance(with_message, list):
+-                msg = Message(content="\n".join(with_message))
++                msg = Message(content="\n".join(with_message), restricted_to=[])
+             if not msg.cause_by:
+                 msg.cause_by = UserRequirement
+             self.put_message(msg)

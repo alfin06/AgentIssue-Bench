@@ -1,0 +1,27 @@
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..2f5ee9a
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1,20 @@
++from camel.messages import ChatMessage
++from camel.typing import RoleType
++
++# This simulates the OpenAI API response that's causing the error
++mock_response = {
++    "role": "assistant",
++    "content": "Hello",
++    "audio": {"some": "data"},  # This is the problematic field
++}
++
++# This will raise the TypeError
++try:
++    msg = ChatMessage(
++        role_name="TestAssistant",
++        role_type=RoleType.ASSISTANT,
++        meta_dict={},
++        **mock_response
++    )
++except TypeError as e:
++    print(f"Got expected error: {e}")
+\ No newline at end of file

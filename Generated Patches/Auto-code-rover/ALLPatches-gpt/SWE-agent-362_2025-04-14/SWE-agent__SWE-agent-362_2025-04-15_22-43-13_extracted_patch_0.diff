@@ -1,0 +1,22 @@
+diff --git a/sweagent/api/server.py b/sweagent/api/server.py
+index 93c47497..00dd0a06 100644
+--- a/sweagent/api/server.py
++++ b/sweagent/api/server.py
+@@ -142,9 +142,17 @@ def run():
+     model_name: str = run.agent.model.model_name
+     environment_setup = ""
+     environment_input_type = run.environment.environment_setup.input_type
++
++    # Reset the inputs to their default values based on the `input_type`
+     if environment_input_type == "manual":
++        # Clear the current inputs and set to defaults
++        run.environment.environment_setup.manual.python = runConfigDefault.environment.environment_setup.manual.python
++        run.environment.environment_setup.manual.install = ""
++        run.environment.environment_setup.manual.pip_packages = ""
+         environment_setup = str(write_env_yaml(run.environment.environment_setup.manual))
+     elif environment_input_type == "script_path":
++        # Clear the script path and set to default
++        run.environment.environment_setup.script_path.script_path = runConfigDefault.environment.environment_setup.script_path.script_path
+         environment_setup = run.environment.environment_setup.script_path["script_path"]
+     else:
+         msg = f"Unknown input type: {environment_input_type}"

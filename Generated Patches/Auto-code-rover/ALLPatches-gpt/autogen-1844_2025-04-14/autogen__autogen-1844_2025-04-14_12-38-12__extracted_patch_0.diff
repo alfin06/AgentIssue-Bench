@@ -1,0 +1,26 @@
+diff --git a/autogen/retrieve_utils.py b/autogen/retrieve_utils.py
+index c3e50c7a9..391c33282 100644
+--- a/autogen/retrieve_utils.py
++++ b/autogen/retrieve_utils.py
+@@ -103,10 +103,20 @@ def split_text_to_chunks(
+                 must_break_at_empty_line = False
+         chunks.append(prev) if len(prev) > 10 else None  # don't add chunks less than 10 characters
+         lines = lines[cnt:]
++        if overlap > 0:
++            overlap_lines = lines[:overlap]
++            overlap_tokens = lines_tokens[:overlap]
++            if len(overlap_lines) > 0:
++                lines = overlap_lines + lines
++                lines_tokens = overlap_tokens + lines_tokens
+         lines_tokens = lines_tokens[cnt:]
+         sum_tokens = sum(lines_tokens)
+     text_to_chunk = "\n".join(lines)
+-    chunks.append(text_to_chunk) if len(text_to_chunk) > 10 else None  # don't add chunks less than 10 characters
++    if len(text_to_chunk) > 10:
++        if overlap > 0 and len(chunks) > 0:
++            overlap_lines = chunks[-1].split('\n')[-overlap:]
++            text_to_chunk = "\n".join(overlap_lines + text_to_chunk.split('\n'))
++        chunks.append(text_to_chunk)
+     return chunks
+ 
+ 

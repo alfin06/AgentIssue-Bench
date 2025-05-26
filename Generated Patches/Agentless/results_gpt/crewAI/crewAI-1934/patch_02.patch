@@ -1,0 +1,26 @@
+diff --git a/src/crewai/agent.py b/src/crewai/agent.py
+index 8a0eec5..1435e82 100644
+--- a/src/crewai/agent.py
++++ b/src/crewai/agent.py
+@@ -264,7 +264,7 @@ class Agent(BaseAgent):
+             self._times_executed += 1
+             if self._times_executed > self.max_retry_limit:
+                 raise e
+-            result = self.execute_task(task, context, tools)
++            result = f"Error: {str(e)}"
+ 
+         if self.max_rpm and self._rpm_controller:
+             self._rpm_controller.stop_rpm_counter()
+diff --git a/src/crewai/llm.py b/src/crewai/llm.py
+index 347d20d..d4fc695 100644
+--- a/src/crewai/llm.py
++++ b/src/crewai/llm.py
+@@ -275,7 +275,7 @@ class LLM:
+                     str(e)
+                 )._is_context_limit_error(str(e)):
+                     logging.error(f"LiteLLM call failed: {str(e)}")
+-                raise
++                return f"Error: {str(e)}"
+ 
+     def supports_function_calling(self) -> bool:
+         try:

@@ -1,0 +1,22 @@
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..a153c8c
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1,15 @@
++from crewai.memory.short_term.short_term_memory import ShortTermMemory
++
++# Create a new short-term memory instance
++memory = ShortTermMemory()
++
++# Save something to create the storage
++memory.save("Test memory", metadata={"test": "test"})
++
++# Try to reset it
++print("Attempting to reset short-term memory...")
++try:
++    memory.reset()
++    print("Successfully reset short-term memory!")
++except Exception as e:
++    print(f"Error: {e}")
+\ No newline at end of file

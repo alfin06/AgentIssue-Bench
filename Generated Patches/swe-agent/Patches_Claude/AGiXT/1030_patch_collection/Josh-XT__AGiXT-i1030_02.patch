@@ -1,0 +1,19 @@
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..bc1603e
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1,12 @@
++import asyncio
++from agixt.Websearch import Websearch
++
++async def main():
++    websearch = Websearch()
++    try:
++        await websearch.websearch_agent(websearch_depth="invalid_integer")
++    except Exception as e:
++        print(f"Error: {e}")
++
++if __name__ == "__main__":
++    asyncio.run(main())
+\ No newline at end of file

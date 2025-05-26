@@ -1,0 +1,41 @@
+diff --git a/camel/models/deepseek_model.py b/camel/models/deepseek_model.py
+index 40375749..e729b4f6 100644
+--- a/camel/models/deepseek_model.py
++++ b/camel/models/deepseek_model.py
+@@ -150,7 +150,7 @@ class DeepSeekModel(BaseModelBackend):
+                     'content': re.sub(
+                         r'<think>.*?</think>',
+                         '',
+-                        msg['content'],  # type: ignore[arg-type]
++                        msg.content,  # type: ignore[arg-type]
+                         flags=re.DOTALL,
+                     ).strip(),
+                 }
+diff --git a/examples/models/deepseek_reasoner_model_example.py b/examples/models/deepseek_reasoner_model_example.py
+index a2bcffc0..c6e1445e 100644
+--- a/examples/models/deepseek_reasoner_model_example.py
++++ b/examples/models/deepseek_reasoner_model_example.py
+@@ -35,7 +35,8 @@ sys_msg = "You are a helpful assistant."
+ # Set agent
+ camel_agent = ChatAgent(system_message=sys_msg, model=model)
+ 
+-user_msg = """How many Rs are there in the word 'strawberry'?"""
++user_msg = "How many Rs are there in the word 'strawberry'?"
++user_msg = re.sub(r'<think>.*?</think>', '', user_msg, flags=re.DOTALL).strip()
+ 
+ # Get response information
+ response = camel_agent.step(user_msg)
+diff --git a/examples/models/deepseek_reasoner_model_separate_answers.py b/examples/models/deepseek_reasoner_model_separate_answers.py
+index 96c6d4cd..cb7e6f8a 100644
+--- a/examples/models/deepseek_reasoner_model_separate_answers.py
++++ b/examples/models/deepseek_reasoner_model_separate_answers.py
+@@ -37,7 +37,8 @@ sys_msg = "You are a helpful assistant."
+ # Set agent
+ camel_agent = ChatAgent(system_message=sys_msg, model=model)
+ 
+-user_msg = """Please explain in detail how the output sequence of transformer becomes longer"""
++user_msg = "Please explain in detail how the output sequence of transformer becomes longer"
++user_msg = re.sub(r'<think>.*?</think>', '', user_msg, flags=re.DOTALL).strip()
+ 
+ # Get response information
+ response = camel_agent.step(user_msg)

@@ -1,0 +1,54 @@
+diff --git a/reproduce_issue.py b/reproduce_issue.py
+new file mode 100644
+index 0000000..c0e3592
+--- /dev/null
++++ b/reproduce_issue.py
+@@ -0,0 +1,47 @@
++import requests
++
++BASE_URL = "http://localhost:8000/api"
++AGENT_NAME = "test_agent"
++EXTENSION_NAME = "test_extension"
++COMMAND_NAME = "test_command"
++
++# Step 1: Create a test agent
++response = requests.post(f"{BASE_URL}/agent", json={"agent_name": AGENT_NAME})
++if response.status_code == 200:
++    print("Agent created successfully.")
++else:
++    print("Failed to create agent.", response.json())
++
++# Step 2: Select an extension and command
++response = requests.post(
++    f"{BASE_URL}/agent/{AGENT_NAME}/extensions",
++    json={"extension_name": EXTENSION_NAME, "commands": [COMMAND_NAME]}
++)
++if response.status_code == 200:
++    print("Extension and command selected successfully.")
++else:
++    print("Failed to select extension and command.", response.json())
++
++# Step 3: Save the selection
++response = requests.post(
++    f"{BASE_URL}/agent/{AGENT_NAME}/save",
++    json={"extension_name": EXTENSION_NAME, "commands": [COMMAND_NAME]}
++)
++if response.status_code == 200:
++    print("Selection saved successfully.")
++else:
++    print("Failed to save selection.", response.json())
++
++# Step 4: Refresh and verify the selection
++response = requests.get(f"{BASE_URL}/agent/{AGENT_NAME}/extensions")
++if response.status_code == 200:
++    extensions = response.json().get("extensions", [])
++    for ext in extensions:
++        if ext["extension_name"] == EXTENSION_NAME:
++            print("Extension found:", ext)
++            if COMMAND_NAME in ext.get("commands", []):
++                print("Command is correctly saved.")
++            else:
++                print("Command is not saved.")
++else:
++    print("Failed to fetch extensions.", response.json())
+\ No newline at end of file

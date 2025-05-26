@@ -1,0 +1,119 @@
+From 84a240ac8df5a5935e8bf7f24589d083830a13ec Mon Sep 17 00:00:00 2001
+From: Kaushal_26 <kaushalsolanki260102@gmail.com>
+Date: Sun, 2 Jun 2024 22:25:04 +0530
+Subject: [PATCH 1/2] fix: Werewolf Game
+
+- As all the roles in werewolf game as `react_mode` =
+  `RoleReactMode.REACT`, so `role._react()` will be called everytime.
+- When not returning anything from `role._think()` => Therefore,
+  `role._act()` will not be executed.
+- Due to which this issue was comming: https://github.com/geekan/MetaGPT/issues/1313
+---
+ metagpt/ext/werewolf/roles/base_player.py | 1 +
+ metagpt/ext/werewolf/roles/moderator.py   | 1 +
+ metagpt/ext/werewolf/roles/werewolf.py    | 1 +
+ metagpt/ext/werewolf/roles/witch.py       | 1 +
+ 4 files changed, 4 insertions(+)
+
+diff --git a/metagpt/ext/werewolf/roles/base_player.py b/metagpt/ext/werewolf/roles/base_player.py
+index 562ffb7b4b..936e7181d9 100644
+--- a/metagpt/ext/werewolf/roles/base_player.py
++++ b/metagpt/ext/werewolf/roles/base_player.py
+@@ -86,6 +86,7 @@ async def _think(self):
+             # FIXME: hard code to split, restricted为"Moderator"或"Moderator, 角色profile"
+             # Moderator加密发给自己的，意味着要执行角色的特殊动作
+             self.rc.todo = self.special_actions[0]()
++        return self.rc.todo is not None
+ 
+     async def _act(self):
+         # todo为_think时确定的，有两种情况，Speak或Protect
+diff --git a/metagpt/ext/werewolf/roles/moderator.py b/metagpt/ext/werewolf/roles/moderator.py
+index 7de0b74e69..c959729b7d 100644
+--- a/metagpt/ext/werewolf/roles/moderator.py
++++ b/metagpt/ext/werewolf/roles/moderator.py
+@@ -171,6 +171,7 @@ async def _think(self):
+         else:
+             # 上一轮消息是游戏角色的发言，解析角色的发言
+             self.rc.todo = ParseSpeak()
++        return self.rc.todo is not None
+ 
+     def _init_fields_from_obj(self, obs: dict[str, Union[int, str, list[str]]]):
+         self.game_setup = obs.get("game_setup", "")
+diff --git a/metagpt/ext/werewolf/roles/werewolf.py b/metagpt/ext/werewolf/roles/werewolf.py
+index 801bc7d25f..f28a6f655f 100644
+--- a/metagpt/ext/werewolf/roles/werewolf.py
++++ b/metagpt/ext/werewolf/roles/werewolf.py
+@@ -13,3 +13,4 @@ async def _think(self):
+         await super()._think()
+         if isinstance(self.rc.todo, Speak):
+             self.rc.todo = Impersonate()
++        return self.rc.todo is not None
+diff --git a/metagpt/ext/werewolf/roles/witch.py b/metagpt/ext/werewolf/roles/witch.py
+index 2b73ea6297..e5191b48b3 100644
+--- a/metagpt/ext/werewolf/roles/witch.py
++++ b/metagpt/ext/werewolf/roles/witch.py
+@@ -26,3 +26,4 @@ async def _think(self):
+                 self.rc.todo = Poison()
+             else:
+                 raise ValueError("Moderator's instructions must include save or poison keyword")
++        return self.rc.todo is not None
+
+From 73f9b4a961cf2f4837eca063fce93f4acf6d907e Mon Sep 17 00:00:00 2001
+From: Kaushal_26 <kaushalsolanki260102@gmail.com>
+Date: Mon, 3 Jun 2024 18:20:17 +0530
+Subject: [PATCH 2/2] refactor: Update in the last commit of werewolf game
+
+- Reviewed changes: https://github.com/geekan/MetaGPT/pull/1316#discussion_r1624248864
+---
+ metagpt/ext/werewolf/roles/base_player.py | 2 +-
+ metagpt/ext/werewolf/roles/moderator.py   | 2 +-
+ metagpt/ext/werewolf/roles/werewolf.py    | 2 +-
+ metagpt/ext/werewolf/roles/witch.py       | 2 +-
+ 4 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/metagpt/ext/werewolf/roles/base_player.py b/metagpt/ext/werewolf/roles/base_player.py
+index 936e7181d9..a108718e0e 100644
+--- a/metagpt/ext/werewolf/roles/base_player.py
++++ b/metagpt/ext/werewolf/roles/base_player.py
+@@ -86,7 +86,7 @@ async def _think(self):
+             # FIXME: hard code to split, restricted为"Moderator"或"Moderator, 角色profile"
+             # Moderator加密发给自己的，意味着要执行角色的特殊动作
+             self.rc.todo = self.special_actions[0]()
+-        return self.rc.todo is not None
++        return True
+ 
+     async def _act(self):
+         # todo为_think时确定的，有两种情况，Speak或Protect
+diff --git a/metagpt/ext/werewolf/roles/moderator.py b/metagpt/ext/werewolf/roles/moderator.py
+index c959729b7d..9621d9acb4 100644
+--- a/metagpt/ext/werewolf/roles/moderator.py
++++ b/metagpt/ext/werewolf/roles/moderator.py
+@@ -171,7 +171,7 @@ async def _think(self):
+         else:
+             # 上一轮消息是游戏角色的发言，解析角色的发言
+             self.rc.todo = ParseSpeak()
+-        return self.rc.todo is not None
++        return True
+ 
+     def _init_fields_from_obj(self, obs: dict[str, Union[int, str, list[str]]]):
+         self.game_setup = obs.get("game_setup", "")
+diff --git a/metagpt/ext/werewolf/roles/werewolf.py b/metagpt/ext/werewolf/roles/werewolf.py
+index f28a6f655f..8c2ef283a8 100644
+--- a/metagpt/ext/werewolf/roles/werewolf.py
++++ b/metagpt/ext/werewolf/roles/werewolf.py
+@@ -13,4 +13,4 @@ async def _think(self):
+         await super()._think()
+         if isinstance(self.rc.todo, Speak):
+             self.rc.todo = Impersonate()
+-        return self.rc.todo is not None
++        return True
+diff --git a/metagpt/ext/werewolf/roles/witch.py b/metagpt/ext/werewolf/roles/witch.py
+index e5191b48b3..34f9c77d22 100644
+--- a/metagpt/ext/werewolf/roles/witch.py
++++ b/metagpt/ext/werewolf/roles/witch.py
+@@ -26,4 +26,4 @@ async def _think(self):
+                 self.rc.todo = Poison()
+             else:
+                 raise ValueError("Moderator's instructions must include save or poison keyword")
+-        return self.rc.todo is not None
++        return True

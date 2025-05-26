@@ -1,0 +1,15 @@
+diff --git a/sweagent/__init__.py b/sweagent/__init__.py
+index 047bcfeb..5ca6ad86 100644
+--- a/sweagent/__init__.py
++++ b/sweagent/__init__.py
+@@ -16,6 +16,10 @@ assert REPO_ROOT.is_dir()
+ CONFIG_DIR = PACKAGE_DIR.parent / "config"
+ assert CONFIG_DIR.is_dir()
+ 
++# Ensure utils directory exists with __init__.py
++UTILS_DIR = PACKAGE_DIR / "utils"
++UTILS_DIR.mkdir(exist_ok=True)
++(UTILS_DIR / "__init__.py").touch()
+ 
+ __all__ = [
+     "PACKAGE_DIR",

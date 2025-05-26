@@ -1,0 +1,36 @@
+diff --git a/apps/cli/src/cli.ts b/apps/cli/src/cli.ts
+index 9af65fb..2e49fb9 100644
+--- a/apps/cli/src/cli.ts
++++ b/apps/cli/src/cli.ts
+@@ -9,6 +9,7 @@ export async function cli(): Promise<void> {
+     .option("-t, --timeout <seconds>")
+     .option("-r, --root <path>")
+     .option("-d, --debug")
++.option("-c, --continuous", "Enable continuous mode")
+     .parse();
+ 
+   const options = program.opts();
+@@ -80,6 +81,9 @@ export async function cli(): Promise<void> {
+       goal = await app.logger.prompt("Enter your goal");
+     } else if (goalCounter === 0) {
+       await app.fileLogger.info("# User\n **Enter your goal:** " + goal);
++    } else if (options.continuous) {
++      goal = `Follow-up goal ${goalCounter}`;
++      app.evo.reset();
+     } else {
+       goal = await app.logger.prompt("Enter another goal");
+       app.evo.reset();
+diff --git a/test_continuous_mode.py b/test_continuous_mode.py
+new file mode 100644
+index 0000000..8cbaf6d
+--- /dev/null
++++ b/test_continuous_mode.py
+@@ -0,0 +1,8 @@
++import subprocess
++
++# Test script for CLI continuous mode
++command = ['node', '/agentcoinorg__evo.ninja.git/apps/cli/src/cli.ts', '--continuous', '--session', 'test-session']
++result = subprocess.run(command, capture_output=True, text=True)
++
++print('STDOUT:', result.stdout)
++print('STDERR:', result.stderr)

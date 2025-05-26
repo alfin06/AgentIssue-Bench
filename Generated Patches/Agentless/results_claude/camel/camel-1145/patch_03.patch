@@ -1,0 +1,79 @@
+diff --git a/camel/toolkits/__init__.py b/camel/toolkits/__init__.py
+index 1d6d17c..3423b18 100644
+--- a/camel/toolkits/__init__.py
++++ b/camel/toolkits/__init__.py
+@@ -26,19 +26,64 @@ from .weather_toolkit import WeatherToolkit, WEATHER_FUNCS
+ from .dalle_toolkit import DalleToolkit, DALLE_FUNCS
+ from .ask_news_toolkit import AskNewsToolkit, AsyncAskNewsToolkit
+ 
+-from .linkedin_toolkit import LinkedInToolkit
+-from .reddit_toolkit import RedditToolkit
+ from .base import BaseToolkit
+-from .google_maps_toolkit import GoogleMapsToolkit
++
++# Core toolkits that don't require optional dependencies
+ from .code_execution import CodeExecutionToolkit
+-from .github_toolkit import GithubToolkit
+-from .google_scholar_toolkit import GoogleScholarToolkit
+-from .arxiv_toolkit import ArxivToolkit
+-from .slack_toolkit import SlackToolkit
+-from .twitter_toolkit import TwitterToolkit, TWITTER_FUNCS
+-from .open_api_toolkit import OpenAPIToolkit
++from .math_toolkit import MathToolkit
+ from .retrieval_toolkit import RetrievalToolkit
+-from .notion_toolkit import NotionToolkit
++
++# Optional toolkits that require additional dependencies
++try:
++    from .linkedin_toolkit import LinkedInToolkit
++except ImportError:
++    LinkedInToolkit = None
++
++try:
++    from .reddit_toolkit import RedditToolkit
++except ImportError:
++    RedditToolkit = None
++
++try:
++    from .google_maps_toolkit import GoogleMapsToolkit
++except ImportError:
++    GoogleMapsToolkit = None
++
++try:
++    from .github_toolkit import GithubToolkit
++except ImportError:
++    GithubToolkit = None
++
++try:
++    from .google_scholar_toolkit import GoogleScholarToolkit
++except ImportError:
++    GoogleScholarToolkit = None
++
++try:
++    from .arxiv_toolkit import ArxivToolkit
++except ImportError:
++    ArxivToolkit = None
++
++try:
++    from .slack_toolkit import SlackToolkit
++except ImportError:
++    SlackToolkit = None
++
++try:
++    from .twitter_toolkit import TwitterToolkit, TWITTER_FUNCS
++except ImportError:
++    TwitterToolkit = None
++    TWITTER_FUNCS = None
++
++try:
++    from .open_api_toolkit import OpenAPIToolkit
++except ImportError:
++    OpenAPIToolkit = None
++
++try:
++    from .notion_toolkit import NotionToolkit
++except ImportError:
++    NotionToolkit = None
+ 
+ __all__ = [
+     'BaseToolkit',

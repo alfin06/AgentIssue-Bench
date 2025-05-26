@@ -1,0 +1,2295 @@
+From 38bcf91ea4e67693fc71bcfa08c8b3eb698c65e0 Mon Sep 17 00:00:00 2001
+From: Wendong <w3ndong.fan@gmail.com>
+Date: Wed, 4 Dec 2024 22:50:27 +0800
+Subject: [PATCH 1/7] fix: api_keys_required
+
+---
+ camel/utils/commons.py | 29 ++++++++++++++++++++++++-----
+ 1 file changed, 24 insertions(+), 5 deletions(-)
+
+diff --git a/camel/utils/commons.py b/camel/utils/commons.py
+index 5e1565e16c..a59e27abf0 100644
+--- a/camel/utils/commons.py
++++ b/camel/utils/commons.py
+@@ -275,15 +275,34 @@ def some_api_function():
+     def decorator(func: F) -> F:
+         @wraps(func)
+         def wrapper(*args: Any, **kwargs: Any) -> Any:
+-            missing_environment_keys = [
+-                k for k in required_keys if k not in os.environ
+-            ]
++            if func.__name__ == "__init__":
++                # Initialize instance first
++                result = func(*args, **kwargs)
++
++                # Check required API keys after initialization
++                instance = args[0]  # The first argument should be the instance
++                missing_keys = [
++                    k
++                    for k in required_keys
++                    if not (
++                        os.environ.get(k)
++                        or getattr(instance, '_api_key', None)
++                    )
++                ]
++                if missing_keys:
++                    raise ValueError(
++                        f"Missing API keys: {', '.join(missing_keys)}"
++                    )
++                return result
++
++            # For non-__init__ methods, check API keys directly
++            missing_keys = [k for k in required_keys if k not in os.environ]
+             if (
+                 not (args and getattr(args[0], '_api_key', None))
+-                and missing_environment_keys
++                and missing_keys
+             ):
+                 raise ValueError(
+-                    f"Missing API keys: {', '.join(missing_environment_keys)}"
++                    f"Missing API keys: {', '.join(missing_keys)}"
+                 )
+             return func(*args, **kwargs)
+ 
+
+From e6bf8c5fba026a686c6684c4525e96025c99bb7b Mon Sep 17 00:00:00 2001
+From: Wendong <w3ndong.fan@gmail.com>
+Date: Fri, 6 Dec 2024 12:36:22 +0800
+Subject: [PATCH 2/7] update
+
+---
+ camel/embeddings/mistral_embedding.py         |  6 +-
+ .../embeddings/openai_compatible_embedding.py |  7 +-
+ camel/embeddings/openai_embedding.py          |  6 +-
+ camel/loaders/apify_reader.py                 |  6 +-
+ camel/loaders/chunkr_reader.py                |  6 +-
+ camel/logger.py                               |  2 +-
+ camel/models/anthropic_model.py               |  6 +-
+ camel/models/azure_openai_model.py            |  3 +-
+ camel/models/cohere_model.py                  |  6 +-
+ camel/models/deepseek_model.py                |  6 +-
+ camel/models/gemini_model.py                  |  6 +-
+ camel/models/groq_model.py                    |  6 +-
+ camel/models/mistral_model.py                 |  6 +-
+ camel/models/nemotron_model.py                |  6 +-
+ camel/models/nvidia_model.py                  |  6 +-
+ camel/models/openai_model.py                  |  6 +-
+ camel/models/qwen_model.py                    |  6 +-
+ camel/models/reka_model.py                    |  6 +-
+ camel/models/samba_model.py                   |  6 +-
+ camel/models/togetherai_model.py              |  6 +-
+ camel/models/yi_model.py                      |  6 +-
+ camel/models/zhipuai_model.py                 |  6 +-
+ camel/schemas/openai_converter.py             |  6 +-
+ camel/toolkits/meshy_toolkit.py               |  6 +-
+ camel/toolkits/search_toolkit.py              |  2 +-
+ camel/toolkits/twitter_toolkit.py             | 40 +++++---
+ camel/utils/commons.py                        | 80 ++++++++-------
+ camel/utils/test.py                           | 56 +++++++++++
+ examples/models/openai_o1_example.py          | 92 ++++++++++++++++-
+ test/utils/test_commons.py                    | 99 ++++++++-----------
+ 30 files changed, 365 insertions(+), 142 deletions(-)
+ create mode 100644 camel/utils/test.py
+
+diff --git a/camel/embeddings/mistral_embedding.py b/camel/embeddings/mistral_embedding.py
+index 526e01088e..24c80e372d 100644
+--- a/camel/embeddings/mistral_embedding.py
++++ b/camel/embeddings/mistral_embedding.py
+@@ -37,6 +37,11 @@ class MistralEmbedding(BaseEmbedding[str]):
+         RuntimeError: If an unsupported model type is specified.
+     """
+ 
++    @api_keys_required(
++        [
++            ("api_key", 'MISTRAL_API_KEY'),
++        ]
++    )
+     def __init__(
+         self,
+         model_type: EmbeddingModelType = (EmbeddingModelType.MISTRAL_EMBED),
+@@ -56,7 +61,6 @@ def __init__(
+         self._api_key = api_key or os.environ.get("MISTRAL_API_KEY")
+         self._client = Mistral(api_key=self._api_key)
+ 
+-    @api_keys_required("MISTRAL_API_KEY")
+     def embed_list(
+         self,
+         objs: list[str],
+diff --git a/camel/embeddings/openai_compatible_embedding.py b/camel/embeddings/openai_compatible_embedding.py
+index 7fb2dbd453..cd53469168 100644
+--- a/camel/embeddings/openai_compatible_embedding.py
++++ b/camel/embeddings/openai_compatible_embedding.py
+@@ -32,6 +32,12 @@ class OpenAICompatibleEmbedding(BaseEmbedding[str]):
+         url (str): The url to the model service.
+     """
+ 
++    @api_keys_required(
++        [
++            ("api_key", 'OPENAI_COMPATIBILIY_API_KEY'),
++            ("url", 'OPENAI_COMPATIBILIY_API_BASE_URL'),
++        ]
++    )
+     def __init__(
+         self,
+         model_type: str,
+@@ -52,7 +58,6 @@ def __init__(
+             base_url=self._url,
+         )
+ 
+-    @api_keys_required("OPENAI_COMPATIBILIY_API_KEY")
+     def embed_list(
+         self,
+         objs: list[str],
+diff --git a/camel/embeddings/openai_embedding.py b/camel/embeddings/openai_embedding.py
+index 2666530d51..28056ee92b 100644
+--- a/camel/embeddings/openai_embedding.py
++++ b/camel/embeddings/openai_embedding.py
+@@ -39,6 +39,11 @@ class OpenAIEmbedding(BaseEmbedding[str]):
+         RuntimeError: If an unsupported model type is specified.
+     """
+ 
++    @api_keys_required(
++        [
++            ("api_key", 'OPENAI_API_KEY'),
++        ]
++    )
+     def __init__(
+         self,
+         model_type: EmbeddingModelType = (
+@@ -58,7 +63,6 @@ def __init__(
+         self._api_key = api_key or os.environ.get("OPENAI_API_KEY")
+         self.client = OpenAI(timeout=60, max_retries=3, api_key=self._api_key)
+ 
+-    @api_keys_required("OPENAI_API_KEY")
+     def embed_list(
+         self,
+         objs: list[str],
+diff --git a/camel/loaders/apify_reader.py b/camel/loaders/apify_reader.py
+index 6224ce60c0..5aa46433ec 100644
+--- a/camel/loaders/apify_reader.py
++++ b/camel/loaders/apify_reader.py
+@@ -27,7 +27,11 @@ class Apify:
+         api_key (Optional[str]): API key for authenticating with the Apify API.
+     """
+ 
+-    @api_keys_required("APIFY_API_KEY")
++    @api_keys_required(
++        [
++            ("api_key", 'APIFY_API_KEY'),
++        ]
++    )
+     def __init__(
+         self,
+         api_key: Optional[str] = None,
+diff --git a/camel/loaders/chunkr_reader.py b/camel/loaders/chunkr_reader.py
+index ae29078599..450c12676d 100644
+--- a/camel/loaders/chunkr_reader.py
++++ b/camel/loaders/chunkr_reader.py
+@@ -40,7 +40,11 @@ class ChunkrReader:
+         **kwargs (Any): Additional keyword arguments for request headers.
+     """
+ 
+-    @api_keys_required("CHUNKR_API_KEY")
++    @api_keys_required(
++        [
++            ("api_key", 'CHUNKR_API_KEY'),
++        ]
++    )
+     def __init__(
+         self,
+         api_key: Optional[str] = None,
+diff --git a/camel/logger.py b/camel/logger.py
+index 793bf19dc9..83e9b64965 100644
+--- a/camel/logger.py
++++ b/camel/logger.py
+@@ -31,7 +31,7 @@ def _configure_library_logging():
+             stream=sys.stdout,
+         )
+         logging.setLoggerClass(logging.Logger)
+-        _logger.info("Camel library logging has been configured.")
++        _logger.info("CAMEL library logging has been configured.")
+     else:
+         _logger.debug("Existing logger configuration found, using that.")
+ 
+diff --git a/camel/models/anthropic_model.py b/camel/models/anthropic_model.py
+index 8fd7e565e8..d42416a5ef 100644
+--- a/camel/models/anthropic_model.py
++++ b/camel/models/anthropic_model.py
+@@ -108,7 +108,11 @@ def count_tokens_from_prompt(self, prompt: str) -> int:
+         """
+         return self.client.count_tokens(prompt)
+ 
+-    @api_keys_required("ANTHROPIC_API_KEY")
++    @api_keys_required(
++        [
++            ("api_key", 'ANTHROPIC_API_KEY'),
++        ]
++    )
+     def run(
+         self,
+         messages: List[OpenAIMessage],
+diff --git a/camel/models/azure_openai_model.py b/camel/models/azure_openai_model.py
+index 7a94c213d1..757e7bde1f 100644
+--- a/camel/models/azure_openai_model.py
++++ b/camel/models/azure_openai_model.py
+@@ -24,7 +24,7 @@
+     ChatCompletionChunk,
+     ModelType,
+ )
+-from camel.utils import BaseTokenCounter, OpenAITokenCounter, api_keys_required
++from camel.utils import BaseTokenCounter, OpenAITokenCounter
+ 
+ 
+ class AzureOpenAIModel(BaseModelBackend):
+@@ -107,7 +107,6 @@ def token_counter(self) -> BaseTokenCounter:
+             self._token_counter = OpenAITokenCounter(self.model_type)
+         return self._token_counter
+ 
+-    @api_keys_required("AZURE_OPENAI_API_KEY", "AZURE_API_VERSION")
+     def run(
+         self,
+         messages: List[OpenAIMessage],
+diff --git a/camel/models/cohere_model.py b/camel/models/cohere_model.py
+index 8376f42f7e..e91329c8b5 100644
+--- a/camel/models/cohere_model.py
++++ b/camel/models/cohere_model.py
+@@ -210,7 +210,11 @@ def token_counter(self) -> BaseTokenCounter:
+             )
+         return self._token_counter
+ 
+-    @api_keys_required("COHERE_API_KEY")
++    @api_keys_required(
++        [
++            ("api_key", 'COHERE_API_KEY'),
++        ]
++    )
+     def run(self, messages: List[OpenAIMessage]) -> ChatCompletion:
+         r"""Runs inference of Cohere chat completion.
+ 
+diff --git a/camel/models/deepseek_model.py b/camel/models/deepseek_model.py
+index a508ae6147..4e2d2e664e 100644
+--- a/camel/models/deepseek_model.py
++++ b/camel/models/deepseek_model.py
+@@ -90,7 +90,11 @@ def token_counter(self) -> BaseTokenCounter:
+             )
+         return self._token_counter
+ 
+-    @api_keys_required("DEEPSEEK_API_KEY")
++    @api_keys_required(
++        [
++            ("api_key", 'DEEPSEEK_API_KEY'),
++        ]
++    )
+     def run(
+         self,
+         messages: List[OpenAIMessage],
+diff --git a/camel/models/gemini_model.py b/camel/models/gemini_model.py
+index fd1b4c4dba..8c6424d0a6 100644
+--- a/camel/models/gemini_model.py
++++ b/camel/models/gemini_model.py
+@@ -77,7 +77,11 @@ def __init__(
+             base_url=self._url,
+         )
+ 
+-    @api_keys_required("GEMINI_API_KEY")
++    @api_keys_required(
++        [
++            ("api_key", 'GEMINI_API_KEY'),
++        ]
++    )
+     def run(
+         self,
+         messages: List[OpenAIMessage],
+diff --git a/camel/models/groq_model.py b/camel/models/groq_model.py
+index 5295ec70cd..ef8d132ba4 100644
+--- a/camel/models/groq_model.py
++++ b/camel/models/groq_model.py
+@@ -89,7 +89,11 @@ def token_counter(self) -> BaseTokenCounter:
+             self._token_counter = OpenAITokenCounter(ModelType.GPT_4O_MINI)
+         return self._token_counter
+ 
+-    @api_keys_required("GROQ_API_KEY")
++    @api_keys_required(
++        [
++            ("api_key", 'GROQ_API_KEY'),
++        ]
++    )
+     def run(
+         self,
+         messages: List[OpenAIMessage],
+diff --git a/camel/models/mistral_model.py b/camel/models/mistral_model.py
+index d95aa992b2..cae1d41af5 100644
+--- a/camel/models/mistral_model.py
++++ b/camel/models/mistral_model.py
+@@ -200,7 +200,11 @@ def token_counter(self) -> BaseTokenCounter:
+             )
+         return self._token_counter
+ 
+-    @api_keys_required("MISTRAL_API_KEY")
++    @api_keys_required(
++        [
++            ("api_key", 'MISTRAL_API_KEY'),
++        ]
++    )
+     def run(
+         self,
+         messages: List[OpenAIMessage],
+diff --git a/camel/models/nemotron_model.py b/camel/models/nemotron_model.py
+index 7fbc3451ab..eeca1f876b 100644
+--- a/camel/models/nemotron_model.py
++++ b/camel/models/nemotron_model.py
+@@ -58,7 +58,11 @@ def __init__(
+             api_key=self._api_key,
+         )
+ 
+-    @api_keys_required("NVIDIA_API_KEY")
++    @api_keys_required(
++        [
++            ("api_key", 'NVIDIA_API_KEY'),
++        ]
++    )
+     def run(
+         self,
+         messages: List[OpenAIMessage],
+diff --git a/camel/models/nvidia_model.py b/camel/models/nvidia_model.py
+index 34af71363f..624115dfc2 100644
+--- a/camel/models/nvidia_model.py
++++ b/camel/models/nvidia_model.py
+@@ -72,7 +72,11 @@ def __init__(
+             base_url=self._url,
+         )
+ 
+-    @api_keys_required("NVIDIA_API_KEY")
++    @api_keys_required(
++        [
++            ("api_key", 'NVIDIA_API_KEY'),
++        ]
++    )
+     def run(
+         self,
+         messages: List[OpenAIMessage],
+diff --git a/camel/models/openai_model.py b/camel/models/openai_model.py
+index 8e8f8b1f16..a1e4f2876d 100644
+--- a/camel/models/openai_model.py
++++ b/camel/models/openai_model.py
+@@ -86,7 +86,11 @@ def token_counter(self) -> BaseTokenCounter:
+             self._token_counter = OpenAITokenCounter(self.model_type)
+         return self._token_counter
+ 
+-    @api_keys_required("OPENAI_API_KEY")
++    @api_keys_required(
++        [
++            ("api_key", 'OPENAI_API_KEY'),
++        ]
++    )
+     def run(
+         self,
+         messages: List[OpenAIMessage],
+diff --git a/camel/models/qwen_model.py b/camel/models/qwen_model.py
+index 1852f847af..87a5a707c1 100644
+--- a/camel/models/qwen_model.py
++++ b/camel/models/qwen_model.py
+@@ -77,7 +77,11 @@ def __init__(
+             base_url=self._url,
+         )
+ 
+-    @api_keys_required("QWEN_API_KEY")
++    @api_keys_required(
++        [
++            ("api_key", 'QWEN_API_KEY'),
++        ]
++    )
+     def run(
+         self,
+         messages: List[OpenAIMessage],
+diff --git a/camel/models/reka_model.py b/camel/models/reka_model.py
+index e182fd05ba..2ccb42e63b 100644
+--- a/camel/models/reka_model.py
++++ b/camel/models/reka_model.py
+@@ -168,7 +168,11 @@ def token_counter(self) -> BaseTokenCounter:
+             )
+         return self._token_counter
+ 
+-    @api_keys_required("REKA_API_KEY")
++    @api_keys_required(
++        [
++            ("api_key", 'REKA_API_KEY'),
++        ]
++    )
+     def run(
+         self,
+         messages: List[OpenAIMessage],
+diff --git a/camel/models/samba_model.py b/camel/models/samba_model.py
+index 7bf275c349..b246caa235 100644
+--- a/camel/models/samba_model.py
++++ b/camel/models/samba_model.py
+@@ -143,7 +143,11 @@ def check_model_config(self):
+                 " SambaNova service"
+             )
+ 
+-    @api_keys_required("SAMBA_API_KEY")
++    @api_keys_required(
++        [
++            ("api_key", 'SAMBA_API_KEY'),
++        ]
++    )
+     def run(  # type: ignore[misc]
+         self, messages: List[OpenAIMessage]
+     ) -> Union[ChatCompletion, Stream[ChatCompletionChunk]]:
+diff --git a/camel/models/togetherai_model.py b/camel/models/togetherai_model.py
+index ce3f5b0db7..0d1582deb9 100644
+--- a/camel/models/togetherai_model.py
++++ b/camel/models/togetherai_model.py
+@@ -78,7 +78,11 @@ def __init__(
+             base_url=self._url,
+         )
+ 
+-    @api_keys_required("TOGETHER_API_KEY")
++    @api_keys_required(
++        [
++            ("api_key", 'TOGETHER_API_KEY'),
++        ]
++    )
+     def run(
+         self,
+         messages: List[OpenAIMessage],
+diff --git a/camel/models/yi_model.py b/camel/models/yi_model.py
+index 18500c764e..a99bb0fca8 100644
+--- a/camel/models/yi_model.py
++++ b/camel/models/yi_model.py
+@@ -76,7 +76,11 @@ def __init__(
+             base_url=self._url,
+         )
+ 
+-    @api_keys_required("YI_API_KEY")
++    @api_keys_required(
++        [
++            ("api_key", 'YI_API_KEY'),
++        ]
++    )
+     def run(
+         self,
+         messages: List[OpenAIMessage],
+diff --git a/camel/models/zhipuai_model.py b/camel/models/zhipuai_model.py
+index ef710560ce..9b46ad8a66 100644
+--- a/camel/models/zhipuai_model.py
++++ b/camel/models/zhipuai_model.py
+@@ -76,7 +76,11 @@ def __init__(
+             base_url=self._url,
+         )
+ 
+-    @api_keys_required("ZHIPUAI_API_KEY")
++    @api_keys_required(
++        [
++            (None, 'ZHIPUAI_API_KEY'),
++        ]
++    )
+     def run(
+         self,
+         messages: List[OpenAIMessage],
+diff --git a/camel/schemas/openai_converter.py b/camel/schemas/openai_converter.py
+index cf0df72a50..6a717cf8f9 100644
+--- a/camel/schemas/openai_converter.py
++++ b/camel/schemas/openai_converter.py
+@@ -69,7 +69,11 @@ def __init__(
+         )._client
+         super().__init__()
+ 
+-    @api_keys_required("OPENAI_API_KEY")
++    @api_keys_required(
++        [
++            (None, 'OPENAI_API_KEY'),
++        ]
++    )
+     def convert(  # type: ignore[override]
+         self,
+         content: str,
+diff --git a/camel/toolkits/meshy_toolkit.py b/camel/toolkits/meshy_toolkit.py
+index cf49e01f91..1750dd184f 100644
+--- a/camel/toolkits/meshy_toolkit.py
++++ b/camel/toolkits/meshy_toolkit.py
+@@ -33,7 +33,11 @@ class MeshyToolkit(BaseToolkit):
+     https://docs.meshy.ai/api-text-to-3d-beta#create-a-text-to-3d-preview-task
+     """
+ 
+-    @api_keys_required("MESHY_API_KEY")
++    @api_keys_required(
++        [
++            (None, 'MESHY_API_KEY'),
++        ]
++    )
+     def __init__(self):
+         r"""Initializes the MeshyToolkit with the API key from the
+         environment.
+diff --git a/camel/toolkits/search_toolkit.py b/camel/toolkits/search_toolkit.py
+index f61e1c47bf..49b7143387 100644
+--- a/camel/toolkits/search_toolkit.py
++++ b/camel/toolkits/search_toolkit.py
+@@ -151,7 +151,7 @@ def search_duckduckgo(
+         # If no answer found, return an empty list
+         return responses
+ 
+-    @api_keys_required("GOOGLE_API_KEY", "SEARCH_ENGINE_ID")
++    @api_keys_required([(None, 'GOOGLE_API_KEY'), (None, 'SEARCH_ENGINE_ID')])
+     def search_google(
+         self, query: str, num_result_pages: int = 5
+     ) -> List[Dict[str, Any]]:
+diff --git a/camel/toolkits/twitter_toolkit.py b/camel/toolkits/twitter_toolkit.py
+index 286ea3d09d..e4d033a9e5 100644
+--- a/camel/toolkits/twitter_toolkit.py
++++ b/camel/toolkits/twitter_toolkit.py
+@@ -31,10 +31,12 @@
+ 
+ 
+ @api_keys_required(
+-    "TWITTER_CONSUMER_KEY",
+-    "TWITTER_CONSUMER_SECRET",
+-    "TWITTER_ACCESS_TOKEN",
+-    "TWITTER_ACCESS_TOKEN_SECRET",
++    [
++        (None, 'TWITTER_CONSUMER_KEY'),
++        (None, 'TWITTER_CONSUMER_SECRET'),
++        (None, 'TWITTER_ACCESS_TOKEN'),
++        (None, 'TWITTER_ACCESS_TOKEN_SECRET'),
++    ]
+ )
+ def create_tweet(
+     text: str,
+@@ -132,10 +134,12 @@ def create_tweet(
+ 
+ 
+ @api_keys_required(
+-    "TWITTER_CONSUMER_KEY",
+-    "TWITTER_CONSUMER_SECRET",
+-    "TWITTER_ACCESS_TOKEN",
+-    "TWITTER_ACCESS_TOKEN_SECRET",
++    [
++        (None, 'TWITTER_CONSUMER_KEY'),
++        (None, 'TWITTER_CONSUMER_SECRET'),
++        (None, 'TWITTER_ACCESS_TOKEN'),
++        (None, 'TWITTER_ACCESS_TOKEN_SECRET'),
++    ]
+ )
+ def delete_tweet(tweet_id: str) -> str:
+     r"""Deletes a tweet with the specified ID for an authorized user.
+@@ -187,10 +191,12 @@ def delete_tweet(tweet_id: str) -> str:
+ 
+ 
+ @api_keys_required(
+-    "TWITTER_CONSUMER_KEY",
+-    "TWITTER_CONSUMER_SECRET",
+-    "TWITTER_ACCESS_TOKEN",
+-    "TWITTER_ACCESS_TOKEN_SECRET",
++    [
++        (None, 'TWITTER_CONSUMER_KEY'),
++        (None, 'TWITTER_CONSUMER_SECRET'),
++        (None, 'TWITTER_ACCESS_TOKEN'),
++        (None, 'TWITTER_ACCESS_TOKEN_SECRET'),
++    ]
+ )
+ def get_my_user_profile() -> str:
+     r"""Retrieves the authenticated user's Twitter profile info.
+@@ -214,10 +220,12 @@ def get_my_user_profile() -> str:
+ 
+ 
+ @api_keys_required(
+-    "TWITTER_CONSUMER_KEY",
+-    "TWITTER_CONSUMER_SECRET",
+-    "TWITTER_ACCESS_TOKEN",
+-    "TWITTER_ACCESS_TOKEN_SECRET",
++    [
++        (None, 'TWITTER_CONSUMER_KEY'),
++        (None, 'TWITTER_CONSUMER_SECRET'),
++        (None, 'TWITTER_ACCESS_TOKEN'),
++        (None, 'TWITTER_ACCESS_TOKEN_SECRET'),
++    ]
+ )
+ def get_user_by_username(username: str) -> str:
+     r"""Retrieves one user's Twitter profile info by username (handle).
+diff --git a/camel/utils/commons.py b/camel/utils/commons.py
+index a59e27abf0..08cc29ab89 100644
+--- a/camel/utils/commons.py
++++ b/camel/utils/commons.py
+@@ -30,6 +30,7 @@
+     Mapping,
+     Optional,
+     Set,
++    Tuple,
+     Type,
+     TypeVar,
+     cast,
+@@ -249,60 +250,62 @@ def is_module_available(module_name: str) -> bool:
+         return False
+ 
+ 
+-def api_keys_required(*required_keys: str) -> Callable[[F], F]:
+-    r"""A decorator to check if the required API keys are
+-    presented in the environment variables or as an instance attribute.
++def api_keys_required(
++    param_env_list: List[Tuple[Optional[str], str]],
++) -> Callable[[F], F]:
++    r"""A decorator to check if the required API keys are provided in the
++    environment variables or as function arguments.
+ 
+     Args:
+-        required_keys (str): The required API keys to be checked.
++        param_env_list (List[Tuple[Optional[str], str]]): A list of tuples
++            where each tuple contains a function argument name (as the first
++            element, or None) and the corresponding environment variable name
++            (as the second element) that holds the API key.
+ 
+     Returns:
+-        Callable[[F], F]: The original function with the added check
+-            for required API keys.
++        Callable[[F], F]: The original function wrapped with the added check
++            for the required API keys.
+ 
+     Raises:
+-        ValueError: If any of the required API keys are missing in the
+-            environment variables and the instance attribute.
++        ValueError: If any of the required API keys are missing, either
++            from the function arguments or environment variables.
+ 
+     Example:
+         ::
+ 
+-            @api_keys_required('API_KEY_1', 'API_KEY_2')
+-            def some_api_function():
+-                # Function implementation...
++            @api_keys_required([
++                ('api_key_arg', 'API_KEY_1'),
++                ('another_key_arg', 'API_KEY_2'),
++                (None, 'API_KEY_3'),
++            ])
++            def some_api_function(api_key_arg=None, another_key_arg=None):
++                # Function implementation that requires API keys
+     """
++    import inspect
+ 
+     def decorator(func: F) -> F:
+         @wraps(func)
+         def wrapper(*args: Any, **kwargs: Any) -> Any:
+-            if func.__name__ == "__init__":
+-                # Initialize instance first
+-                result = func(*args, **kwargs)
+-
+-                # Check required API keys after initialization
+-                instance = args[0]  # The first argument should be the instance
+-                missing_keys = [
+-                    k
+-                    for k in required_keys
+-                    if not (
+-                        os.environ.get(k)
+-                        or getattr(instance, '_api_key', None)
+-                    )
+-                ]
+-                if missing_keys:
+-                    raise ValueError(
+-                        f"Missing API keys: {', '.join(missing_keys)}"
+-                    )
+-                return result
+-
+-            # For non-__init__ methods, check API keys directly
+-            missing_keys = [k for k in required_keys if k not in os.environ]
+-            if (
+-                not (args and getattr(args[0], '_api_key', None))
+-                and missing_keys
+-            ):
++            signature = inspect.signature(func)
++            bound_arguments = signature.bind(*args, **kwargs)
++            bound_arguments.apply_defaults()
++            arguments = bound_arguments.arguments
++
++            missing_keys = []
++            for param_name, env_var_name in param_env_list:
++                if param_name:
++                    # Check function argument first, then environment variable
++                    value = arguments.get(param_name)
++                    if value is None:
++                        value = os.environ.get(env_var_name)
++                else:
++                    # Only check environment variable
++                    value = os.environ.get(env_var_name)
++                if not value:
++                    missing_keys.append(env_var_name)
++            if missing_keys:
+                 raise ValueError(
+-                    f"Missing API keys: {', '.join(missing_keys)}"
++                    f"Missing required API keys: {', '.join(missing_keys)}"
+                 )
+             return func(*args, **kwargs)
+ 
+@@ -311,6 +314,7 @@ def wrapper(*args: Any, **kwargs: Any) -> Any:
+     return decorator
+ 
+ 
++
+ def get_system_information():
+     r"""Gathers information about the operating system.
+ 
+diff --git a/camel/utils/test.py b/camel/utils/test.py
+new file mode 100644
+index 0000000000..f746868543
+--- /dev/null
++++ b/camel/utils/test.py
+@@ -0,0 +1,56 @@
++# ========= Copyright 2023-2024 @ CAMEL-AI.org. All Rights Reserved. =========
++# Licensed under the Apache License, Version 2.0 (the "License");
++# you may not use this file except in compliance with the License.
++# You may obtain a copy of the License at
++#
++#     http://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing, software
++# distributed under the License is distributed on an "AS IS" BASIS,
++# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++# See the License for the specific language governing permissions and
++# limitations under the License.
++# ========= Copyright 2023-2024 @ CAMEL-AI.org. All Rights Reserved. =========
++from camel.utils import api_keys_required
++from typing import List
++import os
++
++# @api_keys_required({'api_key': 'AZURE_OPENAI_API_KEY', 'api_version': 'AZURE_API_VERSION'})
++# def __init__(
++#     self,
++#     model_type: Union[ModelType, str],
++#     model_config_dict: Optional[Dict[str, Any]] = None,
++#     api_key: Optional[str] = None,
++#     url: Optional[str] = None,
++#     token_counter: Optional[BaseTokenCounter] = None,
++#     api_version: Optional[str] = None,
++#     azure_deployment_name: Optional[str] = None,
++# ) -> None:
++#     if model_config_dict is None:
++#         model_config_dict = ChatGPTConfig().as_dict()
++#     api_key = api_key or os.environ.get("AZURE_OPENAI_API_KEY")
++#     url = url or os.environ.get("AZURE_OPENAI_BASE_URL")
++
++class ExampleClass:
++    @api_keys_required(
++        [
++            ("key_1", 'API_KEY_1'),
++            ("api_key_2", 'API_KEY_2'),
++        ]
++    )
++    def __init__(self, messages: List[str], key_1: str = None, api_key_2: str = None):
++        self._key1 = key_1 or os.environ.get("API_KEY_1")
++        self._key2 = api_key_2 or os.environ.get("API_KEY_2")
++        self.messages = messages
++
++    @api_keys_required(
++        [
++            (None, "API_KEY_3"),
++        ]
++    )
++    def run(self):
++        print("API keys validated!")
++
++
++# Example with API_KEY_1 provided in arguments
++obj = ExampleClass(messages=["xx"])
+diff --git a/examples/models/openai_o1_example.py b/examples/models/openai_o1_example.py
+index 0495a0dd73..531862ad4e 100644
+--- a/examples/models/openai_o1_example.py
++++ b/examples/models/openai_o1_example.py
+@@ -27,9 +27,95 @@
+ camel_agent = ChatAgent(model=o1_model)
+ 
+ # Set user message
+-user_msg = """Write a bash script that takes a matrix represented as a string 
+-    with format '[1,2],[3,4],[5,6]' and prints the transpose in the same 
+-    format."""
++user_msg = """
++def api_keys_required(
++    param_env_list: List[Tuple[Optional[str], str]],
++) -> Callable[[F], F]:
++    r"A decorator to check if the required API keys are provided in the
++    environment variables or as function arguments.
++
++    Args:
++        param_env_list (List[Tuple[Optional[str], str]]): A list of tuples
++            where each tuple contains a function argument name (as the first
++            element, or None) and the corresponding environment variable name
++            (as the second element) that holds the API key.
++
++    Returns:
++        Callable[[F], F]: The original function wrapped with the added check
++            for the required API keys.
++
++    Raises:
++        ValueError: If any of the required API keys are missing, either
++            from the function arguments or environment variables.
++
++    Example:
++        ::
++
++            @api_keys_required([
++                ('api_key_arg', 'API_KEY_1'),
++                ('another_key_arg', 'API_KEY_2'),
++                (None, 'API_KEY_3'),
++            ])
++            def some_api_function(api_key_arg=None, another_key_arg=None):
++                # Function implementation that requires API keys
++    "
++    import inspect
++
++    def decorator(func: F) -> F:
++        @wraps(func)
++        def wrapper(*args: Any, **kwargs: Any) -> Any:
++            signature = inspect.signature(func)
++            bound_arguments = signature.bind(*args, **kwargs)
++            bound_arguments.apply_defaults()
++            arguments = bound_arguments.arguments
++
++            missing_keys = []
++            for param_name, env_var_name in param_env_list:
++                if param_name:
++                    # Check function argument first, then environment variable
++                    value = arguments.get(param_name)
++                    if value is None:
++                        value = os.environ.get(env_var_name)
++                else:
++                    # Only check environment variable
++                    value = os.environ.get(env_var_name)
++                if not value:
++                    missing_keys.append(env_var_name)
++            if missing_keys:
++                raise ValueError(
++                    f"Missing required API keys: {', '.join(missing_keys)}"
++                )
++            return func(*args, **kwargs)
++
++        return cast(F, wrapper)
++
++    return decorator
++
++class ExampleClass:
++    @api_keys_required(
++        [
++            ("key_1", 'API_KEY_1'),
++            ("api_key_2", 'API_KEY_2'),
++        ]
++    )
++    def __init__(self, messages: List[str], key_1: str = None, api_key_2: str = None):
++        self._key1 = key_1 or os.environ.get("API_KEY_1")
++        self._key2 = api_key_2 or os.environ.get("API_KEY_2")
++        self.messages = messages
++
++    @api_keys_required("API_KEY_3")
++    def run(self):
++        print("API keys validated!")
++
++
++camel/utils/test.py:41: error: Incompatible default for argument "key_1" (default has type "None", argument has type "str")  [assignment]
++camel/utils/test.py:41: note: PEP 484 prohibits implicit Optional. Accordingly, mypy has changed its default to no_implicit_optional=True
++camel/utils/test.py:41: note: Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase
++camel/utils/test.py:41: error: Incompatible default for argument "api_key_2" (default has type "None", argument has type "str")  [assignment]
++
++update my def api_keys_required to fix this
++
++"""
+ 
+ # Get response information
+ response = camel_agent.step(user_msg)
+diff --git a/test/utils/test_commons.py b/test/utils/test_commons.py
+index 0703a33183..721c734cea 100644
+--- a/test/utils/test_commons.py
++++ b/test/utils/test_commons.py
+@@ -12,6 +12,7 @@
+ # limitations under the License.
+ # ========= Copyright 2023-2024 @ CAMEL-AI.org. All Rights Reserved. =========
+ import os
++from unittest import TestCase
+ from unittest.mock import patch
+ 
+ import pytest
+@@ -68,65 +69,6 @@ def mock_dependencies_not_present():
+     assert "Missing required modules: some_module_not_exist" in str(exc.value)
+ 
+ 
+-@pytest.fixture
+-def setup_env_vars():
+-    original_env = os.environ.copy()
+-    os.environ['API_KEY_1'] = 'API_KEY_1_VALUE'
+-    os.environ['API_KEY_2'] = 'API_KEY_2_VALUE'
+-    yield
+-    os.environ.clear()
+-    os.environ.update(original_env)
+-
+-
+-def test_api_keys_required(setup_env_vars):
+-    class MockClass:
+-        @api_keys_required('API_KEY_1', 'API_KEY_2')
+-        def mock_api_keys_exist(self):
+-            return True
+-
+-        @api_keys_required('API_KEY_1', 'API_KEY_2', 'API_KEY_3')
+-        def mock_api_keys_not_exist(self):
+-            return True
+-
+-    mock_instance = MockClass()
+-
+-    # Test case where all required API keys are present
+-    assert mock_instance.mock_api_keys_exist() is True
+-
+-    # Test case where some required API keys are missing
+-    with pytest.raises(ValueError) as exc:
+-        mock_instance.mock_api_keys_not_exist()
+-    assert "Missing API keys: API_KEY_3" in str(exc.value)
+-
+-    # Test case with no API keys set
+-    os.environ.clear()
+-    with pytest.raises(ValueError) as exc:
+-        mock_instance.mock_api_keys_exist()
+-    assert "Missing API keys: API_KEY_1, API_KEY_2" in str(exc.value)
+-
+-
+-def test_api_keys_required_empty(setup_env_vars):
+-    class MockClass:
+-        @api_keys_required()
+-        def mock_no_keys_required(self):
+-            return True
+-
+-    mock_instance = MockClass()
+-    assert mock_instance.mock_no_keys_required() is True
+-
+-
+-def test_api_keys_required_non_existent(setup_env_vars):
+-    class MockClass:
+-        @api_keys_required('NON_EXISTENT_KEY')
+-        def mock_non_existent_key(self):
+-            return True
+-
+-    mock_instance = MockClass()
+-    with pytest.raises(ValueError) as exc:
+-        mock_instance.mock_non_existent_key()
+-    assert "Missing API keys: NON_EXISTENT_KEY" in str(exc.value)
+-
+-
+ def test_get_system_information():
+     # Call the function
+     sys_info = get_system_information()
+@@ -201,3 +143,42 @@ def test_is_docker_running(mock_subprocess_run):
+ 
+     mock_subprocess_run.side_effect = FileNotFoundError
+     assert not is_docker_running()
++
++
++class TestApiKeysRequired(TestCase):
++    @patch.dict(os.environ, {}, clear=True)
++    def test_missing_keys(self):
++        @api_keys_required({'api_key_arg': 'API_KEY'})
++        def some_function(api_key_arg=None):
++            return "Function called"
++
++        with self.assertRaises(ValueError) as context:
++            some_function()
++
++        assert "Missing required API keys: API_KEY" in str(context.exception)
++
++    @patch.dict(os.environ, {'API_KEY': 'secret_environment_key'}, clear=True)
++    def test_keys_in_environment(self):
++        @api_keys_required({'api_key_arg': 'API_KEY'})
++        def some_function(api_key_arg=None):
++            return f"Function called with api_key_arg={api_key_arg}"
++
++        result = some_function()
++        assert result == "Function called with api_key_arg=None"
++
++    def test_keys_in_arguments(self):
++        @api_keys_required({'api_key_arg': 'API_KEY'})
++        def some_function(api_key_arg=None):
++            return f"Function called with api_key_arg={api_key_arg}"
++
++        result = some_function(api_key_arg='secret_argument_key')
++        assert result == "Function called with api_key_arg=secret_argument_key"
++
++    @patch.dict(os.environ, {'API_KEY': 'secret_environment_key'}, clear=True)
++    def test_keys_in_both(self):
++        @api_keys_required({'api_key_arg': 'API_KEY'})
++        def some_function(api_key_arg=None):
++            return f"Function called with api_key_arg={api_key_arg}"
++
++        result = some_function(api_key_arg='secret_argument_key')
++        assert result == "Function called with api_key_arg=secret_argument_key"
+
+From 3c44eca45d3171dbd78fbada4eb95b6983915bd3 Mon Sep 17 00:00:00 2001
+From: Wendong <w3ndong.fan@gmail.com>
+Date: Sun, 29 Dec 2024 02:20:16 +0800
+Subject: [PATCH 3/7] update
+
+---
+ camel/loaders/apify_reader.py        |  2 +-
+ camel/loaders/chunkr_reader.py       |  2 +-
+ camel/models/anthropic_model.py      |  2 +-
+ camel/models/deepseek_model.py       |  2 +-
+ camel/models/groq_model.py           |  2 +-
+ camel/models/mistral_model.py        |  2 +-
+ camel/models/nemotron_model.py       |  2 +-
+ camel/models/nvidia_model.py         |  2 +-
+ camel/models/openai_model.py         |  2 +-
+ camel/models/qwen_model.py           |  2 +-
+ camel/models/reka_model.py           |  2 +-
+ camel/schemas/openai_converter.py    |  2 +-
+ camel/toolkits/search_toolkit.py     |  5 +-
+ camel/toolkits/twitter_toolkit.py    | 32 +++++-----
+ camel/utils/commons.py               | 36 ++++++++---
+ camel/utils/test.py                  | 56 -----------------
+ examples/models/openai_o1_example.py | 92 +---------------------------
+ test/utils/test_commons.py           | 47 ++++++++++++--
+ 18 files changed, 101 insertions(+), 191 deletions(-)
+ delete mode 100644 camel/utils/test.py
+
+diff --git a/camel/loaders/apify_reader.py b/camel/loaders/apify_reader.py
+index 5aa46433ec..038e1fb078 100644
+--- a/camel/loaders/apify_reader.py
++++ b/camel/loaders/apify_reader.py
+@@ -29,7 +29,7 @@ class Apify:
+ 
+     @api_keys_required(
+         [
+-            ("api_key", 'APIFY_API_KEY'),
++            ("api_key", "APIFY_API_KEY"),
+         ]
+     )
+     def __init__(
+diff --git a/camel/loaders/chunkr_reader.py b/camel/loaders/chunkr_reader.py
+index 450c12676d..e61a99d1dc 100644
+--- a/camel/loaders/chunkr_reader.py
++++ b/camel/loaders/chunkr_reader.py
+@@ -42,7 +42,7 @@ class ChunkrReader:
+ 
+     @api_keys_required(
+         [
+-            ("api_key", 'CHUNKR_API_KEY'),
++            ("api_key", "CHUNKR_API_KEY"),
+         ]
+     )
+     def __init__(
+diff --git a/camel/models/anthropic_model.py b/camel/models/anthropic_model.py
+index d42416a5ef..6b16c94c0c 100644
+--- a/camel/models/anthropic_model.py
++++ b/camel/models/anthropic_model.py
+@@ -110,7 +110,7 @@ def count_tokens_from_prompt(self, prompt: str) -> int:
+ 
+     @api_keys_required(
+         [
+-            ("api_key", 'ANTHROPIC_API_KEY'),
++            ("api_key", "ANTHROPIC_API_KEY"),
+         ]
+     )
+     def run(
+diff --git a/camel/models/deepseek_model.py b/camel/models/deepseek_model.py
+index 4e2d2e664e..3bf32c4707 100644
+--- a/camel/models/deepseek_model.py
++++ b/camel/models/deepseek_model.py
+@@ -92,7 +92,7 @@ def token_counter(self) -> BaseTokenCounter:
+ 
+     @api_keys_required(
+         [
+-            ("api_key", 'DEEPSEEK_API_KEY'),
++            ("api_key", "DEEPSEEK_API_KEY"),
+         ]
+     )
+     def run(
+diff --git a/camel/models/groq_model.py b/camel/models/groq_model.py
+index ef8d132ba4..f48bc52d54 100644
+--- a/camel/models/groq_model.py
++++ b/camel/models/groq_model.py
+@@ -91,7 +91,7 @@ def token_counter(self) -> BaseTokenCounter:
+ 
+     @api_keys_required(
+         [
+-            ("api_key", 'GROQ_API_KEY'),
++            ("api_key", "GROQ_API_KEY"),
+         ]
+     )
+     def run(
+diff --git a/camel/models/mistral_model.py b/camel/models/mistral_model.py
+index cae1d41af5..fadc73bff0 100644
+--- a/camel/models/mistral_model.py
++++ b/camel/models/mistral_model.py
+@@ -202,7 +202,7 @@ def token_counter(self) -> BaseTokenCounter:
+ 
+     @api_keys_required(
+         [
+-            ("api_key", 'MISTRAL_API_KEY'),
++            ("api_key", "MISTRAL_API_KEY"),
+         ]
+     )
+     def run(
+diff --git a/camel/models/nemotron_model.py b/camel/models/nemotron_model.py
+index eeca1f876b..8f4001c571 100644
+--- a/camel/models/nemotron_model.py
++++ b/camel/models/nemotron_model.py
+@@ -60,7 +60,7 @@ def __init__(
+ 
+     @api_keys_required(
+         [
+-            ("api_key", 'NVIDIA_API_KEY'),
++            ("api_key", "NVIDIA_API_KEY"),
+         ]
+     )
+     def run(
+diff --git a/camel/models/nvidia_model.py b/camel/models/nvidia_model.py
+index 624115dfc2..7b75765b87 100644
+--- a/camel/models/nvidia_model.py
++++ b/camel/models/nvidia_model.py
+@@ -74,7 +74,7 @@ def __init__(
+ 
+     @api_keys_required(
+         [
+-            ("api_key", 'NVIDIA_API_KEY'),
++            ("api_key", "NVIDIA_API_KEY"),
+         ]
+     )
+     def run(
+diff --git a/camel/models/openai_model.py b/camel/models/openai_model.py
+index a1e4f2876d..47184b8bc4 100644
+--- a/camel/models/openai_model.py
++++ b/camel/models/openai_model.py
+@@ -88,7 +88,7 @@ def token_counter(self) -> BaseTokenCounter:
+ 
+     @api_keys_required(
+         [
+-            ("api_key", 'OPENAI_API_KEY'),
++            ("api_key", "OPENAI_API_KEY"),
+         ]
+     )
+     def run(
+diff --git a/camel/models/qwen_model.py b/camel/models/qwen_model.py
+index 87a5a707c1..dcba5dec79 100644
+--- a/camel/models/qwen_model.py
++++ b/camel/models/qwen_model.py
+@@ -79,7 +79,7 @@ def __init__(
+ 
+     @api_keys_required(
+         [
+-            ("api_key", 'QWEN_API_KEY'),
++            ("api_key", "QWEN_API_KEY"),
+         ]
+     )
+     def run(
+diff --git a/camel/models/reka_model.py b/camel/models/reka_model.py
+index 2ccb42e63b..a78c1e6823 100644
+--- a/camel/models/reka_model.py
++++ b/camel/models/reka_model.py
+@@ -170,7 +170,7 @@ def token_counter(self) -> BaseTokenCounter:
+ 
+     @api_keys_required(
+         [
+-            ("api_key", 'REKA_API_KEY'),
++            ("api_key", "REKA_API_KEY"),
+         ]
+     )
+     def run(
+diff --git a/camel/schemas/openai_converter.py b/camel/schemas/openai_converter.py
+index 6a717cf8f9..5691dfbb93 100644
+--- a/camel/schemas/openai_converter.py
++++ b/camel/schemas/openai_converter.py
+@@ -71,7 +71,7 @@ def __init__(
+ 
+     @api_keys_required(
+         [
+-            (None, 'OPENAI_API_KEY'),
++            (None, "OPENAI_API_KEY"),
+         ]
+     )
+     def convert(  # type: ignore[override]
+diff --git a/camel/toolkits/search_toolkit.py b/camel/toolkits/search_toolkit.py
+index 49b7143387..7aae2b1b3e 100644
+--- a/camel/toolkits/search_toolkit.py
++++ b/camel/toolkits/search_toolkit.py
+@@ -151,7 +151,7 @@ def search_duckduckgo(
+         # If no answer found, return an empty list
+         return responses
+ 
+-    @api_keys_required([(None, 'GOOGLE_API_KEY'), (None, 'SEARCH_ENGINE_ID')])
++    @api_keys_required([(None, "GOOGLE_API_KEY"), (None, "SEARCH_ENGINE_ID")])
+     def search_google(
+         self, query: str, num_result_pages: int = 5
+     ) -> List[Dict[str, Any]]:
+@@ -278,8 +278,7 @@ def query_wolfram_alpha(
+         if not WOLFRAMALPHA_APP_ID:
+             raise ValueError(
+                 "`WOLFRAMALPHA_APP_ID` not found in environment "
+-                "variables. Get `WOLFRAMALPHA_APP_ID` here: "
+-                "`https://products.wolframalpha.com/api/`."
++                "variables. Get `WOLFRAMALPHA_APP_ID` here: `https://products.wolframalpha.com/api/`."
+             )
+ 
+         try:
+diff --git a/camel/toolkits/twitter_toolkit.py b/camel/toolkits/twitter_toolkit.py
+index e4d033a9e5..d3ae237f74 100644
+--- a/camel/toolkits/twitter_toolkit.py
++++ b/camel/toolkits/twitter_toolkit.py
+@@ -32,10 +32,10 @@
+ 
+ @api_keys_required(
+     [
+-        (None, 'TWITTER_CONSUMER_KEY'),
+-        (None, 'TWITTER_CONSUMER_SECRET'),
+-        (None, 'TWITTER_ACCESS_TOKEN'),
+-        (None, 'TWITTER_ACCESS_TOKEN_SECRET'),
++        (None, "TWITTER_CONSUMER_KEY"),
++        (None, "TWITTER_CONSUMER_SECRET"),
++        (None, "TWITTER_ACCESS_TOKEN"),
++        (None, "TWITTER_ACCESS_TOKEN_SECRET"),
+     ]
+ )
+ def create_tweet(
+@@ -135,10 +135,10 @@ def create_tweet(
+ 
+ @api_keys_required(
+     [
+-        (None, 'TWITTER_CONSUMER_KEY'),
+-        (None, 'TWITTER_CONSUMER_SECRET'),
+-        (None, 'TWITTER_ACCESS_TOKEN'),
+-        (None, 'TWITTER_ACCESS_TOKEN_SECRET'),
++        (None, "TWITTER_CONSUMER_KEY"),
++        (None, "TWITTER_CONSUMER_SECRET"),
++        (None, "TWITTER_ACCESS_TOKEN"),
++        (None, "TWITTER_ACCESS_TOKEN_SECRET"),
+     ]
+ )
+ def delete_tweet(tweet_id: str) -> str:
+@@ -192,10 +192,10 @@ def delete_tweet(tweet_id: str) -> str:
+ 
+ @api_keys_required(
+     [
+-        (None, 'TWITTER_CONSUMER_KEY'),
+-        (None, 'TWITTER_CONSUMER_SECRET'),
+-        (None, 'TWITTER_ACCESS_TOKEN'),
+-        (None, 'TWITTER_ACCESS_TOKEN_SECRET'),
++        (None, "TWITTER_CONSUMER_KEY"),
++        (None, "TWITTER_CONSUMER_SECRET"),
++        (None, "TWITTER_ACCESS_TOKEN"),
++        (None, "TWITTER_ACCESS_TOKEN_SECRET"),
+     ]
+ )
+ def get_my_user_profile() -> str:
+@@ -221,10 +221,10 @@ def get_my_user_profile() -> str:
+ 
+ @api_keys_required(
+     [
+-        (None, 'TWITTER_CONSUMER_KEY'),
+-        (None, 'TWITTER_CONSUMER_SECRET'),
+-        (None, 'TWITTER_ACCESS_TOKEN'),
+-        (None, 'TWITTER_ACCESS_TOKEN_SECRET'),
++        (None, "TWITTER_CONSUMER_KEY"),
++        (None, "TWITTER_CONSUMER_SECRET"),
++        (None, "TWITTER_ACCESS_TOKEN"),
++        (None, "TWITTER_ACCESS_TOKEN_SECRET"),
+     ]
+ )
+ def get_user_by_username(username: str) -> str:
+diff --git a/camel/utils/commons.py b/camel/utils/commons.py
+index 08cc29ab89..525b921d88 100644
+--- a/camel/utils/commons.py
++++ b/camel/utils/commons.py
+@@ -293,19 +293,36 @@ def wrapper(*args: Any, **kwargs: Any) -> Any:
+ 
+             missing_keys = []
+             for param_name, env_var_name in param_env_list:
+-                if param_name:
+-                    # Check function argument first, then environment variable
++                if not isinstance(env_var_name, str):
++                    raise TypeError(
++                        f"Environment variable name must be a string, got"
++                        f" {type(env_var_name)}"
++                    )
++
++                value = None
++                if (
++                    param_name
++                ):  # If param_name is provided, check function argument first
++                    if not isinstance(param_name, str):
++                        raise TypeError(
++                            f"Parameter name must be a string, "
++                            f"got {type(param_name)}"
++                        )
+                     value = arguments.get(param_name)
+-                    if value is None:
+-                        value = os.environ.get(env_var_name)
+-                else:
+-                    # Only check environment variable
+-                    value = os.environ.get(env_var_name)
+-                if not value:
++                    # If we found a valid value in arguments, continue to next
++                    # item
++                    if value:
++                        continue
++
++                # Check environment variable if no valid value found yet
++                value = os.environ.get(env_var_name)
++                if not value or value.strip() == "":
+                     missing_keys.append(env_var_name)
++
+             if missing_keys:
+                 raise ValueError(
+-                    f"Missing required API keys: {', '.join(missing_keys)}"
++                    "Missing or empty required API keys in "
++                    "environment variables: {', '.join(missing_keys)}"
+                 )
+             return func(*args, **kwargs)
+ 
+@@ -314,7 +331,6 @@ def wrapper(*args: Any, **kwargs: Any) -> Any:
+     return decorator
+ 
+ 
+-
+ def get_system_information():
+     r"""Gathers information about the operating system.
+ 
+diff --git a/camel/utils/test.py b/camel/utils/test.py
+deleted file mode 100644
+index f746868543..0000000000
+--- a/camel/utils/test.py
++++ /dev/null
+@@ -1,56 +0,0 @@
+-# ========= Copyright 2023-2024 @ CAMEL-AI.org. All Rights Reserved. =========
+-# Licensed under the Apache License, Version 2.0 (the "License");
+-# you may not use this file except in compliance with the License.
+-# You may obtain a copy of the License at
+-#
+-#     http://www.apache.org/licenses/LICENSE-2.0
+-#
+-# Unless required by applicable law or agreed to in writing, software
+-# distributed under the License is distributed on an "AS IS" BASIS,
+-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-# See the License for the specific language governing permissions and
+-# limitations under the License.
+-# ========= Copyright 2023-2024 @ CAMEL-AI.org. All Rights Reserved. =========
+-from camel.utils import api_keys_required
+-from typing import List
+-import os
+-
+-# @api_keys_required({'api_key': 'AZURE_OPENAI_API_KEY', 'api_version': 'AZURE_API_VERSION'})
+-# def __init__(
+-#     self,
+-#     model_type: Union[ModelType, str],
+-#     model_config_dict: Optional[Dict[str, Any]] = None,
+-#     api_key: Optional[str] = None,
+-#     url: Optional[str] = None,
+-#     token_counter: Optional[BaseTokenCounter] = None,
+-#     api_version: Optional[str] = None,
+-#     azure_deployment_name: Optional[str] = None,
+-# ) -> None:
+-#     if model_config_dict is None:
+-#         model_config_dict = ChatGPTConfig().as_dict()
+-#     api_key = api_key or os.environ.get("AZURE_OPENAI_API_KEY")
+-#     url = url or os.environ.get("AZURE_OPENAI_BASE_URL")
+-
+-class ExampleClass:
+-    @api_keys_required(
+-        [
+-            ("key_1", 'API_KEY_1'),
+-            ("api_key_2", 'API_KEY_2'),
+-        ]
+-    )
+-    def __init__(self, messages: List[str], key_1: str = None, api_key_2: str = None):
+-        self._key1 = key_1 or os.environ.get("API_KEY_1")
+-        self._key2 = api_key_2 or os.environ.get("API_KEY_2")
+-        self.messages = messages
+-
+-    @api_keys_required(
+-        [
+-            (None, "API_KEY_3"),
+-        ]
+-    )
+-    def run(self):
+-        print("API keys validated!")
+-
+-
+-# Example with API_KEY_1 provided in arguments
+-obj = ExampleClass(messages=["xx"])
+diff --git a/examples/models/openai_o1_example.py b/examples/models/openai_o1_example.py
+index 531862ad4e..0495a0dd73 100644
+--- a/examples/models/openai_o1_example.py
++++ b/examples/models/openai_o1_example.py
+@@ -27,95 +27,9 @@
+ camel_agent = ChatAgent(model=o1_model)
+ 
+ # Set user message
+-user_msg = """
+-def api_keys_required(
+-    param_env_list: List[Tuple[Optional[str], str]],
+-) -> Callable[[F], F]:
+-    r"A decorator to check if the required API keys are provided in the
+-    environment variables or as function arguments.
+-
+-    Args:
+-        param_env_list (List[Tuple[Optional[str], str]]): A list of tuples
+-            where each tuple contains a function argument name (as the first
+-            element, or None) and the corresponding environment variable name
+-            (as the second element) that holds the API key.
+-
+-    Returns:
+-        Callable[[F], F]: The original function wrapped with the added check
+-            for the required API keys.
+-
+-    Raises:
+-        ValueError: If any of the required API keys are missing, either
+-            from the function arguments or environment variables.
+-
+-    Example:
+-        ::
+-
+-            @api_keys_required([
+-                ('api_key_arg', 'API_KEY_1'),
+-                ('another_key_arg', 'API_KEY_2'),
+-                (None, 'API_KEY_3'),
+-            ])
+-            def some_api_function(api_key_arg=None, another_key_arg=None):
+-                # Function implementation that requires API keys
+-    "
+-    import inspect
+-
+-    def decorator(func: F) -> F:
+-        @wraps(func)
+-        def wrapper(*args: Any, **kwargs: Any) -> Any:
+-            signature = inspect.signature(func)
+-            bound_arguments = signature.bind(*args, **kwargs)
+-            bound_arguments.apply_defaults()
+-            arguments = bound_arguments.arguments
+-
+-            missing_keys = []
+-            for param_name, env_var_name in param_env_list:
+-                if param_name:
+-                    # Check function argument first, then environment variable
+-                    value = arguments.get(param_name)
+-                    if value is None:
+-                        value = os.environ.get(env_var_name)
+-                else:
+-                    # Only check environment variable
+-                    value = os.environ.get(env_var_name)
+-                if not value:
+-                    missing_keys.append(env_var_name)
+-            if missing_keys:
+-                raise ValueError(
+-                    f"Missing required API keys: {', '.join(missing_keys)}"
+-                )
+-            return func(*args, **kwargs)
+-
+-        return cast(F, wrapper)
+-
+-    return decorator
+-
+-class ExampleClass:
+-    @api_keys_required(
+-        [
+-            ("key_1", 'API_KEY_1'),
+-            ("api_key_2", 'API_KEY_2'),
+-        ]
+-    )
+-    def __init__(self, messages: List[str], key_1: str = None, api_key_2: str = None):
+-        self._key1 = key_1 or os.environ.get("API_KEY_1")
+-        self._key2 = api_key_2 or os.environ.get("API_KEY_2")
+-        self.messages = messages
+-
+-    @api_keys_required("API_KEY_3")
+-    def run(self):
+-        print("API keys validated!")
+-
+-
+-camel/utils/test.py:41: error: Incompatible default for argument "key_1" (default has type "None", argument has type "str")  [assignment]
+-camel/utils/test.py:41: note: PEP 484 prohibits implicit Optional. Accordingly, mypy has changed its default to no_implicit_optional=True
+-camel/utils/test.py:41: note: Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase
+-camel/utils/test.py:41: error: Incompatible default for argument "api_key_2" (default has type "None", argument has type "str")  [assignment]
+-
+-update my def api_keys_required to fix this
+-
+-"""
++user_msg = """Write a bash script that takes a matrix represented as a string 
++    with format '[1,2],[3,4],[5,6]' and prints the transpose in the same 
++    format."""
+ 
+ # Get response information
+ response = camel_agent.step(user_msg)
+diff --git a/test/utils/test_commons.py b/test/utils/test_commons.py
+index 721c734cea..4311592124 100644
+--- a/test/utils/test_commons.py
++++ b/test/utils/test_commons.py
+@@ -148,18 +148,21 @@ def test_is_docker_running(mock_subprocess_run):
+ class TestApiKeysRequired(TestCase):
+     @patch.dict(os.environ, {}, clear=True)
+     def test_missing_keys(self):
+-        @api_keys_required({'api_key_arg': 'API_KEY'})
++        @api_keys_required([('api_key_arg', 'API_KEY')])
+         def some_function(api_key_arg=None):
+             return "Function called"
+ 
+         with self.assertRaises(ValueError) as context:
+             some_function()
+ 
+-        assert "Missing required API keys: API_KEY" in str(context.exception)
++        assert (
++            "Missing or empty required API keys in environment variables"
++            ": API_KEY" in str(context.exception)
++        )
+ 
+     @patch.dict(os.environ, {'API_KEY': 'secret_environment_key'}, clear=True)
+     def test_keys_in_environment(self):
+-        @api_keys_required({'api_key_arg': 'API_KEY'})
++        @api_keys_required([('api_key_arg', 'API_KEY')])
+         def some_function(api_key_arg=None):
+             return f"Function called with api_key_arg={api_key_arg}"
+ 
+@@ -167,7 +170,7 @@ def some_function(api_key_arg=None):
+         assert result == "Function called with api_key_arg=None"
+ 
+     def test_keys_in_arguments(self):
+-        @api_keys_required({'api_key_arg': 'API_KEY'})
++        @api_keys_required([('api_key_arg', 'API_KEY')])
+         def some_function(api_key_arg=None):
+             return f"Function called with api_key_arg={api_key_arg}"
+ 
+@@ -176,9 +179,43 @@ def some_function(api_key_arg=None):
+ 
+     @patch.dict(os.environ, {'API_KEY': 'secret_environment_key'}, clear=True)
+     def test_keys_in_both(self):
+-        @api_keys_required({'api_key_arg': 'API_KEY'})
++        @api_keys_required([('api_key_arg', 'API_KEY')])
+         def some_function(api_key_arg=None):
+             return f"Function called with api_key_arg={api_key_arg}"
+ 
+         result = some_function(api_key_arg='secret_argument_key')
+         assert result == "Function called with api_key_arg=secret_argument_key"
++
++    def test_invalid_env_var_name_type(self):
++        with self.assertRaises(TypeError) as context:
++
++            @api_keys_required([('api_key_arg', 123)])
++            def some_function(api_key_arg=None):
++                return "Function called"
++
++        assert "Environment variable name must be a string" in str(
++            context.exception
++        )
++
++    def test_invalid_param_name_type(self):
++        with self.assertRaises(TypeError) as context:
++
++            @api_keys_required([(123, 'API_KEY')])
++            def some_function(api_key_arg=None):
++                return "Function called"
++
++        assert "Parameter name must be a string" in str(context.exception)
++
++    @patch.dict(os.environ, {'API_KEY': ' '}, clear=True)
++    def test_empty_env_var(self):
++        @api_keys_required([('api_key_arg', 'API_KEY')])
++        def some_function(api_key_arg=None):
++            return "Function called"
++
++        with self.assertRaises(ValueError) as context:
++            some_function()
++
++        assert (
++            "Missing or empty required API keys in environment "
++            "variables: API_KEY" in str(context.exception)
++        )
+
+From 237813b9784815150d329dc4d5be6c61c37dd6f1 Mon Sep 17 00:00:00 2001
+From: Wendong <w3ndong.fan@gmail.com>
+Date: Sun, 29 Dec 2024 02:32:34 +0800
+Subject: [PATCH 4/7] update
+
+---
+ camel/models/anthropic_model.py   | 10 +++++-----
+ camel/models/cohere_model.py      | 10 +++++-----
+ camel/models/deepseek_model.py    | 10 +++++-----
+ camel/models/gemini_model.py      | 10 +++++-----
+ camel/models/groq_model.py        | 10 +++++-----
+ camel/models/mistral_model.py     | 10 +++++-----
+ camel/models/nemotron_model.py    | 10 +++++-----
+ camel/models/nvidia_model.py      | 10 +++++-----
+ camel/models/openai_model.py      | 10 +++++-----
+ camel/models/qwen_model.py        | 10 +++++-----
+ camel/models/reka_model.py        | 10 +++++-----
+ camel/models/samba_model.py       | 10 +++++-----
+ camel/models/togetherai_model.py  | 10 +++++-----
+ camel/models/yi_model.py          | 10 +++++-----
+ camel/models/zhipuai_model.py     | 10 +++++-----
+ camel/schemas/openai_converter.py | 10 +++++-----
+ 16 files changed, 80 insertions(+), 80 deletions(-)
+
+diff --git a/camel/models/anthropic_model.py b/camel/models/anthropic_model.py
+index 6b16c94c0c..979097c3c6 100644
+--- a/camel/models/anthropic_model.py
++++ b/camel/models/anthropic_model.py
+@@ -45,6 +45,11 @@ class AnthropicModel(BaseModelBackend):
+             will be used. (default: :obj:`None`)
+     """
+ 
++    @api_keys_required(
++        [
++            ("api_key", "ANTHROPIC_API_KEY"),
++        ]
++    )
+     @dependencies_required('anthropic')
+     def __init__(
+         self,
+@@ -108,11 +113,6 @@ def count_tokens_from_prompt(self, prompt: str) -> int:
+         """
+         return self.client.count_tokens(prompt)
+ 
+-    @api_keys_required(
+-        [
+-            ("api_key", "ANTHROPIC_API_KEY"),
+-        ]
+-    )
+     def run(
+         self,
+         messages: List[OpenAIMessage],
+diff --git a/camel/models/cohere_model.py b/camel/models/cohere_model.py
+index e91329c8b5..53757ce205 100644
+--- a/camel/models/cohere_model.py
++++ b/camel/models/cohere_model.py
+@@ -43,6 +43,11 @@
+ class CohereModel(BaseModelBackend):
+     r"""Cohere API in a unified BaseModelBackend interface."""
+ 
++    @api_keys_required(
++        [
++            ("api_key", 'COHERE_API_KEY'),
++        ]
++    )
+     def __init__(
+         self,
+         model_type: Union[ModelType, str],
+@@ -210,11 +215,6 @@ def token_counter(self) -> BaseTokenCounter:
+             )
+         return self._token_counter
+ 
+-    @api_keys_required(
+-        [
+-            ("api_key", 'COHERE_API_KEY'),
+-        ]
+-    )
+     def run(self, messages: List[OpenAIMessage]) -> ChatCompletion:
+         r"""Runs inference of Cohere chat completion.
+ 
+diff --git a/camel/models/deepseek_model.py b/camel/models/deepseek_model.py
+index 3bf32c4707..c8801a4550 100644
+--- a/camel/models/deepseek_model.py
++++ b/camel/models/deepseek_model.py
+@@ -50,6 +50,11 @@ class DeepSeekModel(BaseModelBackend):
+         https://api-docs.deepseek.com/
+     """
+ 
++    @api_keys_required(
++        [
++            ("api_key", "DEEPSEEK_API_KEY"),
++        ]
++    )
+     def __init__(
+         self,
+         model_type: Union[ModelType, str],
+@@ -90,11 +95,6 @@ def token_counter(self) -> BaseTokenCounter:
+             )
+         return self._token_counter
+ 
+-    @api_keys_required(
+-        [
+-            ("api_key", "DEEPSEEK_API_KEY"),
+-        ]
+-    )
+     def run(
+         self,
+         messages: List[OpenAIMessage],
+diff --git a/camel/models/gemini_model.py b/camel/models/gemini_model.py
+index 8c6424d0a6..df96e9c241 100644
+--- a/camel/models/gemini_model.py
++++ b/camel/models/gemini_model.py
+@@ -52,6 +52,11 @@ class GeminiModel(BaseModelBackend):
+             (default: :obj:`None`)
+     """
+ 
++    @api_keys_required(
++        [
++            ("api_key", 'GEMINI_API_KEY'),
++        ]
++    )
+     def __init__(
+         self,
+         model_type: Union[ModelType, str],
+@@ -77,11 +82,6 @@ def __init__(
+             base_url=self._url,
+         )
+ 
+-    @api_keys_required(
+-        [
+-            ("api_key", 'GEMINI_API_KEY'),
+-        ]
+-    )
+     def run(
+         self,
+         messages: List[OpenAIMessage],
+diff --git a/camel/models/groq_model.py b/camel/models/groq_model.py
+index f48bc52d54..6ced36c69c 100644
+--- a/camel/models/groq_model.py
++++ b/camel/models/groq_model.py
+@@ -51,6 +51,11 @@ class GroqModel(BaseModelBackend):
+             (default: :obj:`None`)
+     """
+ 
++    @api_keys_required(
++        [
++            ("api_key", "GROQ_API_KEY"),
++        ]
++    )
+     def __init__(
+         self,
+         model_type: Union[ModelType, str],
+@@ -89,11 +94,6 @@ def token_counter(self) -> BaseTokenCounter:
+             self._token_counter = OpenAITokenCounter(ModelType.GPT_4O_MINI)
+         return self._token_counter
+ 
+-    @api_keys_required(
+-        [
+-            ("api_key", "GROQ_API_KEY"),
+-        ]
+-    )
+     def run(
+         self,
+         messages: List[OpenAIMessage],
+diff --git a/camel/models/mistral_model.py b/camel/models/mistral_model.py
+index fadc73bff0..76d5fdb13b 100644
+--- a/camel/models/mistral_model.py
++++ b/camel/models/mistral_model.py
+@@ -59,6 +59,11 @@ class MistralModel(BaseModelBackend):
+             be used. (default: :obj:`None`)
+     """
+ 
++    @api_keys_required(
++        [
++            ("api_key", "MISTRAL_API_KEY"),
++        ]
++    )
+     @dependencies_required('mistralai')
+     def __init__(
+         self,
+@@ -200,11 +205,6 @@ def token_counter(self) -> BaseTokenCounter:
+             )
+         return self._token_counter
+ 
+-    @api_keys_required(
+-        [
+-            ("api_key", "MISTRAL_API_KEY"),
+-        ]
+-    )
+     def run(
+         self,
+         messages: List[OpenAIMessage],
+diff --git a/camel/models/nemotron_model.py b/camel/models/nemotron_model.py
+index 8f4001c571..656e046812 100644
+--- a/camel/models/nemotron_model.py
++++ b/camel/models/nemotron_model.py
+@@ -40,6 +40,11 @@ class NemotronModel(BaseModelBackend):
+         Nemotron model doesn't support additional model config like OpenAI.
+     """
+ 
++    @api_keys_required(
++        [
++            ("api_key", "NVIDIA_API_KEY"),
++        ]
++    )
+     def __init__(
+         self,
+         model_type: Union[ModelType, str],
+@@ -58,11 +63,6 @@ def __init__(
+             api_key=self._api_key,
+         )
+ 
+-    @api_keys_required(
+-        [
+-            ("api_key", "NVIDIA_API_KEY"),
+-        ]
+-    )
+     def run(
+         self,
+         messages: List[OpenAIMessage],
+diff --git a/camel/models/nvidia_model.py b/camel/models/nvidia_model.py
+index 7b75765b87..144648b782 100644
+--- a/camel/models/nvidia_model.py
++++ b/camel/models/nvidia_model.py
+@@ -48,6 +48,11 @@ class NvidiaModel(BaseModelBackend):
+             (default: :obj:`None`)
+     """
+ 
++    @api_keys_required(
++        [
++            ("api_key", "NVIDIA_API_KEY"),
++        ]
++    )
+     def __init__(
+         self,
+         model_type: Union[ModelType, str],
+@@ -72,11 +77,6 @@ def __init__(
+             base_url=self._url,
+         )
+ 
+-    @api_keys_required(
+-        [
+-            ("api_key", "NVIDIA_API_KEY"),
+-        ]
+-    )
+     def run(
+         self,
+         messages: List[OpenAIMessage],
+diff --git a/camel/models/openai_model.py b/camel/models/openai_model.py
+index 47184b8bc4..c60020519c 100644
+--- a/camel/models/openai_model.py
++++ b/camel/models/openai_model.py
+@@ -52,6 +52,11 @@ class OpenAIModel(BaseModelBackend):
+             be used. (default: :obj:`None`)
+     """
+ 
++    @api_keys_required(
++        [
++            ("api_key", "OPENAI_API_KEY"),
++        ]
++    )
+     def __init__(
+         self,
+         model_type: Union[ModelType, str],
+@@ -86,11 +91,6 @@ def token_counter(self) -> BaseTokenCounter:
+             self._token_counter = OpenAITokenCounter(self.model_type)
+         return self._token_counter
+ 
+-    @api_keys_required(
+-        [
+-            ("api_key", "OPENAI_API_KEY"),
+-        ]
+-    )
+     def run(
+         self,
+         messages: List[OpenAIMessage],
+diff --git a/camel/models/qwen_model.py b/camel/models/qwen_model.py
+index dcba5dec79..c1cd9d9630 100644
+--- a/camel/models/qwen_model.py
++++ b/camel/models/qwen_model.py
+@@ -52,6 +52,11 @@ class QwenModel(BaseModelBackend):
+             (default: :obj:`None`)
+     """
+ 
++    @api_keys_required(
++        [
++            ("api_key", "QWEN_API_KEY"),
++        ]
++    )
+     def __init__(
+         self,
+         model_type: Union[ModelType, str],
+@@ -77,11 +82,6 @@ def __init__(
+             base_url=self._url,
+         )
+ 
+-    @api_keys_required(
+-        [
+-            ("api_key", "QWEN_API_KEY"),
+-        ]
+-    )
+     def run(
+         self,
+         messages: List[OpenAIMessage],
+diff --git a/camel/models/reka_model.py b/camel/models/reka_model.py
+index a78c1e6823..d2026da05a 100644
+--- a/camel/models/reka_model.py
++++ b/camel/models/reka_model.py
+@@ -56,6 +56,11 @@ class RekaModel(BaseModelBackend):
+             be used. (default: :obj:`None`)
+     """
+ 
++    @api_keys_required(
++        [
++            ("api_key", "REKA_API_KEY"),
++        ]
++    )
+     @dependencies_required('reka')
+     def __init__(
+         self,
+@@ -168,11 +173,6 @@ def token_counter(self) -> BaseTokenCounter:
+             )
+         return self._token_counter
+ 
+-    @api_keys_required(
+-        [
+-            ("api_key", "REKA_API_KEY"),
+-        ]
+-    )
+     def run(
+         self,
+         messages: List[OpenAIMessage],
+diff --git a/camel/models/samba_model.py b/camel/models/samba_model.py
+index b246caa235..1a32ec7c96 100644
+--- a/camel/models/samba_model.py
++++ b/camel/models/samba_model.py
+@@ -74,6 +74,11 @@ class SambaModel(BaseModelBackend):
+             ModelType.GPT_4O_MINI)` will be used.
+     """
+ 
++    @api_keys_required(
++        [
++            ("api_key", 'SAMBA_API_KEY'),
++        ]
++    )
+     def __init__(
+         self,
+         model_type: Union[ModelType, str],
+@@ -143,11 +148,6 @@ def check_model_config(self):
+                 " SambaNova service"
+             )
+ 
+-    @api_keys_required(
+-        [
+-            ("api_key", 'SAMBA_API_KEY'),
+-        ]
+-    )
+     def run(  # type: ignore[misc]
+         self, messages: List[OpenAIMessage]
+     ) -> Union[ChatCompletion, Stream[ChatCompletionChunk]]:
+diff --git a/camel/models/togetherai_model.py b/camel/models/togetherai_model.py
+index 0d1582deb9..ae9d93ed56 100644
+--- a/camel/models/togetherai_model.py
++++ b/camel/models/togetherai_model.py
+@@ -53,6 +53,11 @@ class TogetherAIModel(BaseModelBackend):
+             ModelType.GPT_4O_MINI)` will be used.
+     """
+ 
++    @api_keys_required(
++        [
++            ("api_key", 'TOGETHER_API_KEY'),
++        ]
++    )
+     def __init__(
+         self,
+         model_type: Union[ModelType, str],
+@@ -78,11 +83,6 @@ def __init__(
+             base_url=self._url,
+         )
+ 
+-    @api_keys_required(
+-        [
+-            ("api_key", 'TOGETHER_API_KEY'),
+-        ]
+-    )
+     def run(
+         self,
+         messages: List[OpenAIMessage],
+diff --git a/camel/models/yi_model.py b/camel/models/yi_model.py
+index a99bb0fca8..ebd15d9636 100644
+--- a/camel/models/yi_model.py
++++ b/camel/models/yi_model.py
+@@ -52,6 +52,11 @@ class YiModel(BaseModelBackend):
+             (default: :obj:`None`)
+     """
+ 
++    @api_keys_required(
++        [
++            ("api_key", 'YI_API_KEY'),
++        ]
++    )
+     def __init__(
+         self,
+         model_type: Union[ModelType, str],
+@@ -76,11 +81,6 @@ def __init__(
+             base_url=self._url,
+         )
+ 
+-    @api_keys_required(
+-        [
+-            ("api_key", 'YI_API_KEY'),
+-        ]
+-    )
+     def run(
+         self,
+         messages: List[OpenAIMessage],
+diff --git a/camel/models/zhipuai_model.py b/camel/models/zhipuai_model.py
+index 9b46ad8a66..667a896355 100644
+--- a/camel/models/zhipuai_model.py
++++ b/camel/models/zhipuai_model.py
+@@ -52,6 +52,11 @@ class ZhipuAIModel(BaseModelBackend):
+             (default: :obj:`None`)
+     """
+ 
++    @api_keys_required(
++        [
++            ("api_key", 'ZHIPUAI_API_KEY'),
++        ]
++    )
+     def __init__(
+         self,
+         model_type: Union[ModelType, str],
+@@ -76,11 +81,6 @@ def __init__(
+             base_url=self._url,
+         )
+ 
+-    @api_keys_required(
+-        [
+-            (None, 'ZHIPUAI_API_KEY'),
+-        ]
+-    )
+     def run(
+         self,
+         messages: List[OpenAIMessage],
+diff --git a/camel/schemas/openai_converter.py b/camel/schemas/openai_converter.py
+index 5691dfbb93..265f250d0e 100644
+--- a/camel/schemas/openai_converter.py
++++ b/camel/schemas/openai_converter.py
+@@ -53,6 +53,11 @@ class OpenAISchemaConverter(BaseConverter):
+ 
+     """
+ 
++    @api_keys_required(
++        [
++            ("api_key", "OPENAI_API_KEY"),
++        ]
++    )
+     def __init__(
+         self,
+         model_type: ModelType = ModelType.GPT_4O_MINI,
+@@ -69,11 +74,6 @@ def __init__(
+         )._client
+         super().__init__()
+ 
+-    @api_keys_required(
+-        [
+-            (None, "OPENAI_API_KEY"),
+-        ]
+-    )
+     def convert(  # type: ignore[override]
+         self,
+         content: str,
+
+From 88102e38ef92944c7fd7e4b3db517f2831c85923 Mon Sep 17 00:00:00 2001
+From: Wendong <w3ndong.fan@gmail.com>
+Date: Sun, 29 Dec 2024 02:34:09 +0800
+Subject: [PATCH 5/7] fix
+
+---
+ camel/utils/commons.py | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/camel/utils/commons.py b/camel/utils/commons.py
+index 525b921d88..55fff899f7 100644
+--- a/camel/utils/commons.py
++++ b/camel/utils/commons.py
+@@ -322,7 +322,7 @@ def wrapper(*args: Any, **kwargs: Any) -> Any:
+             if missing_keys:
+                 raise ValueError(
+                     "Missing or empty required API keys in "
+-                    "environment variables: {', '.join(missing_keys)}"
++                    f"environment variables: {', '.join(missing_keys)}"
+                 )
+             return func(*args, **kwargs)
+ 
+
+From a24378e3311e7a5d8cb1dcc93b551a578e71442d Mon Sep 17 00:00:00 2001
+From: Wendong <w3ndong.fan@gmail.com>
+Date: Sun, 29 Dec 2024 02:47:11 +0800
+Subject: [PATCH 6/7] update test
+
+---
+ camel/datahubs/huggingface.py         |  6 +++++-
+ camel/interpreters/e2b_interpreter.py |  6 +++++-
+ camel/models/reward/nemotron_model.py |  6 +++++-
+ camel/toolkits/search_toolkit.py      |  1 -
+ camel/toolkits/stripe_toolkit.py      |  6 +++++-
+ test/utils/test_commons.py            | 21 ++++++++++++++++-----
+ 6 files changed, 36 insertions(+), 10 deletions(-)
+
+diff --git a/camel/datahubs/huggingface.py b/camel/datahubs/huggingface.py
+index 3ababc8887..0e2d956d8a 100644
+--- a/camel/datahubs/huggingface.py
++++ b/camel/datahubs/huggingface.py
+@@ -35,7 +35,11 @@ class HuggingFaceDatasetManager(BaseDatasetManager):
+             will be read from the environment variable `HUGGING_FACE_TOKEN`.
+     """
+ 
+-    @api_keys_required("HUGGING_FACE_TOKEN")
++    @api_keys_required(
++        [
++            ("token", "HUGGING_FACE_TOKEN"),
++        ]
++    )
+     @dependencies_required('huggingface_hub')
+     def __init__(self, token: Optional[str] = None):
+         from huggingface_hub import HfApi
+diff --git a/camel/interpreters/e2b_interpreter.py b/camel/interpreters/e2b_interpreter.py
+index d09321444a..881dd604ba 100644
+--- a/camel/interpreters/e2b_interpreter.py
++++ b/camel/interpreters/e2b_interpreter.py
+@@ -43,7 +43,11 @@ class E2BInterpreter(BaseInterpreter):
+         "r": "r",
+     }
+ 
+-    @api_keys_required("E2B_API_KEY")
++    @api_keys_required(
++        [
++            (None, "E2B_API_KEY"),
++        ]
++    )
+     def __init__(
+         self,
+         require_confirm: bool = True,
+diff --git a/camel/models/reward/nemotron_model.py b/camel/models/reward/nemotron_model.py
+index 9dd22df4b4..4c1bc6192c 100644
+--- a/camel/models/reward/nemotron_model.py
++++ b/camel/models/reward/nemotron_model.py
+@@ -53,7 +53,11 @@ def __init__(
+             api_key=self.api_key,
+         )
+ 
+-    @api_keys_required("NVIDIA_API_KEY")
++    @api_keys_required(
++        [
++            (None, "NVIDIA_API_KEY"),
++        ]
++    )
+     def evaluate(self, messages: List[Dict[str, str]]) -> Dict[str, float]:
+         r"""Evaluate the messages using the Nemotron model.
+ 
+diff --git a/camel/toolkits/search_toolkit.py b/camel/toolkits/search_toolkit.py
+index f131525c98..14bfb46f9a 100644
+--- a/camel/toolkits/search_toolkit.py
++++ b/camel/toolkits/search_toolkit.py
+@@ -301,7 +301,6 @@ def search_brave(
+         data = response.json()["web"]
+         return data
+ 
+-    @api_keys_required("GOOGLE_API_KEY", "SEARCH_ENGINE_ID")
+     @api_keys_required(
+         [
+             (None, 'GOOGLE_API_KEY'),
+diff --git a/camel/toolkits/stripe_toolkit.py b/camel/toolkits/stripe_toolkit.py
+index 07ca9f1933..f31fff8d51 100644
+--- a/camel/toolkits/stripe_toolkit.py
++++ b/camel/toolkits/stripe_toolkit.py
+@@ -36,7 +36,11 @@ class StripeToolkit(BaseToolkit):
+         logger (Logger): a logger to write logs.
+     """
+ 
+-    @api_keys_required("STRIPE_API_KEY")
++    @api_keys_required(
++        [
++            (None, "STRIPE_API_KEY"),
++        ]
++    )
+     def __init__(self, retries: int = 3):
+         r"""Initializes the StripeToolkit with the specified number of
+         retries.
+diff --git a/test/utils/test_commons.py b/test/utils/test_commons.py
+index 4311592124..138a22235b 100644
+--- a/test/utils/test_commons.py
++++ b/test/utils/test_commons.py
+@@ -189,22 +189,33 @@ def some_function(api_key_arg=None):
+     def test_invalid_env_var_name_type(self):
+         with self.assertRaises(TypeError) as context:
+ 
+-            @api_keys_required([('api_key_arg', 123)])
++            @api_keys_required(
++                [('api_key_arg', 123)]
++            )  # Non-string environment variable name
+             def some_function(api_key_arg=None):
+                 return "Function called"
+ 
+-        assert "Environment variable name must be a string" in str(
+-            context.exception
++            # Call the function to trigger the validation
++            some_function()
++
++        self.assertIn(
++            "Environment variable name must be a string",
++            str(context.exception),
+         )
+ 
+     def test_invalid_param_name_type(self):
+         with self.assertRaises(TypeError) as context:
+ 
+-            @api_keys_required([(123, 'API_KEY')])
++            @api_keys_required([(123, 'API_KEY')])  # Non-string parameter name
+             def some_function(api_key_arg=None):
+                 return "Function called"
+ 
+-        assert "Parameter name must be a string" in str(context.exception)
++            # Call the function to trigger the validation
++            some_function()
++
++        self.assertIn(
++            "Parameter name must be a string", str(context.exception)
++        )
+ 
+     @patch.dict(os.environ, {'API_KEY': ' '}, clear=True)
+     def test_empty_env_var(self):
+
+From e7933fa523edef716481d21f82e7be982c0f1e75 Mon Sep 17 00:00:00 2001
+From: Wendong <w3ndong.fan@gmail.com>
+Date: Sun, 29 Dec 2024 03:12:10 +0800
+Subject: [PATCH 7/7] update key
+
+---
+ .github/workflows/build_package.yml  |  6 ++++++
+ .github/workflows/pytest_package.yml | 18 ++++++++++++++++++
+ 2 files changed, 24 insertions(+)
+
+diff --git a/.github/workflows/build_package.yml b/.github/workflows/build_package.yml
+index 38a56e3011..60d1649010 100644
+--- a/.github/workflows/build_package.yml
++++ b/.github/workflows/build_package.yml
+@@ -70,6 +70,12 @@ jobs:
+           ASKNEWS_CLIENT_SECRET: "${{ secrets.ASKNEWS_CLIENT_SECRET }}"
+           CHUNKR_API_KEY: "${{ secrets.CHUNKR_API_KEY }}"
+           MESHY_API_KEY: "${{ secrets.MESHY_API_KEY }}"
++          YI_API_KEY: "${{ secrets.YI_API_KEY }}"
++          TOGETHER_API_KEY: "${{ secrets.TOGETHER_API_KEY }}"
++          SAMBA_API_KEY: "${{ secrets.SAMBA_API_KEY }}"
++          QWEN_API_KEY: "${{ secrets.QWEN_API_KEY }}"
++          GEMINI_API_KEY: "${{ secrets.GEMINI_API_KEY }}"
++          DEEPSEEK_API_KEY: "${{ secrets.DEEPSEEK_API_KEY }}"
+         run: |
+           source venv/bin/activate
+           pytest --fast-test-mode ./test
+diff --git a/.github/workflows/pytest_package.yml b/.github/workflows/pytest_package.yml
+index a515fc064f..b22e960462 100644
+--- a/.github/workflows/pytest_package.yml
++++ b/.github/workflows/pytest_package.yml
+@@ -49,6 +49,12 @@ jobs:
+         ASKNEWS_CLIENT_SECRET: "${{ secrets.ASKNEWS_CLIENT_SECRET }}"
+         CHUNKR_API_KEY: "${{ secrets.CHUNKR_API_KEY }}"
+         MESHY_API_KEY: "${{ secrets.MESHY_API_KEY }}"
++        YI_API_KEY: "${{ secrets.YI_API_KEY }}"
++        TOGETHER_API_KEY: "${{ secrets.TOGETHER_API_KEY }}"
++        SAMBA_API_KEY: "${{ secrets.SAMBA_API_KEY }}"
++        QWEN_API_KEY: "${{ secrets.QWEN_API_KEY }}"
++        GEMINI_API_KEY: "${{ secrets.GEMINI_API_KEY }}"
++        DEEPSEEK_API_KEY: "${{ secrets.DEEPSEEK_API_KEY }}"
+       run: poetry run pytest --fast-test-mode test/
+ 
+   pytest_package_llm_test:
+@@ -87,6 +93,12 @@ jobs:
+         ASKNEWS_CLIENT_SECRET: "${{ secrets.ASKNEWS_CLIENT_SECRET }}"
+         CHUNKR_API_KEY: "${{ secrets.CHUNKR_API_KEY }}"
+         MESHY_API_KEY: "${{ secrets.MESHY_API_KEY }}"
++        YI_API_KEY: "${{ secrets.YI_API_KEY }}"
++        TOGETHER_API_KEY: "${{ secrets.TOGETHER_API_KEY }}"
++        SAMBA_API_KEY: "${{ secrets.SAMBA_API_KEY }}"
++        QWEN_API_KEY: "${{ secrets.QWEN_API_KEY }}"
++        GEMINI_API_KEY: "${{ secrets.GEMINI_API_KEY }}"
++        DEEPSEEK_API_KEY: "${{ secrets.DEEPSEEK_API_KEY }}"
+       run: poetry run pytest --llm-test-only test/
+ 
+   pytest_package_very_slow_test:
+@@ -125,4 +137,10 @@ jobs:
+         ASKNEWS_CLIENT_SECRET: "${{ secrets.ASKNEWS_CLIENT_SECRET }}"
+         CHUNKR_API_KEY: "${{ secrets.CHUNKR_API_KEY }}"
+         MESHY_API_KEY: "${{ secrets.MESHY_API_KEY }}"
++        YI_API_KEY: "${{ secrets.YI_API_KEY }}"
++        TOGETHER_API_KEY: "${{ secrets.TOGETHER_API_KEY }}"
++        SAMBA_API_KEY: "${{ secrets.SAMBA_API_KEY }}"
++        QWEN_API_KEY: "${{ secrets.QWEN_API_KEY }}"
++        GEMINI_API_KEY: "${{ secrets.GEMINI_API_KEY }}"
++        DEEPSEEK_API_KEY: "${{ secrets.DEEPSEEK_API_KEY }}"
+       run: poetry run pytest --very-slow-test-only test/

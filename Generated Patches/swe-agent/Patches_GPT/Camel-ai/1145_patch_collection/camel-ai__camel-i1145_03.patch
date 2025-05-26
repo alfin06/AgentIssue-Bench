@@ -1,0 +1,11 @@
+diff --git a/reproduce_issue.py b/reproduce_issue.py
+new file mode 100644
+index 0000000..e0f5c95
+--- /dev/null
++++ b/reproduce_issue.py
+@@ -0,0 +1,4 @@
++from camel.toolkits.math_toolkit import MathToolkit
++
++# This script attempts to import MathToolkit, which should not trigger imports of optional dependencies.
++print("MathToolkit imported successfully.")
+\ No newline at end of file

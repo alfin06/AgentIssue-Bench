@@ -1,0 +1,18 @@
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..155ab78
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1,11 @@
++from agixt.Chain import Chain
++
++def test_get_chain():
++    chain_manager = Chain(user_id="nonexistent_user")
++    chain_name = "nonexistent_chain"
++    chain_data = chain_manager.get_chain(chain_name=chain_name)
++    print(chain_data)
++    print(chain_data["id"])  # This line should raise an AttributeError if chain_data is []
++
++if __name__ == "__main__":
++    test_get_chain()
+\ No newline at end of file

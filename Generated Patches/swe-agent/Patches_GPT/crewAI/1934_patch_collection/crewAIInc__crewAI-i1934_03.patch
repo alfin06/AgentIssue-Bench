@@ -1,0 +1,29 @@
+diff --git a/reproduce_issue.py b/reproduce_issue.py
+new file mode 100644
+index 0000000..2ebd985
+--- /dev/null
++++ b/reproduce_issue.py
+@@ -0,0 +1,22 @@
++import os
++from crewai import Agent, Crew, Task
++
++# Enforce a request to the OpenAI API to fail
++os.environ["OPENAI_API_KEY"] = "sk-fake"
++
++simple_agent_1 = Agent(
++    role="City Selection Expert",
++    goal="Select the best city based on weather, season, and prices",
++    backstory="An expert in analyzing travel data to pick ideal destinations",
++    tools=[],
++    llm="gpt-4",
++)
++
++task_1 = Task(
++    description=("Analyze and select the best city for the trip"),
++    agent=simple_agent_1,
++    expected_output="Detailed report on the chosen city",
++)
++
++crew = Crew(agents=[simple_agent_1], tasks=[task_1])
++print(crew.kickoff())
+\ No newline at end of file

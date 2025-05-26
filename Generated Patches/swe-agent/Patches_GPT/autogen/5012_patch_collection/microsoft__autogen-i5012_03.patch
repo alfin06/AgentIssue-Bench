@@ -1,0 +1,21 @@
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..9506e5c
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1,14 @@
++import asyncio
++import sys
++sys.path.append('/microsoft__autogen.git/python/packages/autogen-agentchat/src')
++sys.path.append('/microsoft__autogen.git/python/packages/autogen-ext/src')
++from autogen_agentchat.agents import AssistantAgent
++from autogen_ext.models.openai import OpenAIChatCompletionClient
++
++async def main() -> None:
++    model_client = OpenAIChatCompletionClient(model="gpt-4o")
++    agent = AssistantAgent("assistant", model_client=model_client)
++    print(agent.run(task="Say 'Hello World!'"))
++    await model_client.close()
++
++asyncio.run(main())
+\ No newline at end of file

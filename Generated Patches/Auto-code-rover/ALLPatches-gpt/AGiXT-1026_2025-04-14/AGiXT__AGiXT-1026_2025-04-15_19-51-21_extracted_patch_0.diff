@@ -1,0 +1,22 @@
+diff --git a/agixt/extensions/voice_chat.py b/agixt/extensions/voice_chat.py
+index e358f6e4..f9aa0f35 100644
+--- a/agixt/extensions/voice_chat.py
++++ b/agixt/extensions/voice_chat.py
+@@ -14,14 +14,14 @@ class voice_chat(Extensions):
+                 self.voice_prompt = "Voice Chat"
+         self.tts_command = "Speak with TTS with Streamlabs Text to Speech"
+         if "USE_STREAMLABS_TTS" in kwargs:
+-            if kwargs["USE_STREAMLABS_TTS"].lower() == "true":
++            if str(kwargs["USE_STREAMLABS_TTS"]).lower() == "true":
+                 self.tts_command = "Speak with TTS with Streamlabs Text to Speech"
+         if "USE_GTTS" in kwargs:
+-            if kwargs["USE_GTTS"].lower() == "true":
++            if str(kwargs["USE_GTTS"]).lower() == "true":
+                 self.tts_command = "Speak with GTTS"
+         if "USE_HUGGINGFACE_TTS" in kwargs:
+             if (
+-                kwargs["USE_HUGGINGFACE_TTS"].lower() == "true"
++                str(kwargs["USE_HUGGINGFACE_TTS"]).lower() == "true"
+                 and "HUGGINGFACE_API_KEY" in kwargs
+             ):
+                 if kwargs["HUGGINGFACE_API_KEY"] != "":

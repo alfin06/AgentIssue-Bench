@@ -1,0 +1,23 @@
+diff --git a/lagent/actions/base_action.py b/lagent/actions/base_action.py
+index 5efd669..39bf486 100644
+--- a/lagent/actions/base_action.py
++++ b/lagent/actions/base_action.py
+@@ -258,12 +258,12 @@ class BaseAction(metaclass=AutoRegister(TOOL_REGISTRY, ToolMeta)):
+     """Base class for all actions.
+ 
+     Args:
+-        description (:class:`Optional[dict]`): The description of the action.
+-            Defaults to ``None``.
+-        parser (:class:`Type[BaseParser]`): The parser class to process the
+-            action's inputs and outputs. Defaults to :class:`JsonParser`.
+-        enable (:class:`bool`): Whether the action is enabled. Defaults to
+-            ``True``.
++        description (Optional[dict]): The description of the action.
++            Defaults to None.
++        parser (Type[BaseParser]): The parser class to process the
++            action's inputs and outputs. Defaults to JsonParser.
++        enable (bool): Whether the action is enabled. Defaults to
++            True.
+ 
+     Examples:
+ 

@@ -1,0 +1,34 @@
+diff --git a/pyproject.toml b/pyproject.toml
+index 96f59b7..aadf703 100644
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -89,6 +89,7 @@ version = {attr = "sweagent.__version__"}
+ [tool.setuptools.packages.find]
+ where = ["."]
+ namespaces = false
++include = ["sweagent.utils"]
+ 
+ [project.urls]
+ "Homepage" = "https://swe-agent.com"
+diff --git a/reproduce_issue.py b/reproduce_issue.py
+new file mode 100644
+index 0000000..9e25d16
+--- /dev/null
++++ b/reproduce_issue.py
+@@ -0,0 +1,15 @@
++import os
++import subprocess
++
++# Define the path to the build directory
++build_dir = 'build/lib/sweagent'
++
++# Function to check if utils directory is included in build artifacts
++def check_utils_in_build():
++    if 'utils' in os.listdir(build_dir):
++        print('Utils directory is included in build artifacts.')
++    else:
++        print('Utils directory is NOT included in build artifacts.')
++
++# Check if utils directory is included
++check_utils_in_build()
+\ No newline at end of file

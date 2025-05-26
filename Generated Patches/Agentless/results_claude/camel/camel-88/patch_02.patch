@@ -1,0 +1,18 @@
+diff --git a/camel/agents/chat_agent.py b/camel/agents/chat_agent.py
+index fa5f799..8c6230d 100644
+--- a/camel/agents/chat_agent.py
++++ b/camel/agents/chat_agent.py
+@@ -52,6 +52,7 @@ class ChatAgent:
+ 
+     def init_messages(self) -> None:
+         self.stored_messages: List[MessageType] = [self.system_message]
++        self.terminated = False
+ 
+     def update_messages(self, message: ChatMessage) -> List[ChatMessage]:
+         self.stored_messages.append(message)
+@@ -106,4 +107,4 @@ class ChatAgent:
+         return output_messages, self.terminated, info
+ 
+     def __repr__(self) -> str:
+-        return f"ChatAgent({self.role_name}, {self.role_type}, {self.model})"
++        return f"ChatAgent({self.role_name}, {self.role_type}, {self.model})"

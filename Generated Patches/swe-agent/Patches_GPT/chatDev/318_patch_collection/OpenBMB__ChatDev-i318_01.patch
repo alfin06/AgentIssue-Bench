@@ -1,0 +1,16 @@
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..60f9f56
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1,9 @@
++import subprocess
++
++# Command to run the script
++command = "python /OpenBMB__ChatDev.git/run.py"
++
++try:
++    subprocess.run(command, shell=True, check=True)
++except subprocess.CalledProcessError as e:
++    print("Error occurred:", e)
+\ No newline at end of file

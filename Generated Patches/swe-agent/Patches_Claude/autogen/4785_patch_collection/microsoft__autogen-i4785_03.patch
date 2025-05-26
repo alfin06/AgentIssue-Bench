@@ -1,0 +1,14 @@
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..602607c
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1,7 @@
++from autogen_ext.models.openai import OpenAIChatCompletionClient
++
++groq_model_client = OpenAIChatCompletionClient(
++    model='llama3-groq-70b-8192-tool-use-preview',
++    base_url='https://api.groq.com/openai/v1',
++    api_key='dummy_key'  # Using dummy key since we expect error before API call
++)
+\ No newline at end of file

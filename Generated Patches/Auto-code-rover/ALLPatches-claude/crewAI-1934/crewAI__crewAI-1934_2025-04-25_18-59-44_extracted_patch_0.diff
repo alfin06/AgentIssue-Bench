@@ -1,0 +1,45 @@
+diff --git a/src/crewai/agents/crew_agent_executor.py b/src/crewai/agents/crew_agent_executor.py
+index 286f92e6..25086bdc 100644
+--- a/src/crewai/agents/crew_agent_executor.py
++++ b/src/crewai/agents/crew_agent_executor.py
+@@ -80,10 +80,7 @@ class CrewAgentExecutor(CrewAgentExecutorMixin):
+         self.tool_name_to_tool_map: Dict[str, BaseTool] = {
+             tool.name: tool for tool in self.tools
+         }
+-        if self.llm.stop:
+-            self.llm.stop = list(set(self.llm.stop + self.stop))
+-        else:
+-            self.llm.stop = self.stop
++        self.stop = stop_words
+ 
+     def invoke(self, inputs: Dict[str, str]) -> Dict[str, Any]:
+         if "system" in self.prompt:
+@@ -163,6 +160,7 @@ class CrewAgentExecutor(CrewAgentExecutorMixin):
+         answer = self.llm.call(
+             self.messages,
+             callbacks=self.callbacks,
++            stop=self.stop
+         )
+ 
+         if not answer:
+diff --git a/src/crewai/llm.py b/src/crewai/llm.py
+index 790d13ea..9b05cc2c 100644
+--- a/src/crewai/llm.py
++++ b/src/crewai/llm.py
+@@ -142,7 +142,6 @@ class LLM:
+         self.temperature = temperature
+         self.top_p = top_p
+         self.n = n
+-        self.stop = stop
+         self.max_completion_tokens = max_completion_tokens
+         self.max_tokens = max_tokens
+         self.presence_penalty = presence_penalty
+@@ -198,7 +197,7 @@ class LLM:
+                     "temperature": self.temperature,
+                     "top_p": self.top_p,
+                     "n": self.n,
+-                    "stop": self.stop,
++                    "stop": kwargs.get('stop'),
+                     "max_tokens": self.max_tokens or self.max_completion_tokens,
+                     "presence_penalty": self.presence_penalty,
+                     "frequency_penalty": self.frequency_penalty,

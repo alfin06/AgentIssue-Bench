@@ -1,0 +1,36 @@
+diff --git a/camel/agents/chat_agent.py b/camel/agents/chat_agent.py
+index 5655079b..2f7dfdad 100644
+--- a/camel/agents/chat_agent.py
++++ b/camel/agents/chat_agent.py
+@@ -57,6 +57,21 @@ class ChatAgent:
+         self.stored_messages.append(message)
+         return self.stored_messages
+ 
++    def get_message_to_update(self, messages: List[ChatMessage]) -> ChatMessage:
++        """
++        This function selects the appropriate message to update.
++        It can be based on different criteria (e.g., message content, type, etc.).
++        
++        Args:
++            messages (List[ChatMessage]): List of messages from which to select.
++        
++        Returns:
++            ChatMessage: The selected message to update.
++        """
++        # For simplicity, the selection criteria can be the first message. 
++        # This can be changed to more complex logic if needed.
++        return messages[0]
++        
+     @retry(wait=wait_exponential(min=5, max=60), stop=stop_after_attempt(5))
+     def step(
+         self,
+@@ -90,7 +105,8 @@ class ChatAgent:
+                 ],
+                 num_tokens,
+             )
+-            self.update_messages(output_messages[0])
++            message_to_update = self.get_message_to_update(output_messages)
++            self.update_messages(message_to_update)
+ 
+         else:
+             self.terminated = True

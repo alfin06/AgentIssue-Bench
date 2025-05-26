@@ -1,0 +1,151 @@
+From 58cbb079729f58f299bc75a48729efdc8cf04185 Mon Sep 17 00:00:00 2001
+From: Kirk Wight <kwight@kwight.ca>
+Date: Sun, 2 Jun 2024 11:08:36 -0700
+Subject: [PATCH 1/2] Web UI: Reset the user-entered source value after
+ changing the problem source dropdown.
+
+---
+ .../src/components/controls/LRunControl.js    | 48 +++++++------------
+ 1 file changed, 17 insertions(+), 31 deletions(-)
+
+diff --git a/sweagent/frontend/src/components/controls/LRunControl.js b/sweagent/frontend/src/components/controls/LRunControl.js
+index 3babae86f..79a002b1d 100644
+--- a/sweagent/frontend/src/components/controls/LRunControl.js
++++ b/sweagent/frontend/src/components/controls/LRunControl.js
+@@ -1,10 +1,9 @@
+-import React, { useState } from "react";
++import React, { useState, useEffect } from "react";
+ import { Tab, Tabs } from "react-bootstrap";
+ import Form from "react-bootstrap/Form";
+-import "../../static/runControl.css";
+ import { PlayFill, StopFill } from "react-bootstrap-icons";
+-
+ import { Link } from "react-router-dom";
++import "../../static/runControl.css";
+ 
+ function LRunControl({
+   isComputing,
+@@ -19,18 +18,20 @@ function LRunControl({
+ }) {
+   // ps = problem statement
+   const [psType, setPsType] = useState("gh");
++  const [psInputValue, setPsInputValue] = useState("");
+   const defaultInstallCommand = "pip install --editable .";
+-
+   const defaultPS =
+     "https://github.com/marshmallow-code/marshmallow/issues/1357";
+ 
+-  const defaultRepo = "https://github.com/swe-agent-demo/marshmallow";
+-
+   const handlePsTypeChange = (event) => {
+     const selectedType = event.target.value;
+     setPsType(selectedType);
+   };
+ 
++  useEffect(() => {
++    setPsInputValue("");
++  }, [psType]);
++
+   function getPsInput() {
+     // Problem statement input controls based on the value of the problem statement type
+     // dropdown menu.
+@@ -41,13 +42,14 @@ function LRunControl({
+           <input
+             type="text"
+             className="form-control"
+-            onChange={(e) =>
++            onChange={(e) => {
++              setPsInputValue(e.target.value);
+               setRunConfig((draft) => {
+                 draft.environment.data_path = e.target.value;
+-              })
+-            }
++              });
++            }}
+             placeholder={"Example: " + defaultPS}
+-            defaultValue=""
++            value={psInputValue}
+           />
+         </div>
+       );
+@@ -61,13 +63,14 @@ function LRunControl({
+           <input
+             type="text"
+             className="form-control"
+-            onChange={(e) =>
++            onChange={(e) => {
++              setPsInputValue(e.target.value);
+               setRunConfig((draft) => {
+                 draft.environment.data_path = e.target.value;
+-              })
+-            }
++              });
++            }}
+             placeholder="/path/to/your/local/file.md"
+-            defaultValue=""
++            value={psInputValue}
+           />
+         </div>
+       );
+@@ -89,23 +92,6 @@ function LRunControl({
+   }
+ 
+   function getEnvInput() {
+-    // Get environment configuration input controls based on the
+-    // "Environment type" dropdown menu.
+-    // if (envInputType === "conda") {
+-    //   return (
+-    //     <div className="input-group mb-3">
+-    //       <span className="input-group-text">Conda environment</span>
+-    //       <input
+-    //         type="text"
+-    //         className="form-control"
+-    //         onChange={(e) =>
+-    //           setRunConfig(draft => {draft.environment.environment_setup.packages = e.target.value})
+-    //         }
+-    //         placeholder="/path/to/conda_env.yml"
+-    //       />
+-    //     </div>
+-    //   );
+-    // }
+     const envInputType = runConfig.environment.environment_setup.input_type;
+     if (envInputType === "script_path") {
+       return (
+
+From 3b7c3a2ef339f3a1e4cbf65bd1c55d93db4092c0 Mon Sep 17 00:00:00 2001
+From: Kirk Wight <kwight@kwight.ca>
+Date: Sun, 2 Jun 2024 12:34:00 -0700
+Subject: [PATCH 2/2] Restore commented `getEnvInput` code.
+
+---
+ .../src/components/controls/LRunControl.js      | 17 +++++++++++++++++
+ 1 file changed, 17 insertions(+)
+
+diff --git a/sweagent/frontend/src/components/controls/LRunControl.js b/sweagent/frontend/src/components/controls/LRunControl.js
+index 79a002b1d..06244bd31 100644
+--- a/sweagent/frontend/src/components/controls/LRunControl.js
++++ b/sweagent/frontend/src/components/controls/LRunControl.js
+@@ -92,6 +92,23 @@ function LRunControl({
+   }
+ 
+   function getEnvInput() {
++    // Get environment configuration input controls based on the
++    // "Environment type" dropdown menu.
++    // if (envInputType === "conda") {
++    //   return (
++    //     <div className="input-group mb-3">
++    //       <span className="input-group-text">Conda environment</span>
++    //       <input
++    //         type="text"
++    //         className="form-control"
++    //         onChange={(e) =>
++    //           setRunConfig(draft => {draft.environment.environment_setup.packages = e.target.value})
++    //         }
++    //         placeholder="/path/to/conda_env.yml"
++    //       />
++    //     </div>
++    //   );
++    // }
+     const envInputType = runConfig.environment.environment_setup.input_type;
+     if (envInputType === "script_path") {
+       return (

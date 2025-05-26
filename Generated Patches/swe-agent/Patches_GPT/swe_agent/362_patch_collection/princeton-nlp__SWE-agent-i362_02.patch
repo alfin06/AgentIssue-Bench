@@ -1,0 +1,54 @@
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..c823a5f
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1,22 @@
++import React from "react";
++import { render, fireEvent } from "@testing-library/react";
++import Run from "./sweagent/frontend/src/Run";
++
++// Simulate the error described in the PR
++def test_toggle_input_methods():
++    # Render the Run component
++    { container } = render(<Run />);
++
++    # Find the first textbox and enter a value
++    firstTextbox = container.querySelector("input[type='text']");
++    fireEvent.change(firstTextbox, { target: { value: "Test input" } });
++
++    # Switch the input method to "local file"
++    localFileButton = container.querySelector("button[data-method='local-file']");
++    fireEvent.click(localFileButton);
++
++    # Check if the default value is correctly reset
++    assert firstTextbox.value == "", "Default value not reset correctly!"
++
++if __name__ == "__main__":
++    test_toggle_input_methods()
+\ No newline at end of file
+diff --git a/sweagent/frontend/src/reproduceError.test.js b/sweagent/frontend/src/reproduceError.test.js
+new file mode 100644
+index 0000000..f85f293
+--- /dev/null
++++ b/sweagent/frontend/src/reproduceError.test.js
+@@ -0,0 +1,18 @@
++import { render, fireEvent } from "@testing-library/react";
++import Run from "./Run";
++
++test("Toggling input methods resets default value", () => {
++  // Render the Run component
++  const { container } = render(<Run />);
++
++  // Find the first textbox and enter a value
++  const firstTextbox = container.querySelector("input[type='text']");
++  fireEvent.change(firstTextbox, { target: { value: "Test input" } });
++
++  // Switch the input method to "local file"
++  const localFileButton = container.querySelector("button[data-method='local-file']");
++  fireEvent.click(localFileButton);
++
++  // Check if the default value is correctly reset
++  expect(firstTextbox.value).toBe("", "Default value not reset correctly!");
++});
+\ No newline at end of file

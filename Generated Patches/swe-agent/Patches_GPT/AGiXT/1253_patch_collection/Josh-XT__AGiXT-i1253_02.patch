@@ -1,0 +1,34 @@
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..ad24cf3
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1,27 @@
++from agixt.Chain import Chain
++
++# Initialize the Chain object
++chain = Chain()
++
++# Define a chain with steps that will cause the error
++chain_name = "Test Chain"
++steps = {
++    "steps": [
++        {
++            "agent_name": "NonExistentAgent",
++            "prompt_type": "prompt",
++            "prompt": {
++                "prompt_name": "NonExistentPrompt",
++                "prompt_category": "Default"
++            },
++            "step": 1
++        }
++    ]
++}
++
++# Attempt to import the chain
++try:
++    result = chain.import_chain(chain_name, steps)
++    print(result)
++except Exception as e:
++    print(f"Error: {e}")
+\ No newline at end of file

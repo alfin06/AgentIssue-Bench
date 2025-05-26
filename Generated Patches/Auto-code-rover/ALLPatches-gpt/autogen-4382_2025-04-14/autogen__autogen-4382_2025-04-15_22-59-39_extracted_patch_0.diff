@@ -1,0 +1,36 @@
+diff --git a/python/packages/autogen-core/src/autogen_core/application/_worker_runtime.py b/python/packages/autogen-core/src/autogen_core/application/_worker_runtime.py
+index 0e5fb933a..40dedd89c 100644
+--- a/python/packages/autogen-core/src/autogen_core/application/_worker_runtime.py
++++ b/python/packages/autogen-core/src/autogen_core/application/_worker_runtime.py
+@@ -55,6 +55,7 @@
+ from .telemetry import MessageRuntimeTracingConfig, TraceHelper, get_telemetry_grpc_metadata
+ 
+ try:
++    import grpc
+     import grpc.aio
+ except ImportError as e:
+     raise ImportError(GRPC_IMPORT_ERROR_STR) from e
+diff --git a/python/packages/autogen-core/src/autogen_core/application/_worker_runtime_host.py b/python/packages/autogen-core/src/autogen_core/application/_worker_runtime_host.py
+index d7fee07ff..6b95d3f1d 100644
+--- a/python/packages/autogen-core/src/autogen_core/application/_worker_runtime_host.py
++++ b/python/packages/autogen-core/src/autogen_core/application/_worker_runtime_host.py
+@@ -9,6 +9,7 @@
+ 
+ try:
+     import grpc
++    import grpc.aio
+ except ImportError as e:
+     raise ImportError(GRPC_IMPORT_ERROR_STR) from e
+ from .protos import agent_worker_pb2_grpc
+diff --git a/python/packages/autogen-core/src/autogen_core/application/_worker_runtime_host_servicer.py b/python/packages/autogen-core/src/autogen_core/application/_worker_runtime_host_servicer.py
+index 7c597bd07..a7f20920a 100644
+--- a/python/packages/autogen-core/src/autogen_core/application/_worker_runtime_host_servicer.py
++++ b/python/packages/autogen-core/src/autogen_core/application/_worker_runtime_host_servicer.py
+@@ -13,6 +13,7 @@
+ 
+ try:
+     import grpc
++    import grpc.aio
+ except ImportError as e:
+     raise ImportError(GRPC_IMPORT_ERROR_STR) from e
+ 

@@ -1,0 +1,43 @@
+diff --git a/agixt/Agent.py b/agixt/Agent.py
+index 8b81be9..bdcc638 100644
+--- a/agixt/Agent.py
++++ b/agixt/Agent.py
+@@ -499,21 +499,33 @@ class Agent:
+                 session.close()
+                 return f"Agent {self.agent_name} configuration updated successfully."
+         if config_key == "commands":
++            # First, get all existing commands for this agent
++            existing_commands = session.query(AgentCommand).filter_by(agent_id=agent.id).all()
++            
++            # Create a map of existing command states
++            existing_command_map = {}
++            for agent_command in existing_commands:
++                command = session.query(Command).filter_by(id=agent_command.command_id).first()
++                if command:
++                    existing_command_map[command.name] = agent_command
++            
++            # Update or add new commands
+             for command_name, enabled in new_config.items():
+                 command = session.query(Command).filter_by(name=command_name).first()
+                 if command:
+-                    agent_command = (
+-                        session.query(AgentCommand)
+-                        .filter_by(agent_id=agent.id, command_id=command.id)
+-                        .first()
+-                    )
++                    agent_command = existing_command_map.get(command_name)
+                     if agent_command:
+                         agent_command.state = enabled
++                        existing_command_map.pop(command_name)
+                     else:
+                         agent_command = AgentCommand(
+                             agent_id=agent.id, command_id=command.id, state=enabled
+                         )
+                         session.add(agent_command)
++            
++            # Remove any commands that weren't in the new config
++            for remaining_command in existing_command_map.values():
++                session.delete(remaining_command)
+         else:
+             for setting_name, setting_value in new_config.items():
+                 logging.info(f"Setting {setting_name} to {setting_value}.")

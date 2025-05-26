@@ -1,0 +1,21 @@
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..84bfe95
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1,14 @@
++import os
++import subprocess
++
++def run_start_game():
++    script_path = os.path.join(os.getcwd(), 'examples', 'werewolf_game', 'start_game.py')
++    try:
++        result = subprocess.run(['python', script_path], capture_output=True, text=True)
++        print(result.stdout)
++        print(result.stderr)
++    except Exception as e:
++        print(f"Error occurred: {e}")
++
++if __name__ == "__main__":
++    run_start_game()
+\ No newline at end of file

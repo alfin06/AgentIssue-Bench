@@ -1,0 +1,1 @@
+python examples/werewolf_game/start_game.py

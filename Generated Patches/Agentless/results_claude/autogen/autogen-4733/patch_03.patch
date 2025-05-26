@@ -1,0 +1,34 @@
+diff --git a/python/packages/autogen-core/src/autogen_core/code_executor/_func_with_reqs.py b/python/packages/autogen-core/src/autogen_core/code_executor/_func_with_reqs.py
+index d9819ba..4d201b7 100644
+--- a/python/packages/autogen-core/src/autogen_core/code_executor/_func_with_reqs.py
++++ b/python/packages/autogen-core/src/autogen_core/code_executor/_func_with_reqs.py
+@@ -28,16 +28,26 @@ def _to_code(func: Union[FunctionWithRequirements[T, P], Callable[P, T], Functio
+     return code
+ 
+ 
+-@dataclass
++@dataclass(frozen=True)
+ class Alias:
+     name: str
+     alias: str
+ 
++    def __hash__(self):
++        return hash((self.name, self.alias))
+ 
+-@dataclass
++
++@dataclass(frozen=True)
+ class ImportFromModule:
+     module: str
+-    imports: List[Union[str, Alias]]
++    imports: Tuple[Union[str, Alias], ...]  # Changed from List to Tuple for hashability
++
++    def __init__(self, module: str, imports: List[Union[str, Alias]]):
++        object.__setattr__(self, 'module', module)
++        object.__setattr__(self, 'imports', tuple(imports))  # Convert list to tuple
++
++    def __hash__(self):
++        return hash((self.module, self.imports))
+ 
+ 
+ Import = Union[str, ImportFromModule, Alias]

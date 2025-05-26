@@ -1,0 +1,69 @@
+diff --git a/agixt/Agent.py b/agixt/Agent.py
+index 8b81be9..c0baeba 100644
+--- a/agixt/Agent.py
++++ b/agixt/Agent.py
+@@ -66,6 +66,8 @@ def add_agent(agent_name, provider_settings=None, commands=None, user=DEFAULT_US
+         .filter_by(name=provider_settings["provider"])
+         .first()
+     )
++    if not provider:
++        raise ValueError(f"No provider found with name {provider_settings['provider']}")
+     agent = AgentModel(name=agent_name, user_id=user_id, provider_id=provider.id)
+     session.add(agent)
+     session.commit()
+diff --git a/agixt/Chain.py b/agixt/Chain.py
+index 604a0b7..356ceb6 100644
+--- a/agixt/Chain.py
++++ b/agixt/Chain.py
+@@ -626,7 +626,7 @@ class Chain:
+             if prompt_type == "prompt":
+                 argument_key = "prompt_name"
+                 prompt_category = prompt.get("prompt_category", "Default")
+-                target_id = (
++                target_prompt = (
+                     session.query(Prompt)
+                     .filter(
+                         Prompt.name == prompt[argument_key],
+@@ -634,31 +634,37 @@ class Chain:
+                         Prompt.prompt_category.has(name=prompt_category),
+                     )
+                     .first()
+-                    .id
+                 )
++                if not target_prompt:
++                    continue
++                target_id = target_prompt.id
+                 target_type = "prompt"
+             elif prompt_type == "chain":
+                 argument_key = "chain_name"
+                 if "chain" in prompt:
+                     argument_key = "chain"
+-                target_id = (
++                target_chain = (
+                     session.query(ChainDB)
+                     .filter(
+                         ChainDB.name == prompt[argument_key],
+                         ChainDB.user_id == self.user_id,
+                     )
+                     .first()
+-                    .id
+                 )
++                if not target_chain:
++                    continue
++                target_id = target_chain.id
+                 target_type = "chain"
+             elif prompt_type == "command":
+                 argument_key = "command_name"
+-                target_id = (
++                target_command = (
+                     session.query(Command)
+                     .filter(Command.name == prompt[argument_key])
+                     .first()
+-                    .id
+                 )
++                if not target_command:
++                    continue
++                target_id = target_command.id
+                 target_type = "command"
+             else:
+                 # Handle the case where the argument key is not found

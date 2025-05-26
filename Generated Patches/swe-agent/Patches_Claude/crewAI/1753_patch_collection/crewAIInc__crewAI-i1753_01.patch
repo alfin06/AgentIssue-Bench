@@ -1,0 +1,53 @@
+diff --git a/reproduce_enum_error.py b/reproduce_enum_error.py
+new file mode 100644
+index 0000000..26dbf2b
+--- /dev/null
++++ b/reproduce_enum_error.py
+@@ -0,0 +1,46 @@
++from enum import Enum
++from crewai import Agent, Task, Crew
++from crewai.utilities.crew_json_encoder import CrewJSONEncoder
++import json
++
++class CrewStatus(Enum):
++    TODO = "To Do"
++    SUCCESSFUL = "Successful"
++    FAILED = "Failed"
++
++# Create a simple agent
++researcher = Agent(
++    name="Researcher",
++    role="Research Assistant",
++    goal="Help with research",
++    backstory="You are a research assistant helping with various tasks.",
++    allow_delegation=False
++)
++
++# Create a task with enum output
++task = Task(
++    description="Simple research task",
++    agent=researcher,
++    output_pydantic=CrewStatus
++)
++
++# Create crew with SQLite memory
++crew = Crew(
++    agents=[researcher],
++    tasks=[task],
++    memory=True  # This enables SQLite memory
++)
++
++# Try to kickoff
++try:
++    result = crew.kickoff()
++    print("Success! Result:", result)
++except Exception as e:
++    print("Error occurred:", str(e))
++
++# Also test direct enum serialization
++try:
++    json_str = json.dumps(CrewStatus.TODO, cls=CrewJSONEncoder)
++    print("\nDirect enum serialization:", json_str)
++except Exception as e:
++    print("\nError in direct enum serialization:", str(e))
+\ No newline at end of file

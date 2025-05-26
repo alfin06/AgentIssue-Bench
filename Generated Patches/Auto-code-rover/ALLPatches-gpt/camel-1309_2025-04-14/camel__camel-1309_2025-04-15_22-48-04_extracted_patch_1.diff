@@ -1,0 +1,48 @@
+diff --git a/camel/models/cohere_model.py b/camel/models/cohere_model.py
+index 8376f42f..78e4167a 100644
+--- a/camel/models/cohere_model.py
++++ b/camel/models/cohere_model.py
+@@ -52,16 +52,16 @@ class CohereModel(BaseModelBackend):
+         token_counter: Optional[BaseTokenCounter] = None,
+     ):
+         import cohere
+-
++        
+         if model_config_dict is None:
+             model_config_dict = CohereConfig().as_dict()
+-
++        
+         api_key = api_key or os.environ.get("COHERE_API_KEY")
+         url = url or os.environ.get("COHERE_API_BASE_URL")
+         super().__init__(
+             model_type, model_config_dict, api_key, url, token_counter
+         )
+-        self._client = cohere.ClientV2(api_key=self._api_key)
++        self._client = cohere.ClientV2(api_key=self._api_key)  # Removed invalid argument 'proxies'
+ 
+     def _to_openai_response(self, response: 'ChatResponse') -> ChatCompletion:
+         if response.usage and response.usage.tokens:
+diff --git a/camel/retrievers/cohere_rerank_retriever.py b/camel/retrievers/cohere_rerank_retriever.py
+index 35ad4f5e..6dd6d861 100644
+--- a/camel/retrievers/cohere_rerank_retriever.py
++++ b/camel/retrievers/cohere_rerank_retriever.py
+@@ -59,7 +59,7 @@ class CohereRerankRetriever(BaseRetriever):
+                 set in the environment variable.
+         """
+         import cohere
+-
++        
+         try:
+             self.api_key = api_key or os.environ["COHERE_API_KEY"]
+         except ValueError as e:
+@@ -67,8 +67,8 @@ class CohereRerankRetriever(BaseRetriever):
+                 "Must pass in cohere api key or specify via COHERE_API_KEY"
+                 " environment variable."
+             ) from e
+-
+-        self.co = cohere.Client(self.api_key)
++        
++        self.co = cohere.Client(api_key=self.api_key)  # Removed invalid argument 'proxies'
+         self.model_name = model_name
+ 
+     def query(

@@ -1,0 +1,12 @@
+diff --git a/gpt_engineer/core/chat_to_files.py b/gpt_engineer/core/chat_to_files.py
+index 7459bf3..9ea9c11 100644
+--- a/gpt_engineer/core/chat_to_files.py
++++ b/gpt_engineer/core/chat_to_files.py
+@@ -23,6 +23,7 @@ allowing for the dynamic application of changes to code bases and the efficient
+ 
+ import logging
+ import re
++import regex
+ 
+ from typing import Dict, Tuple
+ 

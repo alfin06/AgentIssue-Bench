@@ -1,0 +1,19 @@
+diff --git a/camel/toolkits/ask_news_toolkit.py b/camel/toolkits/ask_news_toolkit.py
+index 0dbb743..9df544d 100644
+--- a/camel/toolkits/ask_news_toolkit.py
++++ b/camel/toolkits/ask_news_toolkit.py
+@@ -66,7 +66,13 @@ class AskNewsToolkit(BaseToolkit):
+         r"""Initialize the AskNewsToolkit with API clients.The API keys and
+         credentials are retrieved from environment variables.
+         """
+-        from asknews_sdk import AskNewsSDK
++        try:
++            from asknews_sdk import AskNewsSDK
++        except ImportError:
++            raise ImportError(
++                "The 'asknews_sdk' package is required to use AskNewsToolkit. "
++                "Please install the package and try again."
++            )
+ 
+         client_id = os.environ.get("ASKNEWS_CLIENT_ID")
+         client_secret = os.environ.get("ASKNEWS_CLIENT_SECRET")

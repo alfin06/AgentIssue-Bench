@@ -1,0 +1,31 @@
+diff --git a/examples/reproduce_error.py b/examples/reproduce_error.py
+new file mode 100644
+index 0000000..bbf8cba
+--- /dev/null
++++ b/examples/reproduce_error.py
+@@ -0,0 +1,11 @@
++from lagent.llms.huggingface import HFTransformerCasualLM
++
++# Initialize the model
++model = HFTransformerCasualLM(
++    path="internlm/internlm2-chat-7b",
++    model_kwargs={"device_map": "auto"}
++)
++
++# Try to generate text
++response = model.generate("Hello, how are you?", do_sample=True)
++print(response)
+\ No newline at end of file
+diff --git a/lagent/llms/huggingface.py b/lagent/llms/huggingface.py
+index 87c779a..d01a469 100644
+--- a/lagent/llms/huggingface.py
++++ b/lagent/llms/huggingface.py
+@@ -186,6 +186,8 @@ class HFTransformer(BaseLLM):
+                 eos_token_id.extend(self.additional_eos_token_id)
+             eos_token_id_tensor = torch.tensor(eos_token_id).to(
+                 input_ids.device) if eos_token_id is not None else None
++            # Set the eos_token_tensor on generation_config to fix compatibility issue
++            generation_config._eos_token_tensor = eos_token_id_tensor
+             generation_config.max_length = (
+                 generation_config.max_new_tokens + input_ids_seq_length)
+             # Set generation parameters if not already defined

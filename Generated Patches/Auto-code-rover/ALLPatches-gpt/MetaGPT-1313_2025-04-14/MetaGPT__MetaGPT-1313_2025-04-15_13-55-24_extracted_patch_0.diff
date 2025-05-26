@@ -1,0 +1,38 @@
+diff --git a/metagpt/ext/werewolf/roles/base_player.py b/metagpt/ext/werewolf/roles/base_player.py
+index 562ffb7b..6fe7b648 100644
+--- a/metagpt/ext/werewolf/roles/base_player.py
++++ b/metagpt/ext/werewolf/roles/base_player.py
+@@ -60,7 +60,7 @@ class BasePlayer(Role):
+             news = self.rc.msg_buffer.pop_all()
+         old_messages = [] if ignore_memory else self.rc.memory.get()
+         for m in news:
+-            if len(m.restricted_to) and self.profile not in m.restricted_to and self.name not in m.restricted_to:
++            if m.restricted_to and self.profile not in m.restricted_to and self.name not in m.restricted_to:
+                 # if the msg is not send to the whole audience ("") nor this role (self.profile or self.name),
+                 # then this role should not be able to receive it and record it into its memory
+                 continue
+diff --git a/metagpt/schema.py b/metagpt/schema.py
+index 071518d6..8f9793a8 100644
+--- a/metagpt/schema.py
++++ b/metagpt/schema.py
+@@ -186,6 +186,20 @@ class Documents(BaseModel):
+ 
+ 
+ class Message(BaseModel):
++    restricted_to: set[str] = Field(default=set(), validate_default=True)
++    
++    @field_validator("restricted_to", mode="before")
++    @classmethod
++    def check_restricted_to(cls, restricted_to: Any) -> set[str]:
++        if isinstance(restricted_to, set):
++            return restricted_to
++        if isinstance(restricted_to, list):
++            return set(restricted_to)
++        raise ValueError("restricted_to must be a set or list")
++    
++    @field_serializer("restricted_to", mode="plain")
++    def ser_restricted_to(self, restricted_to: set) -> list:
++        return list(restricted_to)
+     """list[<role>: <content>]"""
+ 
+     id: str = Field(default="", validate_default=True)  # According to Section 2.2.3.1.1 of RFC 135

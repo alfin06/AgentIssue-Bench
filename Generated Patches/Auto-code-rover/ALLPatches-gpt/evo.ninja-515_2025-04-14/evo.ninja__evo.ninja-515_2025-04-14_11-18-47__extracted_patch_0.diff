@@ -1,0 +1,6 @@
+diff --git a/benchmarks/Auto-GPT b/benchmarks/Auto-GPT
+--- a/benchmarks/Auto-GPT
++++ b/benchmarks/Auto-GPT
+@@ -1 +1 @@
+-Subproject commit ab362f96c3255052350e8e8081b363c7b97ffd6f
++Subproject commit ab362f96c3255052350e8e8081b363c7b97ffd6f-dirty

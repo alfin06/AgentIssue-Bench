@@ -1,0 +1,25 @@
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..27a0fae
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1,18 @@
++from camel.agents.chat_agent import ChatAgent
++from camel.messages import BaseMessage
++
++# Initialize ChatAgent
++agent = ChatAgent()
++
++# Create multiple output messages
++output_messages = [
++    BaseMessage.make_assistant_message(role_name="Assistant", content="Message 1"),
++    BaseMessage.make_assistant_message(role_name="Assistant", content="Message 2"),
++]
++
++# Call _record_final_output to reproduce the hardcoded behavior
++try:
++    agent._record_final_output(output_messages)
++    print("_record_final_output executed successfully.")
++except Exception as e:
++    print(f"Error: {e}")
+\ No newline at end of file

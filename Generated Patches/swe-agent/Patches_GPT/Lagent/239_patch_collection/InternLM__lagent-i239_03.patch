@@ -1,0 +1,16 @@
+diff --git a/lagent/actions/base_action.py b/lagent/actions/base_action.py
+index b42036a..5e05b16 100644
+--- a/lagent/actions/base_action.py
++++ b/lagent/actions/base_action.py
+@@ -16,7 +16,10 @@ from griffe import Docstring
+ try:
+     from griffe import DocstringSectionKind
+ except ImportError:
+-    from griffe.enumerations import DocstringSectionKind
++    try:
++    from griffe.docstrings.dataclasses import DocstringSectionKind
++except ImportError:
++    raise ImportError('DocstringSectionKind could not be imported. Please ensure the griffe package is installed and up-to-date.')
+ 
+ from ..schema import ActionReturn, ActionStatusCode
+ from .parser import BaseParser, JsonParser, ParseError

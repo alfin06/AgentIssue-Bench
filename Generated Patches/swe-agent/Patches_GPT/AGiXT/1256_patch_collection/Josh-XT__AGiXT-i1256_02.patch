@@ -1,0 +1,48 @@
+diff --git a/reproduce_issue.py b/reproduce_issue.py
+new file mode 100644
+index 0000000..2700da1
+--- /dev/null
++++ b/reproduce_issue.py
+@@ -0,0 +1,42 @@
++from agixtsdk import AGiXTSDK
++
++# Initialize the API client
++api_client = AGiXTSDK(api_key="your_api_key")
++
++# Define the agent name and commands to select
++agent_name = "test_agent"
++commands_to_select = ["command1", "command2"]
++
++# Function to simulate selecting and saving commands
++def select_and_save_commands(agent_name, commands):
++    # Get current agent extensions
++    agent_extensions = api_client.get_agent_extensions(agent_name=agent_name)
++    
++    # Modify the enabled status of the specified commands
++    for extension in agent_extensions['extensions']:
++        for command in extension['commands']:
++            if command['friendly_name'] in commands:
++                command['enabled'] = True
++            else:
++                command['enabled'] = False
++    
++    # Save the updated configuration
++    api_client.update_agent_config(agent_name=agent_name, new_config=agent_extensions, config_key="commands")
++
++# Function to verify if the commands are saved correctly
++def verify_commands(agent_name, expected_commands):
++    agent_extensions = api_client.get_agent_extensions(agent_name=agent_name)
++    for extension in agent_extensions['extensions']:
++        for command in extension['commands']:
++            if command['friendly_name'] in expected_commands:
++                assert command['enabled'] is True, f"{command['friendly_name']} should be enabled"
++            else:
++                assert command['enabled'] is False, f"{command['friendly_name']} should be disabled"
++
++# Simulate selecting and saving commands
++select_and_save_commands(agent_name, commands_to_select)
++
++# Verify the commands are saved correctly
++verify_commands(agent_name, commands_to_select)
++
++print("Reproduction script executed successfully.")

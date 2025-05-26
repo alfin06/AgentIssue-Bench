@@ -1,0 +1,44 @@
+diff --git a/src/crewai/agent.py b/src/crewai/agent.py
+index 8a0eec5..fa417c8 100644
+--- a/src/crewai/agent.py
++++ b/src/crewai/agent.py
+@@ -252,14 +252,18 @@ class Agent(BaseAgent):
+             task_prompt = self._use_trained_data(task_prompt=task_prompt)
+ 
+         try:
+-            result = self.agent_executor.invoke(
+-                {
+-                    "input": task_prompt,
+-                    "tool_names": self.agent_executor.tools_names,
+-                    "tools": self.agent_executor.tools_description,
+-                    "ask_for_human_input": task.human_input,
+-                }
+-            )["output"]
++            try:
++                result = self.agent_executor.invoke(
++                    {
++                        "input": task_prompt,
++                        "tool_names": self.agent_executor.tools_names,
++                        "tools": self.agent_executor.tools_description,
++                        "ask_for_human_input": task.human_input,
++                    }
++                )["output"]
++            except Exception as e:
++                logging.error(f"Agent execution failed: {str(e)}")
++                raise e
+         except Exception as e:
+             self._times_executed += 1
+             if self._times_executed > self.max_retry_limit:
+diff --git a/src/crewai/llm.py b/src/crewai/llm.py
+index 347d20d..cecceb2 100644
+--- a/src/crewai/llm.py
++++ b/src/crewai/llm.py
+@@ -217,6 +217,8 @@ class LLM:
+                 params = {k: v for k, v in params.items() if v is not None}
+ 
+                 response = litellm.completion(**params)
++                if response is None:
++                    raise Exception("No response from LLM call")
+                 response_message = cast(Choices, cast(ModelResponse, response).choices)[
+                     0
+                 ].message

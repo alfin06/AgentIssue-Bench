@@ -1,0 +1,19 @@
+diff --git a/sweagent/frontend/src/components/controls/LRunControl.js b/sweagent/frontend/src/components/controls/LRunControl.js
+index c7b6d26..79126ab 100644
+--- a/sweagent/frontend/src/components/controls/LRunControl.js
++++ b/sweagent/frontend/src/components/controls/LRunControl.js
+@@ -29,7 +29,13 @@ function LRunControl({
+   };
+ 
+   useEffect(() => {
+-    setPsInputValue("");
++    if (psType === "gh") {
++      setPsInputValue(defaultPS);
++    } else if (psType === "local") {
++      setPsInputValue("");
++    } else if (psType === "write") {
++      setPsInputValue("");
++    }
+   }, [psType]);
+ 
+   function getPsInput() {

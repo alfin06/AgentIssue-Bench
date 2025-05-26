@@ -1,0 +1,100 @@
+diff --git a/packages/agents/src/agents/Evo/findBestAgent.ts b/packages/agents/src/agents/Evo/findBestAgent.ts
+index 62f5724..1483fb0 100644
+--- a/packages/agents/src/agents/Evo/findBestAgent.ts
++++ b/packages/agents/src/agents/Evo/findBestAgent.ts
+@@ -2,7 +2,6 @@ import { FunctionDefinition, Rag, ArrayRecombiner } from "@/agent-core";
+ import { AgentContext } from "@/agent-core";
+ import { AgentFunctionBase } from "../../functions/utils";
+ import { Agent, GoalRunArgs } from "../utils/Agent";
+-import { DeveloperAgent } from "../Developer";
+ import { CsvAnalystAgent } from "../CsvAnalyst";
+ import { ResearcherAgent } from "../Researcher";
+ import { SynthesizerAgent } from "../Synthesizer";
+@@ -28,7 +27,6 @@ export const findBestAgent = async (
+   AgentFunctionBase<unknown>[]
+ ]> => {
+   const allAgents: Agent[] = [
+-    DeveloperAgent,
+     CsvAnalystAgent,
+     ResearcherAgent,
+     SynthesizerAgent,
+diff --git a/packages/agents/src/agents/Evo/prompts.ts b/packages/agents/src/agents/Evo/prompts.ts
+index 6af8133..50ce92d 100644
+--- a/packages/agents/src/agents/Evo/prompts.ts
++++ b/packages/agents/src/agents/Evo/prompts.ts
+@@ -21,9 +21,16 @@ export const prompts = {
+   variablesExplainer:
+     "Function results will be stored in variables if they are very large. Variables are declared using the syntax ${variable-name}. Variables are created as needed, DO NOT use variable names that are not previously stated. When using variables within function arguments, YOU MUST use the ${variable-name} syntax. Relevant chunks of variable data will be shown to you as needed.",
+   evoExplainer: new Prompt(`
+-      If asked about your expertise, you should say that you are an expert assistant capable of accomplishing a multitude of tasks.
+-      Depending on the goal, you adopt a persona that is most suitable for the goal.
+-      The personas available to you are: CsvAnalyst, Researcher, Synthesizer.
++      You are an expert assistant capable of accomplishing a multitude of tasks by adopting different personas.
++      You have deep knowledge of your available personas and their capabilities:
++
++      1. CsvAnalyst: A data analysis expert that can process, analyze and manipulate CSV files. This persona is best suited for tasks involving data analysis, spreadsheet manipulation, and numerical computations.
++      
++      2. Researcher: An expert at gathering, analyzing and synthesizing information from various sources. This persona excels at tasks requiring information gathering, web searches, and comprehensive research.
++      
++      3. Synthesizer: A specialist in combining and processing information to create coherent summaries and insights. This persona is ideal for tasks requiring information synthesis, summarization, and knowledge integration.
++
++      For each task, you analyze the requirements and automatically adopt the most suitable persona. You can seamlessly switch between personas as needed to accomplish complex multi-step goals.
+     `)
+     .line(`CsvAnalyst expertise: ` + csvAnalystPrompts.expertise)
+     .line(`Researcher expertise: ` + researcherPrompts.expertise)
+diff --git a/test_evo_personas.ts b/test_evo_personas.ts
+new file mode 100644
+index 0000000..07f2f64
+--- /dev/null
++++ b/test_evo_personas.ts
+@@ -0,0 +1,49 @@
++import { AgentContext } from "@/agent-core";
++import { Evo } from "./packages/agents/src/agents/Evo";
++import { findBestAgent } from "./packages/agents/src/agents/Evo/findBestAgent";
++
++async function testEvoPersonas() {
++  // Create a mock context
++  const mockContext = {
++    cloneEmpty: () => mockContext,
++    scripts: {},
++    variables: {
++      saveThreshold: 1000
++    },
++    chat: {
++      persistent: async () => {},
++      chatLogs: { messages: [] }
++    },
++    llm: {
++      getMaxContextTokens: () => 8000,
++      getMaxResponseTokens: () => 1000,
++      getModel: () => "gpt-4"
++    },
++    logger: {
++      notice: async (msg: string) => console.log("NOTICE:", msg),
++      info: async (msg: string) => console.log("INFO:", msg)
++    }
++  } as unknown as AgentContext;
++
++  // Create Evo instance
++  const evo = new Evo(mockContext);
++  await evo.init();
++
++  // Test different queries to ensure Developer agent is not selected
++  const queries = [
++    "Need to write a Python script",
++    "Build a complex software system",
++    "Create unit tests for code",
++    "Analyze CSV data",
++    "Research information online",
++    "Synthesize multiple documents"
++  ];
++
++  for (const query of queries) {
++    console.log("\nTesting query:", query);
++    const [agent, , , ] = await findBestAgent(query, mockContext);
++    console.log("Selected agent:", agent.config.prompts.name);
++  }
++}
++
++testEvoPersonas().catch(console.error);
+\ No newline at end of file

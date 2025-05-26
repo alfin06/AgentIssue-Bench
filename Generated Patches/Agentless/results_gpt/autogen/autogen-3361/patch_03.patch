@@ -1,0 +1,39 @@
+diff --git a/autogen/coding/func_with_reqs.py b/autogen/coding/func_with_reqs.py
+index f6e68cf..c0e0449 100644
+--- a/autogen/coding/func_with_reqs.py
++++ b/autogen/coding/func_with_reqs.py
+@@ -31,11 +31,34 @@ class Alias:
+     alias: str
+ 
+ 
+-@dataclass
++from functools import singledispatch
++
++@dataclass(frozen=True)
+ class ImportFromModule:
+     module: str
+     imports: List[Union[str, Alias]]
+ 
++@singledispatch
++def make_hashable(item):
++    return item
++
++@make_hashable.register(list)
++def _(item):
++    return tuple(make_hashable(i) for i in item)
++
++@make_hashable.register(Alias)
++def _(item):
++    return (item.name, item.alias)
++
++@make_hashable.register(ImportFromModule)
++def _(item):
++    return (item.module, make_hashable(item.imports))
++
++@dataclass(frozen=True)
++class Alias:
++    name: str
++    alias: str
++
+ 
+ Import = Union[str, ImportFromModule, Alias]

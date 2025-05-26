@@ -1,0 +1,41 @@
+diff --git a/reproduce_build.py b/reproduce_build.py
+new file mode 100644
+index 0000000..5691a31
+--- /dev/null
++++ b/reproduce_build.py
+@@ -0,0 +1,34 @@
++import os
++import subprocess
++import shutil
++from pathlib import Path
++
++def main():
++    # Clean any existing build artifacts
++    build_dir = Path("build")
++    dist_dir = Path("dist")
++    if build_dir.exists():
++        shutil.rmtree(build_dir)
++    if dist_dir.exists():
++        shutil.rmtree(dist_dir)
++
++    # Build the package
++    subprocess.run(["pip", "install", "-e", "."], check=True)
++
++    # Check if utils directory exists in build artifacts
++    build_lib_dir = next(Path("build").glob("lib.*"))
++    utils_dir = build_lib_dir / "sweagent" / "utils"
++    
++    print("\nChecking build artifacts:")
++    print(f"Build lib directory: {build_lib_dir}")
++    print(f"Utils directory exists: {utils_dir.exists()}")
++    
++    if utils_dir.exists():
++        print("\nContents of utils directory:")
++        for item in utils_dir.iterdir():
++            print(f"- {item.name}")
++    else:
++        print("\nUtils directory is missing from build artifacts!")
++
++if __name__ == "__main__":
++    main()
+\ No newline at end of file

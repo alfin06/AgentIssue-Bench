@@ -1,0 +1,12 @@
+diff --git a/reproduce_import_issue.py b/reproduce_import_issue.py
+new file mode 100644
+index 0000000..4282232
+--- /dev/null
++++ b/reproduce_import_issue.py
+@@ -0,0 +1,6 @@
++import time
++start = time.time()
++
++import crewai
++
++print(time.time() - start)

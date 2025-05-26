@@ -1,0 +1,29 @@
+diff --git a/src/crewai/agent.py b/src/crewai/agent.py
+index 150c062..39506ba 100644
+--- a/src/crewai/agent.py
++++ b/src/crewai/agent.py
+@@ -27,13 +27,17 @@ def mock_agent_ops_provider():
+ 
+ agentops = None
+ 
+-if os.environ.get("AGENTOPS_API_KEY"):
+-    try:
+-        from agentops import track_agent
+-    except ImportError:
+-        track_agent = mock_agent_ops_provider()
+-else:
+-    track_agent = mock_agent_ops_provider()
++def get_track_agent():
++    if os.environ.get("AGENTOPS_API_KEY"):
++        try:
++            from agentops import track_agent
++            return track_agent
++        except ImportError:
++            return mock_agent_ops_provider()
++    else:
++        return mock_agent_ops_provider()
++
++track_agent = get_track_agent()
+ 
+ 
+ @track_agent()

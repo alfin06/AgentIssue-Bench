@@ -1,0 +1,30 @@
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..0833447
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1,23 @@
++from src.crewai.llm import LLM
++
++def main():
++    # Define the model and parameters that trigger the error
++    model_name = "o1-preview"
++    temperature = 1
++    stop = ["example_stop"]
++
++    # Instantiate the LLM class
++    llm = LLM(model=model_name, temperature=temperature, stop=stop)
++
++    # Prepare a sample message
++    messages = "Hello, how can I assist you today?"
++
++    try:
++        # Call the LLM with the sample message
++        response = llm._prepare_completion_params(messages=messages)
++        print("LLM Response:", response)
++    except Exception as e:
++        print("Error:", e)
++
++if __name__ == "__main__":
++    main()
+\ No newline at end of file

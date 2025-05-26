@@ -1,0 +1,23 @@
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..0b0f30e
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1,16 @@
++from chatdev.chat_chain import ChatChain
++
++# Use default config paths
++config_path = "CompanyConfig/Default/ChatChainConfig.json"
++config_phase_path = "CompanyConfig/Default/PhaseConfig.json"
++config_role_path = "CompanyConfig/Default/RoleConfig.json"
++
++# Create ChatChain instance
++chat_chain = ChatChain(
++    config_path=config_path,
++    config_phase_path=config_phase_path,
++    config_role_path=config_role_path,
++    task_prompt="Test task",
++    project_name="Test",
++    org_name="TestOrg"
++)
+\ No newline at end of file

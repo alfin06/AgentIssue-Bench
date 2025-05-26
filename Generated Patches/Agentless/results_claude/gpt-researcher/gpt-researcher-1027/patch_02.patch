@@ -1,0 +1,21 @@
+diff --git a/gpt_researcher/prompts.py b/gpt_researcher/prompts.py
+index 0af1fde..c7fa377 100644
+--- a/gpt_researcher/prompts.py
++++ b/gpt_researcher/prompts.py
+@@ -293,8 +293,10 @@ def generate_subtopic_report_prompt(
+     max_subsections=5,
+     total_words=800,
+     tone: Tone = Tone.Objective,
++    language: str = "english"
+ ) -> str:
+     return f"""
++Please generate the report in {language}.
+ Context:
+ "{context}"
+ 
+@@ -454,4 +456,4 @@ def get_prompt_by_report_type(report_type):
+             UserWarning,
+         )
+         prompt_by_type = report_type_mapping.get(default_report_type)
+-    return prompt_by_type
++    return prompt_by_type

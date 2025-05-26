@@ -1,0 +1,37 @@
+diff --git a/python/packages/autogen-ext/src/autogen_ext/runtimes/grpc/_worker_runtime_host.py b/python/packages/autogen-ext/src/autogen_ext/runtimes/grpc/_worker_runtime_host.py
+index 04e941215..94af522e6 100644
+--- a/python/packages/autogen-ext/src/autogen_ext/runtimes/grpc/_worker_runtime_host.py
++++ b/python/packages/autogen-ext/src/autogen_ext/runtimes/grpc/_worker_runtime_host.py
+@@ -31,10 +31,30 @@ async def _serve(self) -> None:
+         await self._server.wait_for_termination()
+ 
+     def start(self) -> None:
+-        """Start the server in a background task."""
++        """Start the server in a background task.
++        
++        This method can be called from both synchronous and asynchronous contexts.
++        If called from a synchronous context where no event loop is running,
++        it will create a new event loop in a background thread.
++        """
+         if self._serve_task is not None:
+             raise RuntimeError("Host runtime is already started.")
+-        self._serve_task = asyncio.create_task(self._serve())
++            
++        try:
++            # Try to get the running event loop
++            loop = asyncio.get_running_loop()
++            self._serve_task = loop.create_task(self._serve())
++        except RuntimeError:
++            # No event loop running, create one in a new thread
++            def run_server():
++                loop = asyncio.new_event_loop()
++                asyncio.set_event_loop(loop)
++                self._serve_task = loop.create_task(self._serve())
++                loop.run_forever()
++            
++            import threading
++            thread = threading.Thread(target=run_server, daemon=True)
++            thread.start()
+ 
+     async def stop(self, grace: int = 5) -> None:
+         """Stop the server."""

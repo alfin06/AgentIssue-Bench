@@ -1,0 +1,46 @@
+diff --git a/reproduce_bug.py b/reproduce_bug.py
+new file mode 100644
+index 0000000..416872e
+--- /dev/null
++++ b/reproduce_bug.py
+@@ -0,0 +1,39 @@
++import requests
++import time
++
++# Simulate creating a new chat
++print("Creating a new chat...")
++response = requests.post("http://localhost:3000/api/chat/create", json={"message": "write hey to hey.txt"})
++if response.status_code == 200:
++    chat_id = response.json().get("id")
++    print(f"Chat created with ID: {chat_id}")
++else:
++    print("Failed to create chat.")
++    exit(1)
++
++# Simulate clicking the Evo icon to go to the root
++print("Navigating to root...")
++response = requests.get("http://localhost:3000/")
++if response.status_code == 200:
++    print("Navigated to root.")
++else:
++    print("Failed to navigate to root.")
++    exit(1)
++
++# Simulate clicking the "csv" example prompt
++print("Clicking the 'csv' example prompt...")
++response = requests.post("http://localhost:3000/api/chat/example", json={"prompt": "csv"})
++if response.status_code == 200:
++    print("Example prompt clicked.")
++else:
++    print("Failed to click example prompt.")
++    exit(1)
++
++# Check workspace transition
++print("Checking workspace transition...")
++time.sleep(2)  # Wait for transition
++response = requests.get(f"http://localhost:3000/api/workspace/{chat_id}")
++if response.status_code == 200:
++    print("Workspace transition successful.")
++else:
++    print("Workspace transition failed.")
+\ No newline at end of file

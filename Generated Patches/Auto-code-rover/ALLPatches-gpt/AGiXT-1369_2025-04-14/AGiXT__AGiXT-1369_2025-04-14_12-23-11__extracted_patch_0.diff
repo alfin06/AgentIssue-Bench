@@ -1,0 +1,22 @@
+diff --git a/agixt/endpoints/Chain.py b/agixt/endpoints/Chain.py
+index f282687a..87930086 100644
+--- a/agixt/endpoints/Chain.py
++++ b/agixt/endpoints/Chain.py
+@@ -170,6 +170,8 @@ async def add_chain(
+     user=Depends(verify_api_key),
+     authorization: str = Header(None),
+ ) -> ResponseMessage:
++    if chain_name.chain_name == "":
++        raise HTTPException(status_code=400, detail="Chain name cannot be empty.")
+     if is_admin(email=user, api_key=authorization) != True:
+         raise HTTPException(status_code=403, detail="Access Denied")
+     Chain(user=user).add_chain(chain_name=chain_name.chain_name)
+@@ -209,6 +211,8 @@ async def rename_chain(
+     user=Depends(verify_api_key),
+     authorization: str = Header(None),
+ ) -> ResponseMessage:
++    if new_name.new_name == "":
++        raise HTTPException(status_code=400, detail="New chain name cannot be empty.")
+     if is_admin(email=user, api_key=authorization) != True:
+         raise HTTPException(status_code=403, detail="Access Denied")
+     Chain(user=user).rename_chain(chain_name=chain_name, new_name=new_name.new_name)

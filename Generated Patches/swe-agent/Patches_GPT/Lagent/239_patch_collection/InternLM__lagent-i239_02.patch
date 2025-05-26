@@ -1,0 +1,32 @@
+diff --git a/lagent/actions/base_action.py b/lagent/actions/base_action.py
+index b42036a..14b1e5f 100644
+--- a/lagent/actions/base_action.py
++++ b/lagent/actions/base_action.py
+@@ -15,8 +15,6 @@ from griffe import Docstring
+ 
+ try:
+     from griffe import DocstringSectionKind
+-except ImportError:
+-    from griffe.enumerations import DocstringSectionKind
+ 
+ from ..schema import ActionReturn, ActionStatusCode
+ from .parser import BaseParser, JsonParser, ParseError
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..4443101
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1,12 @@
++# Script to reproduce the original error
++try:
++    from griffe import DocstringSectionKind
++    print("Successfully imported DocstringSectionKind from griffe.")
++except ImportError:
++    print("Failed to import DocstringSectionKind from griffe.")
++
++try:
++    from griffe.enumerations import DocstringSectionKind
++    print("Successfully imported DocstringSectionKind from griffe.enumerations.")
++except ImportError:
++    print("Failed to import DocstringSectionKind from griffe.enumerations.")
+\ No newline at end of file

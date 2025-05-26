@@ -1,0 +1,128 @@
+diff --git a/camel/agents/chat_agent.py b/camel/agents/chat_agent.py
+index c2d6c66..d8c0895 100644
+--- a/camel/agents/chat_agent.py
++++ b/camel/agents/chat_agent.py
+@@ -768,13 +768,24 @@ class ChatAgent(BaseAgent):
+         )
+ 
+     def _record_final_output(self, output_messages: List[BaseMessage]) -> None:
+-        r"""Log final messages or warnings about multiple responses."""
+-        if len(output_messages) == 1:
+-            self.record_message(output_messages[0])
+-        else:
++        r"""Log final messages or warnings about multiple responses.
++        
++        When multiple messages are returned, the first message is recorded by default
++        for backward compatibility. A warning is still logged to inform users about
++        the multiple messages.
++        """
++        if not output_messages:
++            return
++            
++        # Always record the first message for backward compatibility
++        self.record_message(output_messages[0])
++        
++        # Warn if there are multiple messages
++        if len(output_messages) > 1:
+             logger.warning(
+-                "Multiple messages returned in `step()`. Record "
+-                "selected message manually using `record_message()`."
++                "Multiple messages returned in `step()`. First message was "
++                "automatically recorded. Use `record_message()` to record "
++                "a different message if needed."
+             )
+ 
+     def _get_model_response(
+diff --git a/reproduce_issue.py b/reproduce_issue.py
+new file mode 100644
+index 0000000..9cde7ad
+--- /dev/null
++++ b/reproduce_issue.py
+@@ -0,0 +1,22 @@
++from camel.agents import ChatAgent
++from camel.messages import BaseMessage
++
++# Create a chat agent
++agent = ChatAgent()
++
++# Create multiple test messages
++messages = [
++    BaseMessage(role_name="assistant", role_type="assistant", content="Message 1"),
++    BaseMessage(role_name="assistant", role_type="assistant", content="Message 2")
++]
++
++# Test with single message
++print("Testing with single message:")
++agent._record_final_output([messages[0]])
++print(f"Chat history after single message: {agent.chat_history}")
++
++# Test with multiple messages
++print("\nTesting with multiple messages:")
++agent.clear_memory()  # Clear previous messages
++agent._record_final_output(messages)
++print(f"Chat history after multiple messages: {agent.chat_history}")
+\ No newline at end of file
+diff --git a/reproduce_issue_mock.py b/reproduce_issue_mock.py
+new file mode 100644
+index 0000000..01a1a62
+--- /dev/null
++++ b/reproduce_issue_mock.py
+@@ -0,0 +1,57 @@
++from typing import List
++import logging
++
++# Mock the BaseMessage class
++class BaseMessage:
++    def __init__(self, content: str):
++        self.content = content
++
++# Mock the ChatAgent class with just what we need
++class ChatAgent:
++    def __init__(self):
++        self.messages = []
++        self.logger = logging.getLogger(__name__)
++        
++    def record_message(self, message: BaseMessage):
++        self.messages.append(message)
++        
++    def _record_final_output(self, output_messages: List[BaseMessage]) -> None:
++        if not output_messages:
++            return
++            
++        # Always record the first message for backward compatibility
++        self.record_message(output_messages[0])
++        
++        # Warn if there are multiple messages
++        if len(output_messages) > 1:
++            self.logger.warning(
++                "Multiple messages returned in `step()`. First message was "
++                "automatically recorded. Use `record_message()` to record "
++                "a different message if needed."
++            )
++
++# Set up logging
++logging.basicConfig(level=logging.INFO)
++
++# Create test instance
++agent = ChatAgent()
++
++# Test with single message
++print("\nTest with single message:")
++single_msg = [BaseMessage("Message 1")]
++agent._record_final_output(single_msg)
++print(f"Messages after single: {[m.content for m in agent.messages]}")
++
++# Test with multiple messages
++print("\nTest with multiple messages:")
++agent.messages = []  # Clear previous messages
++multiple_msgs = [BaseMessage("Message 1"), BaseMessage("Message 2")]
++agent._record_final_output(multiple_msgs)
++print(f"Messages after multiple: {[m.content for m in agent.messages]}")
++
++# Test with empty messages
++print("\nTest with empty messages:")
++agent.messages = []  # Clear previous messages
++empty_msgs = []
++agent._record_final_output(empty_msgs)
++print(f"Messages after empty: {[m.content for m in agent.messages]}")
+\ No newline at end of file

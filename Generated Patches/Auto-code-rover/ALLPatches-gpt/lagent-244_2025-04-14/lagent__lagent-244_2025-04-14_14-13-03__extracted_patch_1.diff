@@ -1,0 +1,12 @@
+diff --git a/lagent/llms/huggingface.py b/lagent/llms/huggingface.py
+index ce4982f..bb95fd0 100644
+--- a/lagent/llms/huggingface.py
++++ b/lagent/llms/huggingface.py
+@@ -190,6 +190,7 @@ class HFTransformer(BaseModel):
+                 input_ids.device) if eos_token_id is not None else None
+             generation_config.max_length = (
+                 generation_config.max_new_tokens + input_ids_seq_length)
++            generation_config._eos_token_tensor = eos_token_id_tensor  # Setting the attribute
+             # Set generation parameters if not already defined
+             logits_processor = self.logits_processor
+             stopping_criteria = self.stopping_criteria

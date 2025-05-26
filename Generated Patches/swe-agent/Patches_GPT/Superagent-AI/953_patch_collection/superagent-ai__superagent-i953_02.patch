@@ -1,0 +1,13 @@
+diff --git a/libs/ui/Dockerfile b/libs/ui/Dockerfile
+index b5a9c34..8db2b71 100644
+--- a/libs/ui/Dockerfile
++++ b/libs/ui/Dockerfile
+@@ -32,6 +32,8 @@ RUN apt-get update && apt-get install -y \
+     libfftw3-dev \
+     build-essential \
+     python3
++# Install supabase CLI
++RUN npm install -g supabase
+ 
+ # Set working directory
+ WORKDIR /app

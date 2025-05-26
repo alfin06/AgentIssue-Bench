@@ -1,0 +1,83 @@
+diff --git a/reproduce_error.js b/reproduce_error.js
+new file mode 100644
+index 0000000..ecfc5a1
+--- /dev/null
++++ b/reproduce_error.js
+@@ -0,0 +1,19 @@
++const fs = require('fs');
++const path = require('path');
++
++// Mock the PYTHAGORA_UNIT_DIR constant
++const PYTHAGORA_UNIT_DIR = './pythagora_tests';
++
++// Create base directory if it doesn't exist
++if (!fs.existsSync(PYTHAGORA_UNIT_DIR)) {
++    fs.mkdirSync(PYTHAGORA_UNIT_DIR);
++}
++
++// Try to write error logs - this should fail since 'unit' subdirectory doesn't exist
++const errors = [{message: "Test error"}];
++const errLogPath = path.resolve(PYTHAGORA_UNIT_DIR, 'unit', 'errorLogs.log');
++try {
++    fs.writeFileSync(errLogPath, JSON.stringify(errors, null, 2));
++} catch (err) {
++    console.error('Error writing logs:', err);
++}
+\ No newline at end of file
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..154481c
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1,18 @@
++import os
++import json
++
++# Mock the PYTHAGORA_UNIT_DIR constant
++PYTHAGORA_UNIT_DIR = './pythagora_tests'
++
++# Create base directory if it doesn't exist
++if not os.path.exists(PYTHAGORA_UNIT_DIR):
++    os.makedirs(PYTHAGORA_UNIT_DIR)
++
++# Try to write error logs - this should fail since 'unit' subdirectory doesn't exist
++errors = [{"message": "Test error"}]
++err_log_path = os.path.join(PYTHAGORA_UNIT_DIR, 'unit', 'errorLogs.log')
++try:
++    with open(err_log_path, 'w') as f:
++        json.dump(errors, f, indent=2)
++except Exception as err:
++    print('Error writing logs:', err)
+\ No newline at end of file
+diff --git a/src/helpers/starting.js b/src/helpers/starting.js
+index f206b75..bfcd360 100644
+--- a/src/helpers/starting.js
++++ b/src/helpers/starting.js
+@@ -103,6 +103,12 @@ function setUpPythagoraDirs() {
+     directories.forEach(directory => {
+         const directoryPath = path.resolve(root, directory);
+         if (!fs.existsSync(directoryPath)) fs.mkdirSync(directoryPath);
++        
++        // Create unit subdirectory in PYTHAGORA_UNIT_DIR
++        if (directory === PYTHAGORA_UNIT_DIR) {
++            const unitPath = path.resolve(directoryPath, 'unit');
++            if (!fs.existsSync(unitPath)) fs.mkdirSync(unitPath);
++        }
+     });
+ 
+     if (!fs.existsSync(path.resolve(root, PYTHAGORA_METADATA_DIR, METADATA_FILENAME))) fs.writeFileSync(path.resolve(root, PYTHAGORA_METADATA_DIR, METADATA_FILENAME), '{}');
+diff --git a/src/helpers/unitTests.js b/src/helpers/unitTests.js
+index 9f2b1a9..b4239d5 100644
+--- a/src/helpers/unitTests.js
++++ b/src/helpers/unitTests.js
+@@ -33,7 +33,9 @@ async function generateTestsForDirectory(args) {
+     screen.destroy();
+     process.stdout.write('\x1B[2J\x1B[0f');
+     if (errors.length) {
+-        let errLogPath = `${path.resolve(PYTHAGORA_UNIT_DIR, 'errorLogs.log')}`;
++        const unitDir = path.resolve(PYTHAGORA_UNIT_DIR, 'unit');
++        if (!fs.existsSync(unitDir)) fs.mkdirSync(unitDir, { recursive: true });
++        let errLogPath = path.resolve(unitDir, 'errorLogs.log');
+         fs.writeFileSync(errLogPath, JSON.stringify(errors, null, 2));
+         console.error('There were errors encountered while trying to generate unit tests.\n');
+         console.error(`You can find logs here: ${errLogPath}`);

@@ -1,0 +1,59 @@
+diff --git a/chatdev/chat_chain.py b/chatdev/chat_chain.py
+index 3ace26d..9926052 100644
+--- a/chatdev/chat_chain.py
++++ b/chatdev/chat_chain.py
+@@ -60,7 +60,7 @@ class ChatChain:
+         # init chatchain config and recruitments
+         self.chain = self.config["chain"]
+         self.recruitments = self.config["recruitments"]
+-        self.web_spider = self.config["web_spider"]
++        self.web_spider = check_bool(self.config["web_spider"])
+ 
+         # init default max chat turn
+         self.chat_turn_limit_default = 10
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..0b0f30e
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1,16 @@
++from chatdev.chat_chain import ChatChain
++
++# Use default config paths
++config_path = "CompanyConfig/Default/ChatChainConfig.json"
++config_phase_path = "CompanyConfig/Default/PhaseConfig.json"
++config_role_path = "CompanyConfig/Default/RoleConfig.json"
++
++# Create ChatChain instance
++chat_chain = ChatChain(
++    config_path=config_path,
++    config_phase_path=config_phase_path,
++    config_role_path=config_role_path,
++    task_prompt="Test task",
++    project_name="Test",
++    org_name="TestOrg"
++)
+\ No newline at end of file
+diff --git a/reproduce_error_minimal.py b/reproduce_error_minimal.py
+new file mode 100644
+index 0000000..2075039
+--- /dev/null
++++ b/reproduce_error_minimal.py
+@@ -0,0 +1,16 @@
++import json
++
++# Load the config file
++with open("CompanyConfig/Default/ChatChainConfig.json") as f:
++    config = json.load(f)
++
++# Try to access web_spider directly as a string
++web_spider = config["web_spider"]
++print(f"web_spider value: {web_spider}, type: {type(web_spider)}")
++
++# This shows that we need to convert it to bool
++def check_bool(s):
++    return s.lower() == "true"
++
++web_spider_bool = check_bool(config["web_spider"])
++print(f"web_spider_bool value: {web_spider_bool}, type: {type(web_spider_bool)}")
+\ No newline at end of file

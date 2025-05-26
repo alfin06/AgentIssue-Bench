@@ -1,0 +1,15 @@
+diff --git a/python/samples/core_async_human_in_the_loop/main.py b/python/samples/core_async_human_in_the_loop/main.py
+index c837c8f..5f6113d 100644
+--- a/python/samples/core_async_human_in_the_loop/main.py
++++ b/python/samples/core_async_human_in_the_loop/main.py
+@@ -180,7 +180,9 @@ async def handle_message(self, message: UserTextMessage, ctx: MessageContext) ->
+ 
+         tools = [ScheduleMeetingTool()]
+         response = await self._model_client.create(
+-            self._system_messages + (await self._model_context.get_messages()), tools=tools
++            self._system_messages + (await self._model_context.get_messages()),
++            tools=tools,
++            tool_responses=None  # Ensure tool_responses is not included
+         )
+ 
+         if isinstance(response.content, list) and all(isinstance(item, FunctionCall) for item in response.content):

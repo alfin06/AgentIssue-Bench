@@ -1,0 +1,30 @@
+diff --git a/libs/superagent/app/vectorstores/base.py b/libs/superagent/app/vectorstores/base.py
+index 785cf222..a9ca2547 100644
+--- a/libs/superagent/app/vectorstores/base.py
++++ b/libs/superagent/app/vectorstores/base.py
+@@ -10,7 +10,7 @@ from app.vectorstores.abstract import VectorStoreBase
+ from app.vectorstores.astra import AstraVectorStore
+ from app.vectorstores.pinecone import PineconeVectorStore
+ from app.vectorstores.qdrant import QdrantVectorStore
+-from app.vectorstores.supabase import SupabaseVectorStore
++from libs.superagent.app.vectorstores.supabase import SupabaseVectorStore
+ from app.vectorstores.weaviate import WeaviateVectorStore
+ from prisma.enums import VectorDbProvider
+ 
+diff --git a/libs/superagent/app/vectorstores/supabase.py b/libs/superagent/app/vectorstores/supabase.py
+index 2920fd02..6dbb3ec3 100644
+--- a/libs/superagent/app/vectorstores/supabase.py
++++ b/libs/superagent/app/vectorstores/supabase.py
+@@ -45,7 +45,11 @@ class SupabaseVectorStore(VectorStoreBase):
+                 )
+ 
+         # create vector store client
+-        self.client = vecs.create_client(variables["SUPABASE_DB_URL"])
++        try:
++            self.client = vecs.create_client(variables["SUPABASE_DB_URL"])
++        except Exception as e:
++            logger.error(f"Error initializing Supabase client: {e}")
++            raise
+ 
+         self.embeddings = get_embeddings_model_provider(embeddings_model_provider)
+ 

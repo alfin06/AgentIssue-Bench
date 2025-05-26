@@ -1,0 +1,13 @@
+diff --git a/agixt/endpoints/GQL.py b/agixt/endpoints/GQL.py
+index d16a61f5..27f13613 100644
+--- a/agixt/endpoints/GQL.py
++++ b/agixt/endpoints/GQL.py
+@@ -1851,7 +1851,7 @@ class Query:
+     @strawberry.field
+     async def providers(self, info) -> Providers:
+         """Get comprehensive provider details"""
+-        user = await get_user_from_context(info)
++        user, auth, magical = await get_user_from_context(info)
+         provider_details = get_providers_with_details()
+         providers = [
+             convert_provider_details({"name": name, **details})

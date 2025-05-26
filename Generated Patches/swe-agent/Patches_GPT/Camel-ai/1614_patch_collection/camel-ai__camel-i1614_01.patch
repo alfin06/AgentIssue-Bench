@@ -1,0 +1,33 @@
+diff --git a/reproduce_think_issue.py b/reproduce_think_issue.py
+new file mode 100644
+index 0000000..045101b
+--- /dev/null
++++ b/reproduce_think_issue.py
+@@ -0,0 +1,26 @@
++from camel.models import DeepSeekModel
++from camel.types import ModelType
++from camel.messages import OpenAIMessage
++
++# Create a DeepSeek model instance
++model = DeepSeekModel(model_type=ModelType.DEEPSEEK_REASONER)
++
++# Create a test message with <think> tags
++messages = [
++    OpenAIMessage(role="user", content="What is 2+2?"),
++    OpenAIMessage(role="assistant", content="<think>Let me think about this basic arithmetic.\n1. This is a simple addition\n2. Two plus two equals four</think>\nThe answer is 4."),
++    OpenAIMessage(role="user", content="Can you explain how you got that?")
++]
++
++# Print original messages
++print("Original messages:")
++for msg in messages:
++    print(f"{msg.get('role')}: {msg.get('content')}")
++
++# Get preprocessed messages
++processed = model.preprocess_messages(messages)
++
++# Print processed messages
++print("\nProcessed messages:")
++for msg in processed:
++    print(f"{msg.get('role')}: {msg.get('content')}")
+\ No newline at end of file

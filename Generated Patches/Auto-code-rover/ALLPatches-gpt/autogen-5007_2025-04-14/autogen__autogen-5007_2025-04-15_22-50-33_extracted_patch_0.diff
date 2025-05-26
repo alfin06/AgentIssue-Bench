@@ -1,0 +1,57 @@
+diff --git a/python/packages/agbench/benchmarks/AssistantBench/Templates/MagenticOne/scenario.py b/python/packages/agbench/benchmarks/AssistantBench/Templates/MagenticOne/scenario.py
+index dda79bd8d..75d7bc0d2 100644
+--- a/python/packages/agbench/benchmarks/AssistantBench/Templates/MagenticOne/scenario.py
++++ b/python/packages/agbench/benchmarks/AssistantBench/Templates/MagenticOne/scenario.py
+@@ -3,7 +3,13 @@
+ import logging
+ import os
+ import re
+-import tiktoken
++
++try:
++    import tiktoken
++except ImportError:
++    import subprocess
++    subprocess.check_call(["pip", "install", "tiktoken"])
++    import tiktoken
+ 
+ from openai import AzureOpenAI
+ 
+diff --git a/python/packages/agbench/benchmarks/GAIA/Templates/MagenticOne/scenario.py b/python/packages/agbench/benchmarks/GAIA/Templates/MagenticOne/scenario.py
+index 32e0a11d3..a5839d2d0 100644
+--- a/python/packages/agbench/benchmarks/GAIA/Templates/MagenticOne/scenario.py
++++ b/python/packages/agbench/benchmarks/GAIA/Templates/MagenticOne/scenario.py
+@@ -3,7 +3,13 @@
+ import logging
+ import os
+ import re
+-import tiktoken
++
++try:
++    import tiktoken
++except ImportError:
++    import subprocess
++    subprocess.check_call(["pip", "install", "tiktoken"])
++    import tiktoken
+ 
+ from openai import AzureOpenAI
+ 
+diff --git a/python/packages/autogen-ext/src/autogen_ext/models/openai/_openai_client.py b/python/packages/autogen-ext/src/autogen_ext/models/openai/_openai_client.py
+index 5b9f51129..ce8708d94 100644
+--- a/python/packages/autogen-ext/src/autogen_ext/models/openai/_openai_client.py
++++ b/python/packages/autogen-ext/src/autogen_ext/models/openai/_openai_client.py
+@@ -20,7 +20,13 @@
+     cast,
+ )
+ 
+-import tiktoken
++try:
++    import tiktoken
++except ImportError:
++    import subprocess
++    subprocess.check_call(["pip", "install", "tiktoken"])
++    import tiktoken
++
+ from autogen_core import (
+     EVENT_LOGGER_NAME,
+     TRACE_LOGGER_NAME,

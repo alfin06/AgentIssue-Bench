@@ -1,0 +1,57 @@
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..a1c0bfb
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1,8 @@
++from autogen_ext.runtimes.grpc import GrpcWorkerAgentRuntimeHost
++
++def main():
++    host = GrpcWorkerAgentRuntimeHost(address="0.0.0.0:50051")
++    host.start()  # Start a host service in the background.
++
++if __name__ == "__main__":
++    main()
+\ No newline at end of file
+diff --git a/reproduce_error_standalone.py b/reproduce_error_standalone.py
+new file mode 100644
+index 0000000..95ecf52
+--- /dev/null
++++ b/reproduce_error_standalone.py
+@@ -0,0 +1,35 @@
++import asyncio
++import logging
++from typing import Optional
++
++try:
++    import grpc
++except ImportError:
++    raise ImportError("Please install grpc: pip install grpcio")
++
++logger = logging.getLogger("autogen_core")
++
++class GrpcWorkerAgentRuntimeHost:
++    def __init__(self, address: str, extra_grpc_config: Optional[dict] = None) -> None:
++        self._server = grpc.aio.server(options=extra_grpc_config)
++        self._server.add_insecure_port(address)
++        self._address = address
++        self._serve_task = None
++
++    async def _serve(self) -> None:
++        await self._server.start()
++        logger.info(f"Server started at {self._address}.")
++        await self._server.wait_for_termination()
++
++    def start(self) -> None:
++        """Start the server in a background task."""
++        if self._serve_task is not None:
++            raise RuntimeError("Host runtime is already started.")
++        self._serve_task = asyncio.create_task(self._serve())
++
++def main():
++    host = GrpcWorkerAgentRuntimeHost(address="0.0.0.0:50051")
++    host.start()  # Start a host service in the background.
++
++if __name__ == "__main__":
++    main()
+\ No newline at end of file

@@ -1,0 +1,9 @@
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..4757ce4
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1,2 @@
++from camel.toolkits.math_toolkit import MathToolkit
++print("Hello, World!")
+\ No newline at end of file

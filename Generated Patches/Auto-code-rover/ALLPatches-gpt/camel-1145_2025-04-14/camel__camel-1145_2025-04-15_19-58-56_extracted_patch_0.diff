@@ -1,0 +1,22 @@
+diff --git a/camel/toolkits/ask_news_toolkit.py b/camel/toolkits/ask_news_toolkit.py
+index a1043085..b1d5206b 100644
+--- a/camel/toolkits/ask_news_toolkit.py
++++ b/camel/toolkits/ask_news_toolkit.py
+@@ -338,6 +338,7 @@ class AskNewsToolkit(BaseToolkit):
+             List[FunctionTool]: A list of FunctionTool objects representing
+                 the functions in the toolkit.
+         """
++        from .function_tools import FunctionTool
+         return [
+             FunctionTool(self.get_news),
+             FunctionTool(self.get_stories),
+diff --git a/camel/toolkits/twitter_toolkit.py b/camel/toolkits/twitter_toolkit.py
+index bd63446e..4e4403a3 100644
+--- a/camel/toolkits/twitter_toolkit.py
++++ b/camel/toolkits/twitter_toolkit.py
+@@ -442,4 +442,5 @@ class TwitterToolkit(BaseToolkit):
+             List[FunctionTool]: A list of FunctionTool objects
+                 representing the functions in the toolkit.
+         """
++        from .twitter_funcs import TWITTER_FUNCS
+         return TWITTER_FUNCS

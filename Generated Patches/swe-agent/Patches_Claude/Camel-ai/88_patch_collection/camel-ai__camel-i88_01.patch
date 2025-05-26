@@ -1,0 +1,26 @@
+diff --git a/camel/agents/chat_agent.py b/camel/agents/chat_agent.py
+index c2d6c66..0a62f16 100644
+--- a/camel/agents/chat_agent.py
++++ b/camel/agents/chat_agent.py
+@@ -768,14 +768,13 @@ class ChatAgent(BaseAgent):
+         )
+ 
+     def _record_final_output(self, output_messages: List[BaseMessage]) -> None:
+-        r"""Log final messages or warnings about multiple responses."""
+-        if len(output_messages) == 1:
+-            self.record_message(output_messages[0])
+-        else:
+-            logger.warning(
+-                "Multiple messages returned in `step()`. Record "
+-                "selected message manually using `record_message()`."
+-            )
++        r"""Record all output messages.
++
++        Args:
++            output_messages (List[BaseMessage]): List of messages to record.
++        """
++        for message in output_messages:
++            self.record_message(message)
+ 
+     def _get_model_response(
+         self,

@@ -1,0 +1,19 @@
+diff --git a/autogen/agentchat/conversable_agent.py b/autogen/agentchat/conversable_agent.py
+index 5009d598a..ad8679254 100644
+--- a/autogen/agentchat/conversable_agent.py
++++ b/autogen/agentchat/conversable_agent.py
+@@ -911,12 +911,11 @@ class ConversableAgent(Agent):
+             tool_returns = await asyncio.gather(*async_tool_calls)
+             return True, {
+                 "role": "tool",
+-                "tool_responses": tool_returns,
+                 "content": "\n\n".join(
+-                    [self._str_for_tool_response(tool_return["content"]) for tool_return in tool_returns]
++                    [self._str_for_tool_response(tool_return) for tool_return in tool_returns]
+                 ),
+             }
+-
++    
+         return False, None
+ 
+     def check_termination_and_human_reply(

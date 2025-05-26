@@ -1,0 +1,78 @@
+diff --git a/src/crewai/agents/crew_agent_executor.py b/src/crewai/agents/crew_agent_executor.py
+index 286f92e6..889053f3 100644
+--- a/src/crewai/agents/crew_agent_executor.py
++++ b/src/crewai/agents/crew_agent_executor.py
+@@ -32,6 +32,7 @@ class ToolResult:
+ 
+ class CrewAgentExecutor(CrewAgentExecutorMixin):
+     _logger: Logger = Logger()
++    MAX_LLM_RETRY = 3  # Maximum number of retries for LLM calls
+ 
+     def __init__(
+         self,
+@@ -145,6 +146,18 @@ class CrewAgentExecutor(CrewAgentExecutorMixin):
+                 if self._is_context_length_exceeded(e):
+                     self._handle_context_length()
+                     continue
++                
++                self._printer.print(
++                    content=f"Error during execution: {str(e)}",
++                    color="red",
++                )
++                # Return AgentFinish with error message when LLM fails
++                formatted_answer = AgentFinish(
++                    thought="Error occurred during execution",
++                    output=f"An error occurred: {str(e)}",
++                    text=f"Error: {str(e)}"
++                )
++                break
+ 
+         self._show_logs(formatted_answer)
+         return formatted_answer
+@@ -160,19 +173,35 @@ class CrewAgentExecutor(CrewAgentExecutorMixin):
+ 
+     def _get_llm_response(self) -> str:
+         """Call the LLM and return the response, handling any invalid responses."""
+-        answer = self.llm.call(
+-            self.messages,
+-            callbacks=self.callbacks,
+-        )
++        retry_count = 0
++        while retry_count < self.MAX_LLM_RETRY:
++            try:
++                answer = self.llm.call(
++                    self.messages,
++                    callbacks=self.callbacks,
++                )
+ 
+-        if not answer:
+-            self._printer.print(
+-                content="Received None or empty response from LLM call.",
+-                color="red",
+-            )
+-            raise ValueError("Invalid response from LLM call - None or empty.")
++                if not answer:
++                    self._printer.print(
++                        content="Received None or empty response from LLM call.",
++                        color="red",
++                    )
++                    raise ValueError("Invalid response from LLM call - None or empty.")
+ 
+-        return answer
++                return answer
++            except Exception as e:
++                retry_count += 1
++                if retry_count < self.MAX_LLM_RETRY:
++                    self._printer.print(
++                        content=f"Error during LLM call: {str(e)}. Retrying... ({retry_count}/{self.MAX_LLM_RETRY})",
++                        color="yellow",
++                    )
++                else:
++                    self._printer.print(
++                        content=f"LLM call failed after {self.MAX_LLM_RETRY} attempts: {str(e)}",
++                        color="red",
++                    )
++                    raise
+ 
+     def _process_llm_response(self, answer: str) -> Union[AgentAction, AgentFinish]:
+         """Process the LLM response and format it into an AgentAction or AgentFinish."""

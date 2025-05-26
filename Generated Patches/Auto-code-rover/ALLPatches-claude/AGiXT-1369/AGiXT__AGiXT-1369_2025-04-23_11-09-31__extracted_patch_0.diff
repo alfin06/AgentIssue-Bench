@@ -1,0 +1,26 @@
+diff --git a/agixt/Chain.py b/agixt/Chain.py
+index e222addc..4dd051e4 100644
+--- a/agixt/Chain.py
++++ b/agixt/Chain.py
+@@ -32,6 +32,8 @@ class Chain:
+         self.user_id = get_user_id(self.user)
+ 
+     def get_chain(self, chain_name):
++        if not chain_name or chain_name.strip() == "":
++            raise ValueError("Chain name cannot be empty.")
+         session = get_session()
+         chain_name = chain_name.replace("%20", " ")
+         user_data = session.query(User).filter(User.email == DEFAULT_USER).first()
+diff --git a/agixt/endpoints/Chain.py b/agixt/endpoints/Chain.py
+index f282687a..f1c493c0 100644
+--- a/agixt/endpoints/Chain.py
++++ b/agixt/endpoints/Chain.py
+@@ -43,6 +43,8 @@ async def get_chains(user=Depends(verify_api_key), authorization: str = Header(N
+     description="Retrieves detailed information about a specific chain, including all steps and configurations.",
+ )
+ async def get_chain(chain_name: str, user=Depends(verify_api_key)):
++    if not chain_name or chain_name.strip() == "":
++        raise HTTPException(status_code=400, detail="Chain name cannot be empty.")
+     chain_data = Chain(user=user).get_chain(chain_name=chain_name)
+     if isinstance(chain_data["id"], UUID):  # Add this check and conversion
+         chain_data["id"] = str(chain_data["id"])

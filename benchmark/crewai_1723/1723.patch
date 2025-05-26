@@ -1,0 +1,204 @@
+From 409fdb4b20b7d8a9c57bb0bdbe2034124ca3eda9 Mon Sep 17 00:00:00 2001
+From: Carlos Souza <carloshrsouza@gmail.com>
+Date: Sat, 7 Dec 2024 06:20:04 -0500
+Subject: [PATCH 1/6] Fix disk I/O error when resetting short-term memory.
+
+Reset chromadb client and nullifies references before
+removing directory.
+---
+ src/crewai/memory/storage/rag_storage.py | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/src/crewai/memory/storage/rag_storage.py b/src/crewai/memory/storage/rag_storage.py
+index bf40aee960..fd4c77838c 100644
+--- a/src/crewai/memory/storage/rag_storage.py
++++ b/src/crewai/memory/storage/rag_storage.py
+@@ -150,9 +150,11 @@ def _generate_embedding(self, text: str, metadata: Dict[str, Any]) -> None:  # t
+ 
+     def reset(self) -> None:
+         try:
+-            shutil.rmtree(f"{db_storage_path()}/{self.type}")
+             if self.app:
+                 self.app.reset()
++                shutil.rmtree(f"{db_storage_path()}/{self.type}")
++                self.app = None
++                self.collection = None
+         except Exception as e:
+             if "attempt to write a readonly database" in str(e):
+                 # Ignore this specific error
+
+From 859ae024748a138e7f28b3ea5f0e1882a1d15279 Mon Sep 17 00:00:00 2001
+From: Carlos Souza <carloshrsouza@gmail.com>
+Date: Sat, 7 Dec 2024 13:54:32 -0500
+Subject: [PATCH 2/6] Nit for clarity
+
+---
+ src/crewai/memory/storage/rag_storage.py | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/crewai/memory/storage/rag_storage.py b/src/crewai/memory/storage/rag_storage.py
+index fd4c77838c..3ed55140d2 100644
+--- a/src/crewai/memory/storage/rag_storage.py
++++ b/src/crewai/memory/storage/rag_storage.py
+@@ -152,9 +152,9 @@ def reset(self) -> None:
+         try:
+             if self.app:
+                 self.app.reset()
+-                shutil.rmtree(f"{db_storage_path()}/{self.type}")
+                 self.app = None
+                 self.collection = None
++                shutil.rmtree(f"{db_storage_path()}/{self.type}")
+         except Exception as e:
+             if "attempt to write a readonly database" in str(e):
+                 # Ignore this specific error
+
+From 35113eb67ca83821e42968b62b5f5e409e1fda74 Mon Sep 17 00:00:00 2001
+From: Lorenze Jay <lorenzejaytech@gmail.com>
+Date: Mon, 9 Dec 2024 08:20:16 -0800
+Subject: [PATCH 3/6] did the same for knowledge_storage
+
+---
+ .../knowledge/storage/knowledge_storage.py      | 17 ++++++++++++-----
+ 1 file changed, 12 insertions(+), 5 deletions(-)
+
+diff --git a/src/crewai/knowledge/storage/knowledge_storage.py b/src/crewai/knowledge/storage/knowledge_storage.py
+index e0e36f4a75..a8cc700cff 100644
+--- a/src/crewai/knowledge/storage/knowledge_storage.py
++++ b/src/crewai/knowledge/storage/knowledge_storage.py
+@@ -3,6 +3,7 @@
+ import io
+ import logging
+ import os
++import shutil
+ from typing import Any, Dict, List, Optional, Union, cast
+ 
+ import chromadb
+@@ -105,15 +106,17 @@ def initialize_knowledge_storage(self):
+             raise Exception("Failed to create or get collection")
+ 
+     def reset(self):
+-        if self.app:
+-            self.app.reset()
+-        else:
+-            base_path = os.path.join(db_storage_path(), "knowledge")
++        base_path = os.path.join(db_storage_path(), "knowledge")
++        if not self.app:
+             self.app = chromadb.PersistentClient(
+                 path=base_path,
+                 settings=Settings(allow_reset=True),
+             )
+-            self.app.reset()
++
++        self.app.reset()
++        self.app = None
++        self.collection = None
++        self._remove_knowledge_storage_folders()
+ 
+     def save(
+         self,
+@@ -180,3 +183,7 @@ def _set_embedder_config(
+             if embedder_config
+             else self._create_default_embedding_function()
+         )
++
++    def _remove_knowledge_storage_folders(self):
++        base_path = os.path.join(db_storage_path(), "knowledge")
++        shutil.rmtree(base_path)
+
+From 75a2b11a2b7843d6a8f059fce384066e265f8180 Mon Sep 17 00:00:00 2001
+From: Lorenze Jay <lorenzejaytech@gmail.com>
+Date: Mon, 9 Dec 2024 08:26:58 -0800
+Subject: [PATCH 4/6] cleanup
+
+---
+ src/crewai/knowledge/storage/knowledge_storage.py | 9 +++------
+ 1 file changed, 3 insertions(+), 6 deletions(-)
+
+diff --git a/src/crewai/knowledge/storage/knowledge_storage.py b/src/crewai/knowledge/storage/knowledge_storage.py
+index a8cc700cff..23fe688ebb 100644
+--- a/src/crewai/knowledge/storage/knowledge_storage.py
++++ b/src/crewai/knowledge/storage/knowledge_storage.py
+@@ -16,6 +16,7 @@
+ from crewai.utilities import EmbeddingConfigurator
+ from crewai.utilities.logger import Logger
+ from crewai.utilities.paths import db_storage_path
++from crewai.utilities.constants import KNOWLEDGE_DIRECTORY
+ 
+ 
+ @contextlib.contextmanager
+@@ -106,7 +107,7 @@ def initialize_knowledge_storage(self):
+             raise Exception("Failed to create or get collection")
+ 
+     def reset(self):
+-        base_path = os.path.join(db_storage_path(), "knowledge")
++        base_path = os.path.join(db_storage_path(), KNOWLEDGE_DIRECTORY)
+         if not self.app:
+             self.app = chromadb.PersistentClient(
+                 path=base_path,
+@@ -116,7 +117,7 @@ def reset(self):
+         self.app.reset()
+         self.app = None
+         self.collection = None
+-        self._remove_knowledge_storage_folders()
++        shutil.rmtree(base_path)
+ 
+     def save(
+         self,
+@@ -183,7 +184,3 @@ def _set_embedder_config(
+             if embedder_config
+             else self._create_default_embedding_function()
+         )
+-
+-    def _remove_knowledge_storage_folders(self):
+-        base_path = os.path.join(db_storage_path(), "knowledge")
+-        shutil.rmtree(base_path)
+
+From 5228205b30212607f29d0e015afcd11fbfa144eb Mon Sep 17 00:00:00 2001
+From: Lorenze Jay <lorenzejaytech@gmail.com>
+Date: Mon, 9 Dec 2024 08:29:19 -0800
+Subject: [PATCH 5/6] cleanup order
+
+---
+ src/crewai/knowledge/storage/knowledge_storage.py | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/crewai/knowledge/storage/knowledge_storage.py b/src/crewai/knowledge/storage/knowledge_storage.py
+index 23fe688ebb..acbbe75a11 100644
+--- a/src/crewai/knowledge/storage/knowledge_storage.py
++++ b/src/crewai/knowledge/storage/knowledge_storage.py
+@@ -115,9 +115,9 @@ def reset(self):
+             )
+ 
+         self.app.reset()
++        shutil.rmtree(base_path)
+         self.app = None
+         self.collection = None
+-        shutil.rmtree(base_path)
+ 
+     def save(
+         self,
+
+From 30b082eaa600a219419d3c6fa8a1f0f54c5fdaff Mon Sep 17 00:00:00 2001
+From: Carlos Souza <carloshrsouza@gmail.com>
+Date: Mon, 9 Dec 2024 13:23:46 -0500
+Subject: [PATCH 6/6] Cleanup after the rm of the directories
+
+---
+ src/crewai/memory/storage/rag_storage.py | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/crewai/memory/storage/rag_storage.py b/src/crewai/memory/storage/rag_storage.py
+index 3ed55140d2..fd4c77838c 100644
+--- a/src/crewai/memory/storage/rag_storage.py
++++ b/src/crewai/memory/storage/rag_storage.py
+@@ -152,9 +152,9 @@ def reset(self) -> None:
+         try:
+             if self.app:
+                 self.app.reset()
++                shutil.rmtree(f"{db_storage_path()}/{self.type}")
+                 self.app = None
+                 self.collection = None
+-                shutil.rmtree(f"{db_storage_path()}/{self.type}")
+         except Exception as e:
+             if "attempt to write a readonly database" in str(e):
+                 # Ignore this specific error

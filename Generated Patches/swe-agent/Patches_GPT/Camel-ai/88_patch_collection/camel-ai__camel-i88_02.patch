@@ -1,0 +1,28 @@
+diff --git a/reproduce_issue.py b/reproduce_issue.py
+new file mode 100644
+index 0000000..a0d33fd
+--- /dev/null
++++ b/reproduce_issue.py
+@@ -0,0 +1,21 @@
++from camel.agents.chat_agent import ChatAgent
++from camel.messages import BaseMessage
++
++# Mock ChatAgent and BaseMessage for testing
++class MockChatAgent(ChatAgent):
++    def __init__(self):
++        pass
++
++    def record_message(self, message):
++        print(f"Recorded message: {message.content}")
++
++# Create mock messages
++message1 = BaseMessage(content="Message 1")
++message2 = BaseMessage(content="Message 2")
++
++# Instantiate the agent
++agent = MockChatAgent()
++
++# Test with multiple output messages
++output_messages = [message1, message2]
++agent._record_final_output(output_messages)
+\ No newline at end of file

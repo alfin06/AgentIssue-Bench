@@ -1,0 +1,2079 @@
+From 9c05040600d880b1015b78f169c216655131817b Mon Sep 17 00:00:00 2001
+From: nerfZael <bogunovij@gmail.com>
+Date: Mon, 18 Dec 2023 21:05:40 +0100
+Subject: [PATCH 1/8] create chat when uploading the file for the first time
+
+---
+ apps/browser/components/Chat.tsx              |  2 +-
+ .../components/providers/Providers.tsx        |  3 +-
+ .../providers/WorkspaceFilesProvider.tsx      | 40 --------------
+ apps/browser/lib/hooks/useEvoService.ts       | 54 ++++++++++---------
+ .../lib/hooks/useWatchForFileUploads.ts       | 37 +++++++++++++
+ apps/browser/lib/services/evo/EvoThread.ts    | 25 +++------
+ 6 files changed, 77 insertions(+), 84 deletions(-)
+ delete mode 100644 apps/browser/components/providers/WorkspaceFilesProvider.tsx
+ create mode 100644 apps/browser/lib/hooks/useWatchForFileUploads.ts
+
+diff --git a/apps/browser/components/Chat.tsx b/apps/browser/components/Chat.tsx
+index f3763d00..69c5a5ba 100644
+--- a/apps/browser/components/Chat.tsx
++++ b/apps/browser/components/Chat.tsx
+@@ -136,7 +136,7 @@ const Chat: React.FC<ChatProps> = ({
+               <ChatInputButton
+                 running={isRunning}
+                 message={message}
+-                handleSend={async () => await handleGoalSubmit(message)}
++                handleSend={() => handleGoalSubmit(message)}
+               />
+             }
+             rightAdornmentClassnames="!right-3"
+diff --git a/apps/browser/components/providers/Providers.tsx b/apps/browser/components/providers/Providers.tsx
+index 0c6acba4..d960e474 100644
+--- a/apps/browser/components/providers/Providers.tsx
++++ b/apps/browser/components/providers/Providers.tsx
+@@ -1,7 +1,6 @@
+ "use client";
+ 
+ import { Provider as JotaiProvider } from "jotai";
+-import WorkspaceFilesProvider from "@/components/providers/WorkspaceFilesProvider";
+ import ReactQueryProvider from "./ReactQueryProvider";
+ import { SessionProvider } from "next-auth/react";
+ import ToastProvider from "./ToastProvider";
+@@ -12,7 +11,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
+       <JotaiProvider>
+         <ToastProvider>
+           <ReactQueryProvider>
+-            <WorkspaceFilesProvider>{children}</WorkspaceFilesProvider>
++            {children}
+           </ReactQueryProvider>
+         </ToastProvider>
+       </JotaiProvider>
+diff --git a/apps/browser/components/providers/WorkspaceFilesProvider.tsx b/apps/browser/components/providers/WorkspaceFilesProvider.tsx
+deleted file mode 100644
+index c940550a..00000000
+--- a/apps/browser/components/providers/WorkspaceFilesProvider.tsx
++++ /dev/null
+@@ -1,40 +0,0 @@
+-import { uploadedFilesAtom, userWorkspaceAtom } from "@/lib/store";
+-import { useUpdateUserFiles } from "@/lib/hooks/useUpdateUserFiles";
+-import { useAtom } from "jotai";
+-import { useEffect } from "react";
+-
+-export default function WorkspaceFilesProvider({ children }: { children: React.ReactNode }) {
+-  const [uploadedFiles, setUploadedFiles] = useAtom(uploadedFilesAtom);
+-  const [userWorkspace] = useAtom(userWorkspaceAtom);
+-  const updateUserFiles = useUpdateUserFiles();
+-
+-  useEffect(() => {
+-    //eslint-disable-next-line @typescript-eslint/no-floating-promises
+-    (async () => {
+-      if (uploadedFiles.length === 0) {
+-        return;
+-      }
+-
+-      const decoder = new TextDecoder();
+-      const files = [...uploadedFiles];
+-      setUploadedFiles([]);
+-
+-      // Write all uploaded files
+-      await Promise.all(
+-        files.map((file) =>
+-          userWorkspace.writeFile(
+-            file.path,
+-            decoder.decode(file.content)
+-          )
+-        )
+-      );
+-      await updateUserFiles(userWorkspace);
+-    })();
+-  }, [uploadedFiles]);
+-
+-  return (
+-    <>
+-      {children}
+-    </>
+-  )
+-}
+\ No newline at end of file
+diff --git a/apps/browser/lib/hooks/useEvoService.ts b/apps/browser/lib/hooks/useEvoService.ts
+index fe8a56f3..02648b3a 100644
+--- a/apps/browser/lib/hooks/useEvoService.ts
++++ b/apps/browser/lib/hooks/useEvoService.ts
+@@ -5,23 +5,24 @@ import {
+   localOpenAiApiKeyAtom,
+   showAccountModalAtom,
+   userWorkspaceAtom,
+-  errorAtom
++  errorAtom,
+ } from "@/lib/store";
+ import { useCreateChat } from "@/lib/mutations/useCreateChat";
+ import { useAddChatLog } from "@/lib/mutations/useAddChatLog";
+ import { useAddMessages } from "@/lib/mutations/useAddMessages";
+ import { useChats } from "@/lib/queries/useChats";
+ import { useAddVariable } from "@/lib/mutations/useAddVariable";
+-import { useUpdateUserFiles } from "@/lib/hooks/useUpdateUserFiles";
+ import { ChatLog } from "@/components/Chat";
+ import { EvoThreadCallbacks, EvoThreadConfig } from "@/lib/services/evo/EvoThread";
+ import { v4 as uuid } from "uuid";
+ import { useAtom } from "jotai";
+-import { useState, useEffect, useRef } from "react";
++import { useState, useEffect } from "react";
+ import { Workspace, InMemoryWorkspace } from "@evo-ninja/agent-utils";
+ import { ChatLogType, ChatMessage } from "@evo-ninja/agents";
+ import { SupabaseWorkspace } from "../supabase/SupabaseWorkspace";
+ import { useSupabaseClient } from "../supabase/useSupabaseClient";
++import { useWatchForFileUploads } from "./useWatchForFileUploads";
++import { useUpdateUserFiles } from "./useUpdateUserFiles";
+ 
+ export const useEvoService = (
+   chatId: string | "<anon>" | undefined,
+@@ -60,6 +61,19 @@ export const useEvoService = (
+ 
+   // Helpers
+   const updateUserFiles = useUpdateUserFiles();
++  useWatchForFileUploads(chatId, createChatIdIfNeccessary, loadWorkspace);
++
++  async function createChatIdIfNeccessary(chatId: string | undefined): Promise<string | undefined> {
++    if (isAuthenticated) {
++      if (!chatId) {
++        chatId = uuid();
++        await createChat(chatId);
++        onCreateChat(chatId);
++        return chatId;
++      }
++    }
++    return chatId;
++  }
+ 
+   const setChatLog = (chatLog: ChatLog[]) => {
+     // If the first message is the user's goal, append
+@@ -106,7 +120,7 @@ export const useEvoService = (
+       },
+     };
+     await evoService.connect(config, callbacks);
+-  }
++  };
+ 
+   const loadChatLog = async (chatId: string) => {
+     if (chatId === "<anon>") {
+@@ -128,27 +142,27 @@ export const useEvoService = (
+     }
+ 
+     return currentChat.logs;
+-  }
++  };
+ 
+-  const loadWorkspace = async (chatId: string) => {
++  function loadWorkspace(chatId: string): Workspace {
+     if (isAuthenticated) {
+-      return new SupabaseWorkspace(chatId, supabase.storage)
++      return new SupabaseWorkspace(chatId, supabase.storage);
+     } else {
+-      return new InMemoryWorkspace()
++      return new InMemoryWorkspace();
+     }
+-  }
++  };
+ 
+   const setWorkspace = async (workspace: Workspace) => {
+     setUserWorkspace(workspace);
+     await updateUserFiles(workspace);
+-  }
++  };
+ 
+   const handleChatLogAdded = async (log: ChatLog) => {
+     if (!isAuthenticated || !chatId) {
+       return;
+     }
+     await addChatLog({ chatId, log });
+-  }
++  };
+ 
+   const handleMessagesAdded = async (type: ChatLogType, messages: ChatMessage[]) => {
+     if (!isAuthenticated || !chatId) {
+@@ -158,7 +172,7 @@ export const useEvoService = (
+       chatId,
+       messages,
+       type
+-    })
++    });
+   };
+ 
+   const handleVariableSet = async (key: string, value: string) => {
+@@ -170,7 +184,7 @@ export const useEvoService = (
+       key,
+       value
+     });
+-  }
++  };
+ 
+   const handleStart = async (goal: string) => {
+     if (isStarting) {
+@@ -179,15 +193,7 @@ export const useEvoService = (
+ 
+     setIsStarting(true);
+ 
+-    if (isAuthenticated) {
+-      // Create a ChatID
+-      if (!chatId) {
+-        chatId = uuid();
+-        await createChat(chatId);
+-        await handleChatIdChange(chatId);
+-        onCreateChat(chatId);
+-      }
+-    }
++    await createChatIdIfNeccessary(chatId);
+ 
+     setChatLog([{
+       user: "user",
+@@ -201,7 +207,7 @@ export const useEvoService = (
+       openAiApiKey
+     });
+     setIsStarting(false);
+-  }
++  };
+ 
+   useEffect(() => {
+     handleChatIdChange(chatId);
+@@ -213,4 +219,4 @@ export const useEvoService = (
+     isRunning,
+     handleStart
+   };
+-}
++};
+diff --git a/apps/browser/lib/hooks/useWatchForFileUploads.ts b/apps/browser/lib/hooks/useWatchForFileUploads.ts
+new file mode 100644
+index 00000000..333cabc0
+--- /dev/null
++++ b/apps/browser/lib/hooks/useWatchForFileUploads.ts
+@@ -0,0 +1,37 @@
++import { useAtom } from "jotai";
++import { useEffect } from "react";
++import { uploadedFilesAtom } from "../store";
++import { Workspace } from "@evo-ninja/agent-utils";
++import { useUpdateUserFiles } from "./useUpdateUserFiles";
++
++export const useWatchForFileUploads = (
++  chatId: string | undefined,
++  createChatIdIfNeccessary: (chatId: string | undefined) => Promise<string | undefined>,
++  loadWorkspace: (chatId: string) => Workspace
++) => {
++  const [uploadedFiles, setUploadedFiles] = useAtom(uploadedFilesAtom);
++  const updateUserFiles = useUpdateUserFiles();
++
++  useEffect(() => {
++    (async () => {
++      if (uploadedFiles.length === 0) {
++        return;
++      }
++
++      const decoder = new TextDecoder();
++      const files = [...uploadedFiles];
++      setUploadedFiles([]);
++
++      const userWorkspace = await loadWorkspace(await createChatIdIfNeccessary(chatId) || "<anon>");
++      // Write all uploaded files
++      await Promise.all(
++        files.map((file) => userWorkspace.writeFile(
++          file.path,
++          decoder.decode(file.content)
++        )
++        )
++      );
++      await updateUserFiles(userWorkspace);
++    })();
++  }, [uploadedFiles]);
++};
+diff --git a/apps/browser/lib/services/evo/EvoThread.ts b/apps/browser/lib/services/evo/EvoThread.ts
+index 4d3d7005..9d7f566d 100644
+--- a/apps/browser/lib/services/evo/EvoThread.ts
++++ b/apps/browser/lib/services/evo/EvoThread.ts
+@@ -12,7 +12,7 @@ import {
+ export interface EvoThreadConfig {
+   chatId: string;
+   loadChatLog: (chatId: string) => Promise<ChatLog[]>;
+-  loadWorkspace: (chatId: string) => Promise<Workspace>;
++  loadWorkspace: (chatId: string) => Workspace;
+   onChatLogAdded: (chatLog: ChatLog) => Promise<void>;
+   onMessagesAdded: (type: ChatLogType, messages: ChatMessage[]) => Promise<void>;
+   onVariableSet: (key: string, value: string) => Promise<void>;
+@@ -159,22 +159,13 @@ export class EvoThread {
+     const chatId = this._config.chatId;
+     this._state.isLoading = true;
+ 
+-    const results = await Promise.all<[
+-      Promise<ChatLog[]>,
+-      Promise<Workspace>
+-    ]>([
+-      this._config.loadChatLog(chatId).catch((reason) => {
+-        this._callbacks?.onError(reason.toString());
+-        return [];
+-      }),
+-      this._config.loadWorkspace(chatId).catch((reason) => {
+-        this._callbacks?.onError(reason.toString());
+-        return new InMemoryWorkspace();
+-      })
+-    ]);
+-
+-    this._state.logs = results[0];
+-    this._state.workspace = results[1];
++    const logs = await this._config.loadChatLog(chatId).catch((reason) => {
++      this._callbacks?.onError(reason.toString());
++      return [];
++    });
++
++    this._state.logs = logs;
++    this._state.workspace = this._config.loadWorkspace(chatId);
+     this._state.isLoading = false;
+   }
+ 
+
+From 846f3b65b81ed4e779c509e307a25ec7b429cf94 Mon Sep 17 00:00:00 2001
+From: nerfZael <bogunovij@gmail.com>
+Date: Mon, 18 Dec 2023 23:38:13 +0100
+Subject: [PATCH 2/8] useCallback to fix issue with submitting new goal without
+ chatId
+
+---
+ apps/browser/lib/hooks/useEvoService.ts | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/apps/browser/lib/hooks/useEvoService.ts b/apps/browser/lib/hooks/useEvoService.ts
+index 02648b3a..b6cd9f67 100644
+--- a/apps/browser/lib/hooks/useEvoService.ts
++++ b/apps/browser/lib/hooks/useEvoService.ts
+@@ -16,7 +16,7 @@ import { ChatLog } from "@/components/Chat";
+ import { EvoThreadCallbacks, EvoThreadConfig } from "@/lib/services/evo/EvoThread";
+ import { v4 as uuid } from "uuid";
+ import { useAtom } from "jotai";
+-import { useState, useEffect } from "react";
++import { useState, useEffect, useCallback } from "react";
+ import { Workspace, InMemoryWorkspace } from "@evo-ninja/agent-utils";
+ import { ChatLogType, ChatMessage } from "@evo-ninja/agents";
+ import { SupabaseWorkspace } from "../supabase/SupabaseWorkspace";
+@@ -164,7 +164,7 @@ export const useEvoService = (
+     await addChatLog({ chatId, log });
+   };
+ 
+-  const handleMessagesAdded = async (type: ChatLogType, messages: ChatMessage[]) => {
++  const handleMessagesAdded = useCallback(async (type: ChatLogType, messages: ChatMessage[]) => {
+     if (!isAuthenticated || !chatId) {
+       return;
+     }
+@@ -173,7 +173,7 @@ export const useEvoService = (
+       messages,
+       type
+     });
+-  };
++  }, [isAuthenticated, chatId]);
+ 
+   const handleVariableSet = async (key: string, value: string) => {
+     if (!isAuthenticated || !chatId) {
+
+From 17a2508532834c5f7df1ebf8b9f28edb2db326eb Mon Sep 17 00:00:00 2001
+From: nerfZael <bogunovij@gmail.com>
+Date: Tue, 19 Dec 2023 13:55:44 +0100
+Subject: [PATCH 3/8] proper return types
+
+---
+ apps/browser/components/Chat.tsx            | 4 ++--
+ apps/browser/lib/hooks/useEvoService.ts     | 4 ++--
+ apps/browser/lib/services/evo/EvoService.ts | 2 +-
+ apps/browser/lib/services/evo/EvoThread.ts  | 2 +-
+ 4 files changed, 6 insertions(+), 6 deletions(-)
+
+diff --git a/apps/browser/components/Chat.tsx b/apps/browser/components/Chat.tsx
+index 69c5a5ba..18cf93ad 100644
+--- a/apps/browser/components/Chat.tsx
++++ b/apps/browser/components/Chat.tsx
+@@ -53,7 +53,7 @@ const Chat: React.FC<ChatProps> = ({
+   );
+   const shouldShowExamplePrompts = !logs || logs.length === 0;
+ 
+-  const handleGoalSubmit = (goal: string) => {
++  const handleGoalSubmit = async (goal: string): Promise<void> => {
+     if (!goal) {
+       setError("Please enter a goal.");
+       return;
+@@ -71,7 +71,7 @@ const Chat: React.FC<ChatProps> = ({
+       return;
+     }
+ 
+-    handleStart(goal);
++    await handleStart(goal);
+     setMessage("");
+     setGoalSent(true);
+   };
+diff --git a/apps/browser/lib/hooks/useEvoService.ts b/apps/browser/lib/hooks/useEvoService.ts
+index b6cd9f67..c7cb9eff 100644
+--- a/apps/browser/lib/hooks/useEvoService.ts
++++ b/apps/browser/lib/hooks/useEvoService.ts
+@@ -32,7 +32,7 @@ export const useEvoService = (
+   logs: ChatLog[] | undefined;
+   isStarting: boolean;
+   isRunning: boolean;
+-  handleStart: (goal: string) => void;
++  handleStart: (goal: string) => Promise<void>;
+ } => {
+   const supabase = useSupabaseClient();
+ 
+@@ -186,7 +186,7 @@ export const useEvoService = (
+     });
+   };
+ 
+-  const handleStart = async (goal: string) => {
++  const handleStart = async (goal: string): Promise<void> => {
+     if (isStarting) {
+       return;
+     }
+diff --git a/apps/browser/lib/services/evo/EvoService.ts b/apps/browser/lib/services/evo/EvoService.ts
+index 2c7e0342..94bcd4a9 100644
+--- a/apps/browser/lib/services/evo/EvoService.ts
++++ b/apps/browser/lib/services/evo/EvoService.ts
+@@ -35,7 +35,7 @@ export class EvoService {
+     await this._current.connect(callbacks);
+   }
+ 
+-  async start(options: EvoThreadStartOptions) {
++  async start(options: EvoThreadStartOptions): Promise<void> {
+     if (!this._current) {
+       throw Error("EvoService must be connected before starting a goal.");
+     }
+diff --git a/apps/browser/lib/services/evo/EvoThread.ts b/apps/browser/lib/services/evo/EvoThread.ts
+index 9d7f566d..879c7f58 100644
+--- a/apps/browser/lib/services/evo/EvoThread.ts
++++ b/apps/browser/lib/services/evo/EvoThread.ts
+@@ -96,7 +96,7 @@ export class EvoThread {
+     this._callbacks.setWorkspace(this._state.workspace);
+   }
+ 
+-  async start(options: EvoThreadStartOptions) {
++  async start(options: EvoThreadStartOptions): Promise<void> {
+     const {
+       goal,
+       allowTelemetry,
+
+From 78a169732499aab7f4530ca4b6ca1c866004c17e Mon Sep 17 00:00:00 2001
+From: nerfZael <bogunovij@gmail.com>
+Date: Tue, 19 Dec 2023 15:52:34 +0100
+Subject: [PATCH 4/8] handling goal start after chat id change is propagated
+
+---
+ apps/browser/lib/hooks/useEvoService.ts | 43 ++++++++++++++++---------
+ 1 file changed, 28 insertions(+), 15 deletions(-)
+
+diff --git a/apps/browser/lib/hooks/useEvoService.ts b/apps/browser/lib/hooks/useEvoService.ts
+index c7cb9eff..5969b710 100644
+--- a/apps/browser/lib/hooks/useEvoService.ts
++++ b/apps/browser/lib/hooks/useEvoService.ts
+@@ -16,7 +16,7 @@ import { ChatLog } from "@/components/Chat";
+ import { EvoThreadCallbacks, EvoThreadConfig } from "@/lib/services/evo/EvoThread";
+ import { v4 as uuid } from "uuid";
+ import { useAtom } from "jotai";
+-import { useState, useEffect, useCallback } from "react";
++import { useState, useEffect } from "react";
+ import { Workspace, InMemoryWorkspace } from "@evo-ninja/agent-utils";
+ import { ChatLogType, ChatMessage } from "@evo-ninja/agents";
+ import { SupabaseWorkspace } from "../supabase/SupabaseWorkspace";
+@@ -46,9 +46,10 @@ export const useEvoService = (
+   const [, setError] = useAtom(errorAtom);
+ 
+   // State
+-  const [isStarting, setIsStarting] = useState<boolean>(false);
+   const [isRunning, setIsRunning] = useState<boolean>(false);
+   const [chatLog, setChatLogState] = useState<ChatLog[]>([]);
++  const [isStarting, setIsStarting] = useState<boolean>(false);
++  const [goalToStart, setGoalToStart] = useState<string | undefined>(undefined);
+ 
+   // Mutations
+   const { mutateAsync: createChat } = useCreateChat();
+@@ -164,7 +165,7 @@ export const useEvoService = (
+     await addChatLog({ chatId, log });
+   };
+ 
+-  const handleMessagesAdded = useCallback(async (type: ChatLogType, messages: ChatMessage[]) => {
++  const handleMessagesAdded = async (type: ChatLogType, messages: ChatMessage[]) => {
+     if (!isAuthenticated || !chatId) {
+       return;
+     }
+@@ -173,7 +174,7 @@ export const useEvoService = (
+       messages,
+       type
+     });
+-  }, [isAuthenticated, chatId]);
++  };
+ 
+   const handleVariableSet = async (key: string, value: string) => {
+     if (!isAuthenticated || !chatId) {
+@@ -192,26 +193,38 @@ export const useEvoService = (
+     }
+ 
+     setIsStarting(true);
+-
++    
+     await createChatIdIfNeccessary(chatId);
+-
++    
+     setChatLog([{
+       user: "user",
+       title: goal
+     }]);
+ 
+-    // Tell the EvoService to start the goal
+-    evoService.start({
+-      goal,
+-      allowTelemetry,
+-      openAiApiKey
+-    });
+-    setIsStarting(false);
++    // We don't start the evoService here because we need to wait for the
++    // chatId to be hooked up to all the callbacks
++    setGoalToStart(goal);
+   };
+ 
+   useEffect(() => {
+-    handleChatIdChange(chatId);
+-  }, [chatId]);
++    (async () => {
++      await handleChatIdChange(chatId);
++
++      if (!isStarting || !goalToStart) {
++        return;
++      }
++
++      // Tell the EvoService to start the goal
++      // We don't await this because it should run in the background
++      evoService.start({
++        goal: goalToStart,
++        allowTelemetry,
++        openAiApiKey
++      });
++      setGoalToStart(undefined);
++    })();
++
++  }, [chatId, isStarting, goalToStart]);
+ 
+   return {
+     logs: chatLog,
+
+From 87836ee7e8cace2e397abeaf273b19031d607eb3 Mon Sep 17 00:00:00 2001
+From: nerfZael <bogunovij@gmail.com>
+Date: Tue, 19 Dec 2023 15:56:24 +0100
+Subject: [PATCH 5/8] fixed merge conflict
+
+---
+ apps/browser/lib/hooks/useEvoService.ts | 11 +++++++----
+ 1 file changed, 7 insertions(+), 4 deletions(-)
+
+diff --git a/apps/browser/lib/hooks/useEvoService.ts b/apps/browser/lib/hooks/useEvoService.ts
+index f3b19969..1ad92164 100644
+--- a/apps/browser/lib/hooks/useEvoService.ts
++++ b/apps/browser/lib/hooks/useEvoService.ts
+@@ -196,10 +196,13 @@ export const useEvoService = (
+     
+     await createChatIdIfNeccessary(chatId);
+     
+-    setChatLog([{
+-      user: "user",
+-      title: goal
+-    }]);
++    setChatLog([
++      ...chatLog,
++      {
++        user: "user",
++        title: goal
++      }
++    ]);
+ 
+     // We don't start the evoService here because we need to wait for the
+     // chatId to be hooked up to all the callbacks
+
+From 7c45a898e065894c842d4dbdcf4068eb9562778c Mon Sep 17 00:00:00 2001
+From: dOrgJelli <jelli@dorg.tech>
+Date: Wed, 20 Dec 2023 12:20:18 +0100
+Subject: [PATCH 6/8] refactor: better handle chatId, evoService, and workspace
+ upload state transitions
+
+---
+ apps/browser/app/page.tsx                     | 153 +++++++++++++++---
+ apps/browser/components/Chat.tsx              |  94 +++++------
+ apps/browser/components/ExamplePrompts.tsx    |  12 +-
+ apps/browser/components/Sidebar.tsx           |  53 ++++--
+ .../{CurrentWorkspace.tsx => Workspace.tsx}   |  72 +++++----
+ .../lib/hooks/useDownloadWorkspaceAsZip.ts    |   9 +-
+ apps/browser/lib/hooks/useEvoService.ts       | 125 +++++++-------
+ apps/browser/lib/hooks/useUploadFile.ts       |  31 ----
+ .../lib/hooks/useWatchForFileUploads.ts       |  37 -----
+ ...eUserFiles.ts => useWorkspaceFilesSync.ts} |   8 +-
+ .../lib/hooks/useWorkspaceUploadDrop.ts       |  33 ++++
+ .../lib/hooks/useWorkspaceUploadSync.ts       |  30 ++++
+ apps/browser/lib/mutations/useCreateChat.ts   |   2 +-
+ apps/browser/lib/services/evo/EvoThread.ts    |  41 +++--
+ apps/browser/lib/store.ts                     |  15 +-
+ .../browser/lib/supabase/SupabaseWorkspace.ts |   4 +-
+ 16 files changed, 419 insertions(+), 300 deletions(-)
+ rename apps/browser/components/{CurrentWorkspace.tsx => Workspace.tsx} (66%)
+ delete mode 100644 apps/browser/lib/hooks/useUploadFile.ts
+ delete mode 100644 apps/browser/lib/hooks/useWatchForFileUploads.ts
+ rename apps/browser/lib/hooks/{useUpdateUserFiles.ts => useWorkspaceFilesSync.ts} (77%)
+ create mode 100644 apps/browser/lib/hooks/useWorkspaceUploadDrop.ts
+ create mode 100644 apps/browser/lib/hooks/useWorkspaceUploadSync.ts
+
+diff --git a/apps/browser/app/page.tsx b/apps/browser/app/page.tsx
+index 8d2c659b..9eb18797 100644
+--- a/apps/browser/app/page.tsx
++++ b/apps/browser/app/page.tsx
+@@ -1,56 +1,157 @@
+ "use client";
+ 
+-import Chat from "@/components/Chat";
+-import { evoServiceAtom, chatIdAtom } from "@/lib/store";
++import {
++  evoServiceAtom,
++  workspaceAtom,
++  workspaceFilesAtom,
++  chatIdAtom,
++  localOpenAiApiKeyAtom,
++  showAccountModalAtom,
++  errorAtom,
++  newGoalSubmittedAtom,
++  isChatLoadingAtom,
++} from "@/lib/store";
++import { useCreateChat } from "@/lib/mutations/useCreateChat";
+ import { EvoService } from "@/lib/services/evo/EvoService";
++import { useEvoService } from "@/lib/hooks/useEvoService";
++import { useWorkspaceUploadSync } from "@/lib/hooks/useWorkspaceUploadSync";
++import Chat from "@/components/Chat";
+ import { useEffect, useState } from "react";
+ import { useSession } from "next-auth/react";
+ import { useRouter } from "next/navigation";
+ import { useAtom } from "jotai";
++import { v4 as uuid } from "uuid";
++import { InMemoryFile } from "@nerfzael/memory-fs";
+ 
+ function Dojo({ params }: { params: { id?: string } }) {
++  const [evoService, setEvoService] = useAtom(evoServiceAtom);
++  const [chatId, setChatId] = useAtom(chatIdAtom);
++  const [newGoalSubmitted, setNewGoalSubmitted] = useAtom(newGoalSubmittedAtom);
++  const [isChatLoading, setIsChatLoading] = useAtom(isChatLoadingAtom);
++  const [, setError] = useAtom(errorAtom);
++  const [workspace, setWorkspace] = useAtom(workspaceAtom);
++  const [, setWorkspaceFiles] = useAtom(workspaceFilesAtom);
++  const [localOpenAiApiKey] = useAtom(localOpenAiApiKeyAtom);
++  const [, setAccountModalOpen] = useAtom(showAccountModalAtom);
++
++  const [isAuthLoading, setIsAuthLoading] = useState(true);
++
+   const router = useRouter();
+   const { status: sessionStatus, data: sessionData } = useSession();
+-  const [evoService, setEvoService] = useAtom(evoServiceAtom);
+-  const [, setChatId] = useAtom(chatIdAtom);
+-  const [loading, setIsLoading] = useState(true);
++  const isAuthenticated = sessionStatus === "authenticated";
++
++  const { mutateAsync: createChat } = useCreateChat();
++  const { logs, isConnected, isStarting, isRunning, handleStart } = useEvoService(
++    chatId,
++    isAuthenticated
++  );
++
++  const workspaceUploadSync = useWorkspaceUploadSync();
++
++  const handleChatIdChange = (newChatId?: string) => {
++    if (chatId === newChatId) {
++      return;
++    }
++    setChatId(newChatId);
++
++    if (newChatId) {
++      setIsChatLoading(true);
++    }
++
++    // reset workspace and user files on chatId change
++    setWorkspace(undefined);
++    setWorkspaceFiles([]);
++  }
++
++  const handleCreateNewChat = async () => {
++    const id = uuid();
++    await createChat(id);
++    router.push(`/chat/${id}`);
++    setIsChatLoading(true);
++  };
++
++  const handleGoalSubmit = async (goal: string): Promise<void> => {
++    if (isStarting || isRunning) {
++      setError("Goal is already in progress.");
++      return;
++    }
++
++    const firstTimeUser = !localOpenAiApiKey && !isAuthenticated;
++    if (firstTimeUser) {
++      setError("Please login or add an OpenAI API key.");
++      setAccountModalOpen(true);
++      return;
++    }
++
++    let goalChatId = chatId;
++
++    if (!goalChatId) {
++      goalChatId = uuid();
++      await createChat(goalChatId);
++      router.push(`/chat/${goalChatId}`);
++      setIsChatLoading(true);
++    }
++
++    setNewGoalSubmitted({
++      goal,
++      chatId: goalChatId
++    });
++  };
+ 
++  // Upon authentication changes, apply the chatId
++  // and recreate the evoService if necessary
+   useEffect(() => {
++    if (sessionStatus !== "loading") {
++      setIsAuthLoading(false);
++    }
+     if (sessionStatus === "unauthenticated") {
+       if (params.id) {
+         router.push("/");
+       }
+-      setChatId("<anon>");
+-      return;
++      handleChatIdChange("<anon>");
++    } else if (sessionStatus === "authenticated") {
++      handleChatIdChange(params.id);
++      const user = sessionData?.user.email || "<anon>";
++      if (evoService.user !== user) {
++        evoService.disconnect();
++        evoService.destroy();
++        setEvoService(new EvoService(user));
++      }
+     }
++  }, [sessionStatus, params.id, sessionData, evoService]);
+ 
+-    setChatId(params.id);
+-  }, [sessionStatus, params.id]);
+-
++  // Set isChatLoading to true when evoService is connected
++  // and the current chatId matches the current goal (if present)
+   useEffect(() => {
+-    if (sessionStatus === "loading") {
+-      return;
++    const chatIdMatches = !newGoalSubmitted || chatId === newGoalSubmitted.chatId;
++    if (isChatLoading && isConnected && chatIdMatches) {
++      setIsChatLoading(false);
+     }
+-    setIsLoading(false);
++  }, [isChatLoading, isConnected, chatId, newGoalSubmitted]);
+ 
+-    const user = sessionData?.user.email || "<anon>";
+-    if (evoService.user === user) {
+-      return;
++  // Upon a new goal being submitted, we must wait until the
++  // current page's chatId matches before we start its execution
++  useEffect(() => {
++    if (newGoalSubmitted && chatId === newGoalSubmitted.chatId) {
++      handleStart(newGoalSubmitted.goal);
++      setNewGoalSubmitted(undefined);
+     }
+-
+-    evoService.disconnect();
+-    evoService.destroy();
+-    setEvoService(new EvoService(user));
+-  }, [sessionStatus, sessionData]);
++  }, [newGoalSubmitted, chatId]);
+ 
+   return (
+     <>
+-      {!loading ? (
++      {!isAuthLoading && !isChatLoading ? (
+         <Chat
+-          isAuthenticated={sessionStatus === "authenticated"}
+-          onCreateChat={(chatId: string) => {
+-            window.history.pushState(null, "Chat", `/chat/${chatId}`);
+-            setChatId(chatId);
++          logs={logs}
++          isStarting={isStarting}
++          isRunning={isRunning}
++          onGoalSubmit={handleGoalSubmit}
++          onUpload={(uploads: InMemoryFile[]) => {
++            if (!chatId && !isChatLoading) {
++              handleCreateNewChat();
++            } else if (workspace) {
++              workspaceUploadSync(workspace, uploads);
++            }
+           }}
+         />
+       ) : (
+diff --git a/apps/browser/components/Chat.tsx b/apps/browser/components/Chat.tsx
+index 18cf93ad..293b2aa1 100644
+--- a/apps/browser/components/Chat.tsx
++++ b/apps/browser/components/Chat.tsx
+@@ -1,24 +1,22 @@
+ import {
+   showDisclaimerAtom,
+   errorAtom,
+-  localOpenAiApiKeyAtom,
+   chatIdAtom,
+-  showAccountModalAtom,
+   welcomeModalAtom,
+ } from "@/lib/store";
+-import { useEvoService } from "@/lib/hooks/useEvoService";
+-import { UploadSimple } from "@phosphor-icons/react";
++import { useWorkspaceUploadDrop } from "@/lib/hooks/useWorkspaceUploadDrop";
+ import ExamplePrompts from "@/components/ExamplePrompts";
+ import ChatLogs from "@/components/ChatLogs";
+ import Disclaimer from "@/components/modals/Disclaimer";
+-import React, { useState, ChangeEvent, memo } from "react";
++import Logo from "@/components/Logo";
++import Button from "@/components/Button";
++import ChatInputButton from "@/components/ChatInputButton";
++import TextField from "@/components/TextField";
++import React, { useState, ChangeEvent } from "react";
++import { UploadSimple } from "@phosphor-icons/react";
+ import { useAtom } from "jotai";
+ import clsx from "clsx";
+-import Logo from "./Logo";
+-import Button from "./Button";
+-import ChatInputButton from "./ChatInputButton";
+-import TextField from "./TextField";
+-import { useUploadFiles } from "@/lib/hooks/useUploadFile";
++import { InMemoryFile } from "@nerfzael/memory-fs";
+ 
+ export interface ChatLog {
+   title: string;
+@@ -28,62 +26,38 @@ export interface ChatLog {
+ }
+ 
+ export interface ChatProps {
+-  isAuthenticated: boolean;
+-  onCreateChat: (chatId: string) => void;
++  logs: ChatLog[];
++  isStarting: boolean;
++  isRunning: boolean;
++  onGoalSubmit: (goal: string) => Promise<void>;
++  onUpload: (upload: InMemoryFile[]) => void;
+ }
+ 
+ const Chat: React.FC<ChatProps> = ({
+-  isAuthenticated,
+-  onCreateChat,
++  logs,
++  isStarting,
++  isRunning,
++  onGoalSubmit,
++  onUpload,
+ }: ChatProps) => {
+-  const [chatId] = useAtom(chatIdAtom);
+-  const { getInputProps, open } = useUploadFiles();
++  const [chatId, ] = useAtom(chatIdAtom);
+   const [showDisclaimer, setShowDisclaimer] = useAtom(showDisclaimerAtom);
+   const [, setError] = useAtom(errorAtom);
+-  const [localOpenAiApiKey] = useAtom(localOpenAiApiKeyAtom);
+-  const [, setAccountModalOpen] = useAtom(showAccountModalAtom);
+   const [welcomeModalSeen] = useAtom(welcomeModalAtom);
+ 
+   const [message, setMessage] = useState<string>("");
+-  const [goalSent, setGoalSent] = useState<boolean>(false);
+-  const { logs, isStarting, isRunning, handleStart } = useEvoService(
+-    chatId,
+-    isAuthenticated,
+-    onCreateChat
+-  );
+-  const shouldShowExamplePrompts = !logs || logs.length === 0;
++
++  const { getInputProps, open } = useWorkspaceUploadDrop(onUpload);
++
++  const shouldShowExamplePrompts = !chatId || (!logs.length && !isStarting && !isRunning);
+ 
+   const handleGoalSubmit = async (goal: string): Promise<void> => {
+     if (!goal) {
+       setError("Please enter a goal.");
+       return;
+     }
+-
+-    if (isStarting || isRunning) {
+-      setError("Goal is already in progress.");
+-      return;
+-    }
+-
+-    const firstTimeUser = !localOpenAiApiKey && !isAuthenticated;
+-    if (firstTimeUser) {
+-      setError("Please login or add an OpenAI API key.");
+-      setAccountModalOpen(true);
+-      return;
+-    }
+-
+-    await handleStart(goal);
+     setMessage("");
+-    setGoalSent(true);
+-  };
+-
+-  const handleMessageChange = (event: ChangeEvent<HTMLInputElement>) => {
+-    setMessage(event.target.value);
+-  };
+-
+-  const handleKeyPress = async (event: React.KeyboardEvent) => {
+-    if (event.key === "Enter" && !isStarting && !isRunning) {
+-      await handleGoalSubmit(message);
+-    }
++    return onGoalSubmit(goal);
+   };
+ 
+   return (
+@@ -92,10 +66,10 @@ const Chat: React.FC<ChatProps> = ({
+         "items-center justify-center": shouldShowExamplePrompts,
+       })}
+     >
+-      {shouldShowExamplePrompts && !goalSent ? (
++      {shouldShowExamplePrompts ? (
+         <Logo wordmark={false} className="mb-16 w-16" />
+       ) : (
+-        <ChatLogs isRunning={isStarting || isRunning} logs={logs ?? []} />
++        <ChatLogs isRunning={isStarting || isRunning} logs={logs} />
+       )}
+ 
+       <div
+@@ -106,9 +80,9 @@ const Chat: React.FC<ChatProps> = ({
+             : "mx-auto max-w-[56rem] flex-col px-4"
+         )}
+       >
+-        {shouldShowExamplePrompts && !goalSent && (
++        {shouldShowExamplePrompts && (
+           <ExamplePrompts
+-            onClick={async (prompt: string) => await handleGoalSubmit(prompt)}
++            onClick={handleGoalSubmit}
+           />
+         )}
+         <div
+@@ -120,8 +94,14 @@ const Chat: React.FC<ChatProps> = ({
+           <TextField
+             type="text"
+             value={message}
+-            onChange={handleMessageChange}
+-            onKeyDown={handleKeyPress}
++            onChange={(event: ChangeEvent<HTMLInputElement>) => {
++              setMessage(event.target.value)
++            }}
++            onKeyDown={(event: React.KeyboardEvent) => {
++              if (event.key === "Enter" && !isStarting && !isRunning) {
++                return handleGoalSubmit(message);
++              }
++            }}
+             placeholder="Ask Evo anything..."
+             className="!rounded-lg !p-4 !pl-12"
+             leftAdornment={
+@@ -152,4 +132,4 @@ const Chat: React.FC<ChatProps> = ({
+   );
+ };
+ 
+-export default memo(Chat);
++export default Chat;
+diff --git a/apps/browser/components/ExamplePrompts.tsx b/apps/browser/components/ExamplePrompts.tsx
+index a90e5455..49a52609 100644
+--- a/apps/browser/components/ExamplePrompts.tsx
++++ b/apps/browser/components/ExamplePrompts.tsx
+@@ -1,4 +1,5 @@
+-import { uploadedFilesAtom } from "@/lib/store";
++import { workspaceAtom, workspaceUploadsAtom } from "@/lib/store";
++import { useWorkspaceUploadSync } from "@/lib/hooks/useWorkspaceUploadSync";
+ import { examplePrompts, ExamplePrompt } from "@/lib/examplePrompts";
+ import { useAtom } from "jotai";
+ import clsx from "clsx";
+@@ -9,12 +10,17 @@ export interface ExamplePromptsProps {
+ }
+ 
+ export default function ExamplePrompts(props: ExamplePromptsProps) {
+-  const [, setUploadedFiles] = useAtom(uploadedFilesAtom);
++  const [workspace] = useAtom(workspaceAtom);
++  const [, setWorkspaceUploads] = useAtom(workspaceUploadsAtom);
++  const workspaceUploadSync = useWorkspaceUploadSync();
+   const { isMobile } = useWindowSize();
+ 
+   const handleClick = (prompt: ExamplePrompt) => {
+     if (prompt.files) {
+-      setUploadedFiles(prompt.files);
++      setWorkspaceUploads(prompt.files);
++      if (workspace) {
++        workspaceUploadSync(workspace, prompt.files)
++      }
+     }
+     return props.onClick(prompt.prompt);
+   };
+diff --git a/apps/browser/components/Sidebar.tsx b/apps/browser/components/Sidebar.tsx
+index c6b474ce..7cf6a273 100644
+--- a/apps/browser/components/Sidebar.tsx
++++ b/apps/browser/components/Sidebar.tsx
+@@ -1,17 +1,21 @@
+-import React, { memo, useEffect, useRef, useState } from "react";
+-import Logo from "./Logo";
+-import clsx from "clsx";
+-import DropdownAccount from "./DropdownAccount";
+-import CurrentWorkspace from "./CurrentWorkspace";
+-import { DiscordLogo, GithubLogo, NotePencil } from "@phosphor-icons/react";
+-import Avatar from "./Avatar";
+-import Button from "./Button";
++import { isChatLoadingAtom, chatIdAtom, workspaceAtom } from "@/lib/store";
+ import { useCreateChat } from "@/lib/mutations/useCreateChat";
+ import { useChats } from "@/lib/queries/useChats";
++import useWindowSize from "@/lib/hooks/useWindowSize";
++import { useWorkspaceUploadSync } from "@/lib/hooks/useWorkspaceUploadSync";
++import Logo from "@/components/Logo";
++import Avatar from "@/components/Avatar";
++import Button from "@/components/Button";
++import DropdownAccount from "@/components/DropdownAccount";
++import Workspace from "@/components/Workspace";
++import React, { memo, useEffect, useRef, useState } from "react";
++import { DiscordLogo, GithubLogo, NotePencil } from "@phosphor-icons/react";
+ import { useRouter } from "next/navigation";
+-import { v4 as uuid } from "uuid";
+ import { useSession } from "next-auth/react";
+-import useWindowSize from "@/lib/hooks/useWindowSize";
++import { v4 as uuid } from "uuid";
++import { useAtom } from "jotai";
++import clsx from "clsx";
++import { InMemoryFile } from "@nerfzael/memory-fs";
+ 
+ export interface SidebarProps {
+   hoveringSidebarButton: boolean;
+@@ -26,7 +30,6 @@ const Sidebar = ({
+ }: SidebarProps) => {
+   const router = useRouter();
+   const dropdownRef = useRef<HTMLDivElement>(null);
+-  const { mutateAsync: createChat } = useCreateChat();
+   const { data: chats, isLoading: isLoadingChats } = useChats();
+   const { data: session, status } = useSession();
+   const mappedChats = chats?.map((chat) => ({
+@@ -36,10 +39,18 @@ const Sidebar = ({
+   const { isMobile } = useWindowSize()
+   const [dropdownOpen, setDropdownOpen] = useState<boolean>(false);
+ 
+-  const createNewChat = async () => {
++  const { mutateAsync: createChat } = useCreateChat();
++  const [chatId] = useAtom(chatIdAtom);
++  const [isChatLoading, setIsChatLoading] = useAtom(isChatLoadingAtom);
++  const [workspace] = useAtom(workspaceAtom);
++
++  const workspaceUploadSync = useWorkspaceUploadSync();
++
++  const handleCreateNewChat = async () => {
+     const id = uuid();
+-    const createdChat = await createChat(id);
+-    router.push(`/chat/${createdChat.id}`);
++    await createChat(id);
++    router.push(`/chat/${id}`);
++    setIsChatLoading(true);
+     if (isMobile) {
+       closeSidebar()
+     }
+@@ -101,7 +112,7 @@ const Sidebar = ({
+                       Recent Chats
+                     </div>
+                     {!isLoadingChats && (
+-                      <Button variant="icon" onClick={createNewChat}>
++                      <Button variant="icon" onClick={handleCreateNewChat}>
+                         <NotePencil size={18} weight="bold" />
+                       </Button>
+                     )}
+@@ -123,7 +134,7 @@ const Sidebar = ({
+                         </div>
+                       ) : (
+                         <div
+-                          onClick={createNewChat}
++                          onClick={handleCreateNewChat}
+                           className=" mt-1 flex cursor-pointer flex-col items-center justify-center space-y-2 rounded-lg border-2 border-dashed border-zinc-500 p-7 text-center transition-colors duration-300 hover:border-cyan-500 hover:bg-zinc-950 hover:text-cyan-500"
+                         >
+                           <NotePencil
+@@ -141,7 +152,15 @@ const Sidebar = ({
+                   )}
+                 </div>
+               )}
+-              <CurrentWorkspace />
++              <Workspace
++                onUpload={(uploads: InMemoryFile[]) => {
++                  if (!chatId && !isChatLoading) {
++                    handleCreateNewChat();
++                  } else if (workspace) {
++                    workspaceUploadSync(workspace, uploads);
++                  }
++                }}
++              />
+             </div>
+             <div className="relative flex w-full items-center justify-between space-x-2 p-4">
+               {status !== "loading" ? (
+diff --git a/apps/browser/components/CurrentWorkspace.tsx b/apps/browser/components/Workspace.tsx
+similarity index 66%
+rename from apps/browser/components/CurrentWorkspace.tsx
+rename to apps/browser/components/Workspace.tsx
+index 4d740898..06cbd560 100644
+--- a/apps/browser/components/CurrentWorkspace.tsx
++++ b/apps/browser/components/Workspace.tsx
+@@ -5,17 +5,19 @@ import clsx from "clsx";
+ import FileIcon from "./FileIcon";
+ import { DownloadSimple, FilePlus } from "@phosphor-icons/react";
+ import Button from "./Button";
+-import { useUploadFiles } from "@/lib/hooks/useUploadFile";
++import { useWorkspaceUploadDrop } from "@/lib/hooks/useWorkspaceUploadDrop";
+ import { useAtom } from "jotai";
+-import { userFilesAtom } from "@/lib/store";
++import { workspaceFilesAtom, workspaceUploadsAtom } from "@/lib/store";
+ import { useDownloadWorkspaceAsZip } from "@/lib/hooks/useDownloadWorkspaceAsZip";
+ 
+-// TODO(cbrzn): Update when supabase bucket workspace is attached
+-const loadedWorkspace = true;
++export interface WorkspaceProps {
++  onUpload: (uploads: InMemoryFile[]) => void;
++}
+ 
+-function CurrentWorkspace() {
+-  const { getRootProps, getInputProps, isDragAccept, open } = useUploadFiles();
+-  const [userFiles] = useAtom(userFilesAtom);
++function Workspace({ onUpload }: WorkspaceProps) {
++  const { getRootProps, getInputProps, isDragAccept, open } = useWorkspaceUploadDrop(onUpload);
++  const [workspaceFiles] = useAtom(workspaceFilesAtom);
++  const [workspaceUploads] = useAtom(workspaceUploadsAtom);
+   const downloadFilesAsZip = useDownloadWorkspaceAsZip()
+ 
+   function getFileType(path: InMemoryFile["path"]) {
+@@ -23,34 +25,38 @@ function CurrentWorkspace() {
+     return path.substring(index + 1);
+   }
+ 
++  const workspaceLoading = workspaceUploads.length > 0;
++
+   return (
+     <div className="p-2">
+       <div className="flex w-full items-center justify-between space-x-1 px-2">
+         <div className="text-xs uppercase tracking-widest text-zinc-500">
+           Current Workspace
+         </div>
+-        {loadedWorkspace && (
+-          <div className="flex items-center space-x-1">
+-            <Button variant="icon" onClick={open}>
+-              <FilePlus size={18} weight="bold" />
++        <div className="flex items-center space-x-1">
++          <Button variant="icon" onClick={open}>
++            <FilePlus size={18} weight="bold" />
++          </Button>
++          <input {...getInputProps()} />
++          {workspaceFiles.length !== 0 && (
++            <Button
++              variant="icon"
++              className="text-zinc-500 hover:text-cyan-500"
++              onClick={downloadFilesAsZip}
++            >
++              <DownloadSimple size={18} weight="bold" />
+             </Button>
+-            <input {...getInputProps()} />
+-            {userFiles.length !== 0 && (
+-              <Button
+-                variant="icon"
+-                className="text-zinc-500 hover:text-cyan-500"
+-                onClick={downloadFilesAsZip}
+-              >
+-                <DownloadSimple size={18} weight="bold" />
+-              </Button>
+-            )}
+-          </div>
+-        )}
++          )}
++        </div>
+       </div>
+-      {loadedWorkspace ? (
+-        <>
+-          <div className="relative h-full max-h-[24vh] overflow-y-auto">
+-            {userFiles.length === 0 ? (
++      <div className="relative h-full max-h-[24vh] overflow-y-auto">
++        {workspaceLoading ? (
++          <div className="flex h-full w-full items-center justify-center">
++            <div className="h-9 w-9 animate-spin rounded-full border-4 border-black/10 border-l-cyan-600" />
++          </div>
++        ) : (
++          <>
++            {workspaceFiles.length === 0 ? (
+               <div
+                 className="mt-1 flex cursor-pointer flex-col items-center justify-center space-y-2 rounded-lg border-2 border-dashed border-zinc-500 p-7 text-center transition-colors duration-300 hover:border-cyan-500 hover:bg-zinc-950 hover:text-cyan-500"
+                 onClick={open}
+@@ -74,7 +80,7 @@ function CurrentWorkspace() {
+                     ),
+                   })}
+                 >
+-                  {userFiles.map((file, i) => {
++                  {workspaceFiles.map((file, i) => {
+                     return (
+                       <div
+                         key={i}
+@@ -95,13 +101,11 @@ function CurrentWorkspace() {
+                 </div>
+               </>
+             )}
+-          </div>
+-        </>
+-      ) : (
+-        <div className="m-2 mt-1 h-[20vh] w-[calc(100%-1rem)] animate-pulse rounded-lg bg-zinc-700" />
+-      )}
++          </>
++        )}
++      </div>
+     </div>
+   );
+ }
+ 
+-export default CurrentWorkspace;
++export default Workspace;
+diff --git a/apps/browser/lib/hooks/useDownloadWorkspaceAsZip.ts b/apps/browser/lib/hooks/useDownloadWorkspaceAsZip.ts
+index 9d871bdd..591e66ca 100644
+--- a/apps/browser/lib/hooks/useDownloadWorkspaceAsZip.ts
++++ b/apps/browser/lib/hooks/useDownloadWorkspaceAsZip.ts
+@@ -1,11 +1,14 @@
+ import { useAtom } from "jotai";
+-import { userWorkspaceAtom } from "../store";
++import { workspaceAtom } from "../store";
+ import { downloadWorkspaceAsZip } from "../sys/file/downloadWorkspaceAsZip";
+ 
+ export const useDownloadWorkspaceAsZip = () => {
+-  const [userWorkspace] = useAtom(userWorkspaceAtom);
++  const [workspace] = useAtom(workspaceAtom);
+ 
+   return async () => {
+-    await downloadWorkspaceAsZip("workspace.zip", userWorkspace);
++    if (!workspace) {
++      return;
++    }
++    await downloadWorkspaceAsZip("workspace.zip", workspace);
+   }
+ }
+diff --git a/apps/browser/lib/hooks/useEvoService.ts b/apps/browser/lib/hooks/useEvoService.ts
+index 1ad92164..930f2c7c 100644
+--- a/apps/browser/lib/hooks/useEvoService.ts
++++ b/apps/browser/lib/hooks/useEvoService.ts
+@@ -4,32 +4,30 @@ import {
+   evoServiceAtom,
+   localOpenAiApiKeyAtom,
+   showAccountModalAtom,
+-  userWorkspaceAtom,
++  workspaceAtom,
+   errorAtom,
+ } from "@/lib/store";
+-import { useCreateChat } from "@/lib/mutations/useCreateChat";
++import { EvoThreadCallbacks, EvoThreadConfig } from "@/lib/services/evo/EvoThread";
+ import { useAddChatLog } from "@/lib/mutations/useAddChatLog";
+ import { useAddMessages } from "@/lib/mutations/useAddMessages";
+-import { useChats } from "@/lib/queries/useChats";
+ import { useAddVariable } from "@/lib/mutations/useAddVariable";
++import { useChats } from "@/lib/queries/useChats";
++import { SupabaseWorkspace } from "@/lib/supabase/SupabaseWorkspace";
++import { useSupabaseClient } from "@/lib/supabase/useSupabaseClient";
++import { useWorkspaceFilesSync } from "@/lib/hooks/useWorkspaceFilesSync";
++import { useWorkspaceUploadSync } from "@/lib/hooks/useWorkspaceUploadSync";
+ import { ChatLog } from "@/components/Chat";
+-import { EvoThreadCallbacks, EvoThreadConfig } from "@/lib/services/evo/EvoThread";
+-import { v4 as uuid } from "uuid";
+-import { useAtom } from "jotai";
+-import { useState, useEffect } from "react";
+ import { Workspace, InMemoryWorkspace } from "@evo-ninja/agent-utils";
+ import { ChatLogType, ChatMessage } from "@evo-ninja/agents";
+-import { SupabaseWorkspace } from "../supabase/SupabaseWorkspace";
+-import { useSupabaseClient } from "../supabase/useSupabaseClient";
+-import { useWatchForFileUploads } from "./useWatchForFileUploads";
+-import { useUpdateUserFiles } from "./useUpdateUserFiles";
++import { useState, useEffect } from "react";
++import { useAtom } from "jotai";
+ 
+ export const useEvoService = (
+   chatId: string | "<anon>" | undefined,
+   isAuthenticated: boolean,
+-  onCreateChat: (chatId: string) => void
+ ): {
+-  logs: ChatLog[] | undefined;
++  logs: ChatLog[];
++  isConnected: boolean;
+   isStarting: boolean;
+   isRunning: boolean;
+   handleStart: (goal: string) => Promise<void>;
+@@ -40,19 +38,18 @@ export const useEvoService = (
+   const [evoService] = useAtom(evoServiceAtom);
+   const [allowTelemetry] = useAtom(allowTelemetryAtom);
+   const [openAiApiKey] = useAtom(localOpenAiApiKeyAtom);
+-  const [, setUserWorkspace] = useAtom(userWorkspaceAtom);
++  const [, setWorkspaceAtom] = useAtom(workspaceAtom);
+   const [, setCapReached] = useAtom(capReachedAtom);
+   const [, setAccountModalOpen] = useAtom(showAccountModalAtom);
+   const [, setError] = useAtom(errorAtom);
+ 
+   // State
++  const [isConnected, setIsConnected] = useState<boolean>(false);
++  const [isStarting, setIsStarting] = useState<boolean>(false);
+   const [isRunning, setIsRunning] = useState<boolean>(false);
+   const [chatLog, setChatLogState] = useState<ChatLog[]>([]);
+-  const [isStarting, setIsStarting] = useState<boolean>(false);
+-  const [goalToStart, setGoalToStart] = useState<string | undefined>(undefined);
+ 
+   // Mutations
+-  const { mutateAsync: createChat } = useCreateChat();
+   const { mutateAsync: addChatLog } = useAddChatLog();
+   const { mutateAsync: addMessages } = useAddMessages();
+   const { mutateAsync: addVariable } = useAddVariable();
+@@ -61,20 +58,8 @@ export const useEvoService = (
+   const { refetch: fetchChats } = useChats();
+ 
+   // Helpers
+-  const updateUserFiles = useUpdateUserFiles();
+-  useWatchForFileUploads(chatId, createChatIdIfNeccessary, loadWorkspace);
+-
+-  async function createChatIdIfNeccessary(chatId: string | undefined): Promise<string | undefined> {
+-    if (isAuthenticated) {
+-      if (!chatId) {
+-        chatId = uuid();
+-        await createChat(chatId);
+-        onCreateChat(chatId);
+-        return chatId;
+-      }
+-    }
+-    return chatId;
+-  }
++  const workspaceFilesSync = useWorkspaceFilesSync();
++  const workspaceUploadSync = useWorkspaceUploadSync();
+ 
+   const setChatLog = (chatLog: ChatLog[]) => {
+     // If the most recent message is the user's goal,
+@@ -86,21 +71,26 @@ export const useEvoService = (
+         title: "Reviewing your prompt..."
+       }]);
+     } else {
+-      setChatLogState(chatLog);
++      setChatLogState([...chatLog]);
+     }
++  };
++
++  const disconnectEvoService = () => {
++    setIsConnected(false);
++    evoService.disconnect();
+   }
+ 
+-  const handleChatIdChange = async (chatId: string | undefined) => {
++  const connectEvoService = async (chatId: string) => {
+     const currentThread = evoService.current;
+ 
+     if (currentThread && currentThread.chatId === chatId) {
+       return;
+     }
+ 
+-    evoService.disconnect();
++    disconnectEvoService();
+ 
+     const config: EvoThreadConfig = {
+-      chatId: chatId || "<anon>",
++      chatId,
+       loadChatLog,
+       loadWorkspace,
+       onChatLogAdded: handleChatLogAdded,
+@@ -121,6 +111,7 @@ export const useEvoService = (
+       },
+     };
+     await evoService.connect(config, callbacks);
++    setIsConnected(true);
+   };
+ 
+   const loadChatLog = async (chatId: string) => {
+@@ -145,17 +136,19 @@ export const useEvoService = (
+     return currentChat.logs;
+   };
+ 
+-  function loadWorkspace(chatId: string): Workspace {
+-    if (isAuthenticated) {
+-      return new SupabaseWorkspace(chatId, supabase.storage);
+-    } else {
+-      return new InMemoryWorkspace();
+-    }
++  async function loadWorkspace(chatId: string): Promise<Workspace> {
++    const workspace = isAuthenticated ?
++      new SupabaseWorkspace(chatId, supabase.storage) :
++      new InMemoryWorkspace();
++
++    await workspaceUploadSync(workspace);
++
++    return workspace;
+   };
+ 
+   const setWorkspace = async (workspace: Workspace) => {
+-    setUserWorkspace(workspace);
+-    await updateUserFiles(workspace);
++    setWorkspaceAtom(workspace);
++    await workspaceFilesSync(workspace);
+   };
+ 
+   const handleChatLogAdded = async (log: ChatLog) => {
+@@ -192,10 +185,15 @@ export const useEvoService = (
+       return;
+     }
+ 
++    if (!chatId) {
++      setError("Trying to start a goal without a chatId.");
++      return;
++    }
++
+     setIsStarting(true);
+-    
+-    await createChatIdIfNeccessary(chatId);
+-    
++
++    await connectEvoService(chatId);
++
+     setChatLog([
+       ...chatLog,
+       {
+@@ -204,33 +202,28 @@ export const useEvoService = (
+       }
+     ]);
+ 
+-    // We don't start the evoService here because we need to wait for the
+-    // chatId to be hooked up to all the callbacks
+-    setGoalToStart(goal);
++    evoService.start({
++      goal,
++      allowTelemetry,
++      openAiApiKey
++    });
++
++    setIsStarting(false);
+   };
+ 
+   useEffect(() => {
+-    (async () => {
+-      await handleChatIdChange(chatId);
+-
+-      if (!isStarting || !goalToStart) {
+-        return;
++    if (chatId) {
++      connectEvoService(chatId);
++    } else {
++      if (evoService.current) {
++        disconnectEvoService();
+       }
+-
+-      // Tell the EvoService to start the goal
+-      // We don't await this because it should run in the background
+-      evoService.start({
+-        goal: goalToStart,
+-        allowTelemetry,
+-        openAiApiKey
+-      });
+-      setGoalToStart(undefined);
+-    })();
+-
+-  }, [chatId, isStarting, goalToStart]);
++    }
++  }, [chatId]);
+ 
+   return {
+     logs: chatLog,
++    isConnected,
+     isStarting,
+     isRunning,
+     handleStart
+diff --git a/apps/browser/lib/hooks/useUploadFile.ts b/apps/browser/lib/hooks/useUploadFile.ts
+deleted file mode 100644
+index d3ac06ac..00000000
+--- a/apps/browser/lib/hooks/useUploadFile.ts
++++ /dev/null
+@@ -1,31 +0,0 @@
+-import { useEffect } from "react";
+-import { useDropzone } from "react-dropzone";
+-import { InMemoryFile } from "@nerfzael/memory-fs";
+-import { readFile } from "../sys/file";
+-import { useAtom } from "jotai";
+-import { uploadedFilesAtom } from "../store";
+-
+-
+-export function useUploadFiles() {
+-  const [, setUploadedFiles] = useAtom(uploadedFilesAtom);
+-
+-  const { acceptedFiles, getRootProps, getInputProps, isDragAccept, open } = useDropzone({ noClick: true });
+-
+-  useEffect(() => {
+-    (async () => {
+-      if (acceptedFiles && acceptedFiles.length) {
+-        const result = await Promise.all(
+-          acceptedFiles.map(async (x) => {
+-            return await readFile(x);
+-          })
+-        );
+-
+-        setUploadedFiles(result);
+-      }
+-    })();
+-  }, [acceptedFiles, setUploadedFiles]);
+-
+-  return {
+-    getRootProps, getInputProps, isDragAccept, open
+-  }
+-}
+diff --git a/apps/browser/lib/hooks/useWatchForFileUploads.ts b/apps/browser/lib/hooks/useWatchForFileUploads.ts
+deleted file mode 100644
+index 333cabc0..00000000
+--- a/apps/browser/lib/hooks/useWatchForFileUploads.ts
++++ /dev/null
+@@ -1,37 +0,0 @@
+-import { useAtom } from "jotai";
+-import { useEffect } from "react";
+-import { uploadedFilesAtom } from "../store";
+-import { Workspace } from "@evo-ninja/agent-utils";
+-import { useUpdateUserFiles } from "./useUpdateUserFiles";
+-
+-export const useWatchForFileUploads = (
+-  chatId: string | undefined,
+-  createChatIdIfNeccessary: (chatId: string | undefined) => Promise<string | undefined>,
+-  loadWorkspace: (chatId: string) => Workspace
+-) => {
+-  const [uploadedFiles, setUploadedFiles] = useAtom(uploadedFilesAtom);
+-  const updateUserFiles = useUpdateUserFiles();
+-
+-  useEffect(() => {
+-    (async () => {
+-      if (uploadedFiles.length === 0) {
+-        return;
+-      }
+-
+-      const decoder = new TextDecoder();
+-      const files = [...uploadedFiles];
+-      setUploadedFiles([]);
+-
+-      const userWorkspace = await loadWorkspace(await createChatIdIfNeccessary(chatId) || "<anon>");
+-      // Write all uploaded files
+-      await Promise.all(
+-        files.map((file) => userWorkspace.writeFile(
+-          file.path,
+-          decoder.decode(file.content)
+-        )
+-        )
+-      );
+-      await updateUserFiles(userWorkspace);
+-    })();
+-  }, [uploadedFiles]);
+-};
+diff --git a/apps/browser/lib/hooks/useUpdateUserFiles.ts b/apps/browser/lib/hooks/useWorkspaceFilesSync.ts
+similarity index 77%
+rename from apps/browser/lib/hooks/useUpdateUserFiles.ts
+rename to apps/browser/lib/hooks/useWorkspaceFilesSync.ts
+index 21041054..eb4c40ca 100644
+--- a/apps/browser/lib/hooks/useUpdateUserFiles.ts
++++ b/apps/browser/lib/hooks/useWorkspaceFilesSync.ts
+@@ -1,10 +1,10 @@
+ import { useAtom } from "jotai";
+ import { Workspace } from "@evo-ninja/agent-utils";
+ import { InMemoryFile } from "@nerfzael/memory-fs";
+-import { userFilesAtom } from "@/lib/store";
++import { workspaceFilesAtom } from "@/lib/store";
+ 
+-export const useUpdateUserFiles = () => {
+-  const [, setUserFiles] = useAtom(userFilesAtom);
++export const useWorkspaceFilesSync = () => {
++  const [, setWorkspaceFiles] = useAtom(workspaceFilesAtom);
+ 
+   return async (workspace: Workspace) => {
+     const files: InMemoryFile[] = [];
+@@ -24,6 +24,6 @@ export const useUpdateUserFiles = () => {
+         });
+       }
+     }
+-    setUserFiles(files);
++    setWorkspaceFiles(files);
+   }
+ }
+diff --git a/apps/browser/lib/hooks/useWorkspaceUploadDrop.ts b/apps/browser/lib/hooks/useWorkspaceUploadDrop.ts
+new file mode 100644
+index 00000000..6bc2765b
+--- /dev/null
++++ b/apps/browser/lib/hooks/useWorkspaceUploadDrop.ts
+@@ -0,0 +1,33 @@
++import { workspaceUploadsAtom } from "@/lib/store";
++import { readFile } from "@/lib/sys/file";
++import { useDropzone } from "react-dropzone";
++import { useAtom } from "jotai";
++import { InMemoryFile } from "@nerfzael/memory-fs";
++
++export function useWorkspaceUploadDrop(onUpload: (uploads: InMemoryFile[]) => void) {
++  const [workspaceUploads, setWorkspaceUploads] = useAtom(workspaceUploadsAtom);
++
++  const { getRootProps, getInputProps, isDragAccept, open } = useDropzone({
++    noClick: true,
++    onDropAccepted: (acceptedFiles) => {
++      if (acceptedFiles && acceptedFiles.length) {
++        Promise.all(
++          acceptedFiles.map(async (x) => {
++            return await readFile(x);
++          })
++        ).then((files) => {
++          const uploads = [
++            ...workspaceUploads,
++            ...files
++          ];
++          setWorkspaceUploads(uploads);
++          onUpload(uploads);
++        });
++      }
++    }
++  });
++
++  return {
++    getRootProps, getInputProps, isDragAccept, open
++  }
++}
+diff --git a/apps/browser/lib/hooks/useWorkspaceUploadSync.ts b/apps/browser/lib/hooks/useWorkspaceUploadSync.ts
+new file mode 100644
+index 00000000..b7548642
+--- /dev/null
++++ b/apps/browser/lib/hooks/useWorkspaceUploadSync.ts
+@@ -0,0 +1,30 @@
++import { workspaceUploadsAtom } from "@/lib/store";
++import { useWorkspaceFilesSync } from "@/lib/hooks/useWorkspaceFilesSync";
++import { useAtom } from "jotai";
++import { Workspace } from "@evo-ninja/agent-utils";
++import { InMemoryFile } from "@nerfzael/memory-fs";
++
++export const useWorkspaceUploadSync = () => {
++  const [workspaceUploads, setWorkspaceUploads] = useAtom(workspaceUploadsAtom);
++  const workspaceFilesSync = useWorkspaceFilesSync();
++
++  return async (workspace: Workspace, uploads?: InMemoryFile[]) => {
++    uploads = uploads || workspaceUploads;
++    if (uploads.length === 0) {
++      return;
++    }
++
++    const decoder = new TextDecoder();
++    const files = [...uploads];
++    setWorkspaceUploads([]);
++
++    // Write all uploaded files
++    await Promise.all(
++      files.map((file) => workspace.writeFile(
++        file.path,
++        decoder.decode(file.content)
++      ))
++    );
++    await workspaceFilesSync(workspace);
++  }
++}
+diff --git a/apps/browser/lib/mutations/useCreateChat.ts b/apps/browser/lib/mutations/useCreateChat.ts
+index 6cc4c09a..b9c8fc28 100644
+--- a/apps/browser/lib/mutations/useCreateChat.ts
++++ b/apps/browser/lib/mutations/useCreateChat.ts
+@@ -6,7 +6,7 @@ import { useSession } from "next-auth/react"
+ export const useCreateChat = () => {
+   const { data: session } = useSession()
+   const queryClient = useQueryClient()
+-  
++
+   return useMutation({
+     mutationFn: async (chatId: string) => {
+       const supabase = createSupabaseClient(session?.supabaseAccessToken as string)
+diff --git a/apps/browser/lib/services/evo/EvoThread.ts b/apps/browser/lib/services/evo/EvoThread.ts
+index 879c7f58..a14190db 100644
+--- a/apps/browser/lib/services/evo/EvoThread.ts
++++ b/apps/browser/lib/services/evo/EvoThread.ts
+@@ -12,13 +12,14 @@ import {
+ export interface EvoThreadConfig {
+   chatId: string;
+   loadChatLog: (chatId: string) => Promise<ChatLog[]>;
+-  loadWorkspace: (chatId: string) => Workspace;
++  loadWorkspace: (chatId: string) => Promise<Workspace>;
+   onChatLogAdded: (chatLog: ChatLog) => Promise<void>;
+   onMessagesAdded: (type: ChatLogType, messages: ChatMessage[]) => Promise<void>;
+   onVariableSet: (key: string, value: string) => Promise<void>;
+ }
+ 
+ export interface EvoThreadState {
++  goal?: string;
+   isRunning: boolean;
+   isLoading: boolean;
+   logs: ChatLog[];
+@@ -103,16 +104,19 @@ export class EvoThread {
+       openAiApiKey
+     } = options;
+ 
+-    // Wait until loading has finished
+-    await this.waitForLoad();
+-
+     if (this._state.isRunning) {
+-      this._callbacks?.onError("A goal is already underway.");
++      if (this._state.goal !== options.goal) {
++        this._callbacks?.onError("A goal is already underway.");
++      }
+       return;
+     }
+ 
++    this._state.goal = options.goal;
+     this.setIsRunning(true);
+ 
++    // Wait until loading has finished
++    await this.waitForLoad();
++
+     // Acquire a GoalID
+     const subsidize = !openAiApiKey;
+     const goalId = await GoalApi.create(
+@@ -136,10 +140,9 @@ export class EvoThread {
+       this._config.onMessagesAdded,
+       this._config.onVariableSet,
+       (chatLog) =>
+-        this.onChatLog(chatLog) || Promise.resolve(),
++        this.onChatLog(chatLog),
+       () =>
+         this._callbacks?.onGoalCapReached(),
+-      // onError
+       (error) =>
+         this._callbacks?.onError(error)
+     );
+@@ -153,19 +156,29 @@ export class EvoThread {
+ 
+     // Run the evo instance against the goal
+     await this.runEvo(evo, options.goal);
++    this._state.goal = undefined;
+   }
+ 
+   private async load() {
+     const chatId = this._config.chatId;
+     this._state.isLoading = true;
+ 
+-    const logs = await this._config.loadChatLog(chatId).catch((reason) => {
+-      this._callbacks?.onError(reason.toString());
+-      return [];
+-    });
+-
+-    this._state.logs = logs;
+-    this._state.workspace = this._config.loadWorkspace(chatId);
++    const results = await Promise.all<[
++      Promise<ChatLog[]>,
++      Promise<Workspace>
++    ]>([
++      this._config.loadChatLog(chatId).catch((reason) => {
++        this._callbacks?.onError(reason.toString());
++        return [];
++      }),
++      this._config.loadWorkspace(chatId).catch((reason) => {
++        this._callbacks?.onError(reason.toString());
++        return new InMemoryWorkspace();
++      })
++    ]);
++
++    this._state.logs = results[0];
++    this._state.workspace = results[1];
+     this._state.isLoading = false;
+   }
+ 
+diff --git a/apps/browser/lib/store.ts b/apps/browser/lib/store.ts
+index 75c9a150..8a09da80 100644
+--- a/apps/browser/lib/store.ts
++++ b/apps/browser/lib/store.ts
+@@ -1,4 +1,4 @@
+-import { InMemoryWorkspace, Workspace } from "@evo-ninja/agent-utils";
++import { Workspace } from "@evo-ninja/agent-utils";
+ import { InMemoryFile } from "@nerfzael/memory-fs";
+ import { atom } from "jotai";
+ import { atomWithStorage } from "jotai/utils";
+@@ -15,9 +15,14 @@ export const signInModalAtom = atom<boolean>(false);
+ export const capReachedAtom = atom<boolean>(false)
+ export const errorAtom = atom<string | undefined>(undefined)
+ export const showAccountModalAtom = atom<boolean>(false);
+-export const userFilesAtom = atom<InMemoryFile[]>([]);
+-export const uploadedFilesAtom = atom<InMemoryFile[]>([]);
+-export const userWorkspaceAtom = atom<Workspace>(new InMemoryWorkspace());
++export const workspaceFilesAtom = atom<InMemoryFile[]>([]);
++export const workspaceUploadsAtom = atom<InMemoryFile[]>([]);
++export const workspaceAtom = atom<Workspace | undefined>(undefined);
+ export const sidebarAtom = atom<boolean>(true)
+-export const chatIdAtom = atom<string | "<anon>" | undefined>("<anon>")
++export const chatIdAtom = atom<string | "<anon>" | undefined>(undefined);
++export const isChatLoadingAtom = atom<boolean>(false);
+ export const evoServiceAtom = atom<EvoService>(new EvoService("<anon>"));
++export const newGoalSubmittedAtom = atom<{
++  goal: string;
++  chatId: string;
++} | undefined>(undefined);
+diff --git a/apps/browser/lib/supabase/SupabaseWorkspace.ts b/apps/browser/lib/supabase/SupabaseWorkspace.ts
+index 69759717..3d9620bf 100644
+--- a/apps/browser/lib/supabase/SupabaseWorkspace.ts
++++ b/apps/browser/lib/supabase/SupabaseWorkspace.ts
+@@ -15,7 +15,7 @@ export class SupabaseWorkspace implements Workspace {
+ 
+     const { error } = await this.supabaseStorage
+       .from(BUCKET_NAME)
+-      .upload(path, data);
++      .upload(path, data, { upsert: true });
+ 
+     if (error) {
+       throw error;
+@@ -138,7 +138,7 @@ export class SupabaseWorkspace implements Workspace {
+ 
+     const { error: writeError } = await this.supabaseStorage
+       .from(BUCKET_NAME)
+-      .upload(path, newData);
++      .upload(path, newData, { upsert: true });
+ 
+     if (writeError) {
+       throw writeError;
+
+From f3e2e5132611b126420a3ca0e2c570afe58bbc15 Mon Sep 17 00:00:00 2001
+From: dOrgJelli <jelli@dorg.tech>
+Date: Wed, 20 Dec 2023 13:25:24 +0100
+Subject: [PATCH 7/8] fix: set active chat based on global chatId
+
+---
+ apps/browser/components/Sidebar.tsx | 15 +++++++++------
+ 1 file changed, 9 insertions(+), 6 deletions(-)
+
+diff --git a/apps/browser/components/Sidebar.tsx b/apps/browser/components/Sidebar.tsx
+index 88bb4d0c..ae9e62b9 100644
+--- a/apps/browser/components/Sidebar.tsx
++++ b/apps/browser/components/Sidebar.tsx
+@@ -46,7 +46,7 @@ const Sidebar = ({
+   const supabaseClient = useSupabaseClient();
+ 
+   const [editChat, setEditChat] = useState<{ id: string; title: string }>();
+-  const [activeChat, setActiveChat] = useState<{ id: string }>();
++  const [activeChat, setActiveChat] = useState<string | undefined>(undefined);
+   const [dropdownOpen, setDropdownOpen] = useState<boolean>(false);
+   const dropdownRef = useRef<HTMLDivElement>(null);
+   const editTitleInputRef = useRef<HTMLInputElement>(null);
+@@ -80,9 +80,6 @@ const Sidebar = ({
+   };
+ 
+   const handleChatClick = (id: string) => {
+-    if (activeChat?.id !== id) {
+-      setActiveChat({ id: id });
+-    }
+     if (!editChat) {
+       router.push(`/chat/${id}`);
+       if (isMobile) {
+@@ -107,6 +104,12 @@ const Sidebar = ({
+     }
+   };
+ 
++  useEffect(() => {
++    if (activeChat !== chatId) {
++      setActiveChat(chatId);
++    }
++  }, [chatId, activeChat])
++
+   useEffect(() => {
+     function handleClickOutside(event: MouseEvent) {
+       if (
+@@ -189,7 +192,7 @@ const Sidebar = ({
+                                 "relative w-full cursor-pointer overflow-x-hidden text-ellipsis whitespace-nowrap rounded p-1 text-sm text-zinc-100 transition-colors duration-300",
+                                 {
+                                   "bg-zinc-700 pr-14":
+-                                    chat.id === activeChat?.id &&
++                                    chat.id === activeChat &&
+                                     chat.id !== editChat?.id,
+                                 },
+                                 {
+@@ -220,7 +223,7 @@ const Sidebar = ({
+                               <div
+                                 className={clsx(
+                                   "absolute right-1 top-1/2 -translate-y-1/2 transform animate-fade-in items-center",
+-                                  chat.id === activeChat?.id &&
++                                  chat.id === activeChat &&
+                                     chat.id !== editChat?.id
+                                     ? "flex"
+                                     : "hidden opacity-0"
+
+From 1c7b0efc62f297048dfcb1e2c72874813631bac4 Mon Sep 17 00:00:00 2001
+From: dOrgJelli <jelli@dorg.tech>
+Date: Wed, 20 Dec 2023 13:58:46 +0100
+Subject: [PATCH 8/8] chore: rename to useWorkspaceFilesUpdate and
+ useWorkspaceUploadUpdate
+
+---
+ apps/browser/app/page.tsx                            |  6 +++---
+ apps/browser/components/ExamplePrompts.tsx           |  6 +++---
+ apps/browser/components/Sidebar.tsx                  |  6 +++---
+ apps/browser/lib/hooks/useEvoService.ts              | 12 ++++++------
+ ...kspaceFilesSync.ts => useWorkspaceFilesUpdate.ts} |  2 +-
+ ...paceUploadSync.ts => useWorkspaceUploadUpdate.ts} |  8 ++++----
+ 6 files changed, 20 insertions(+), 20 deletions(-)
+ rename apps/browser/lib/hooks/{useWorkspaceFilesSync.ts => useWorkspaceFilesUpdate.ts} (94%)
+ rename apps/browser/lib/hooks/{useWorkspaceUploadSync.ts => useWorkspaceUploadUpdate.ts} (75%)
+
+diff --git a/apps/browser/app/page.tsx b/apps/browser/app/page.tsx
+index 6673d06a..ea81812c 100644
+--- a/apps/browser/app/page.tsx
++++ b/apps/browser/app/page.tsx
+@@ -15,7 +15,7 @@ import { useCreateChat } from "@/lib/mutations/useCreateChat";
+ import { useUpdateChatTitle } from "@/lib/mutations/useUpdateChatTitle";
+ import { EvoService } from "@/lib/services/evo/EvoService";
+ import { useEvoService } from "@/lib/hooks/useEvoService";
+-import { useWorkspaceUploadSync } from "@/lib/hooks/useWorkspaceUploadSync";
++import { useWorkspaceUploadUpdate } from "@/lib/hooks/useWorkspaceUploadUpdate";
+ import Chat from "@/components/Chat";
+ import { useEffect, useState } from "react";
+ import { useSession } from "next-auth/react";
+@@ -48,7 +48,7 @@ function Dojo({ params }: { params: { id?: string } }) {
+     isAuthenticated
+   );
+ 
+-  const workspaceUploadSync = useWorkspaceUploadSync();
++  const workspaceUploadUpdate = useWorkspaceUploadUpdate();
+ 
+   const handleChatIdChange = (newChatId?: string) => {
+     if (chatId === newChatId) {
+@@ -151,7 +151,7 @@ function Dojo({ params }: { params: { id?: string } }) {
+             if (!chatId && !isChatLoading) {
+               handleCreateNewChat();
+             } else if (workspace) {
+-              workspaceUploadSync(workspace, uploads);
++              workspaceUploadUpdate(workspace, uploads);
+             }
+           }}
+         />
+diff --git a/apps/browser/components/ExamplePrompts.tsx b/apps/browser/components/ExamplePrompts.tsx
+index 49a52609..a0f81ec6 100644
+--- a/apps/browser/components/ExamplePrompts.tsx
++++ b/apps/browser/components/ExamplePrompts.tsx
+@@ -1,5 +1,5 @@
+ import { workspaceAtom, workspaceUploadsAtom } from "@/lib/store";
+-import { useWorkspaceUploadSync } from "@/lib/hooks/useWorkspaceUploadSync";
++import { useWorkspaceUploadUpdate } from "@/lib/hooks/useWorkspaceUploadUpdate";
+ import { examplePrompts, ExamplePrompt } from "@/lib/examplePrompts";
+ import { useAtom } from "jotai";
+ import clsx from "clsx";
+@@ -12,14 +12,14 @@ export interface ExamplePromptsProps {
+ export default function ExamplePrompts(props: ExamplePromptsProps) {
+   const [workspace] = useAtom(workspaceAtom);
+   const [, setWorkspaceUploads] = useAtom(workspaceUploadsAtom);
+-  const workspaceUploadSync = useWorkspaceUploadSync();
++  const workspaceUploadUpdate = useWorkspaceUploadUpdate();
+   const { isMobile } = useWindowSize();
+ 
+   const handleClick = (prompt: ExamplePrompt) => {
+     if (prompt.files) {
+       setWorkspaceUploads(prompt.files);
+       if (workspace) {
+-        workspaceUploadSync(workspace, prompt.files)
++        workspaceUploadUpdate(workspace, prompt.files)
+       }
+     }
+     return props.onClick(prompt.prompt);
+diff --git a/apps/browser/components/Sidebar.tsx b/apps/browser/components/Sidebar.tsx
+index ae9e62b9..abaecc68 100644
+--- a/apps/browser/components/Sidebar.tsx
++++ b/apps/browser/components/Sidebar.tsx
+@@ -6,7 +6,7 @@ import { useDeleteChat } from "@/lib/mutations/useDeleteChat";
+ import { useUpdateChatTitle } from "@/lib/mutations/useUpdateChatTitle";
+ import { useChats } from "@/lib/queries/useChats";
+ import useWindowSize from "@/lib/hooks/useWindowSize";
+-import { useWorkspaceUploadSync } from "@/lib/hooks/useWorkspaceUploadSync";
++import { useWorkspaceUploadUpdate } from "@/lib/hooks/useWorkspaceUploadUpdate";
+ import Logo from "@/components/Logo";
+ import Avatar from "@/components/Avatar";
+ import Button from "@/components/Button";
+@@ -67,7 +67,7 @@ const Sidebar = ({
+   const [isChatLoading, setIsChatLoading] = useAtom(isChatLoadingAtom);
+   const [workspace] = useAtom(workspaceAtom);
+ 
+-  const workspaceUploadSync = useWorkspaceUploadSync();
++  const workspaceUploadUpdate = useWorkspaceUploadUpdate();
+ 
+   const handleCreateNewChat = async () => {
+     const id = uuid();
+@@ -277,7 +277,7 @@ const Sidebar = ({
+                   if (!chatId && !isChatLoading) {
+                     handleCreateNewChat();
+                   } else if (workspace) {
+-                    workspaceUploadSync(workspace, uploads);
++                    workspaceUploadUpdate(workspace, uploads);
+                   }
+                 }}
+               />
+diff --git a/apps/browser/lib/hooks/useEvoService.ts b/apps/browser/lib/hooks/useEvoService.ts
+index 9764b0c2..ea583ad4 100644
+--- a/apps/browser/lib/hooks/useEvoService.ts
++++ b/apps/browser/lib/hooks/useEvoService.ts
+@@ -14,8 +14,8 @@ import { useAddVariable } from "@/lib/mutations/useAddVariable";
+ import { useChats } from "@/lib/queries/useChats";
+ import { SupabaseWorkspace } from "@/lib/supabase/SupabaseWorkspace";
+ import { useSupabaseClient } from "@/lib/supabase/useSupabaseClient";
+-import { useWorkspaceFilesSync } from "@/lib/hooks/useWorkspaceFilesSync";
+-import { useWorkspaceUploadSync } from "@/lib/hooks/useWorkspaceUploadSync";
++import { useWorkspaceFilesUpdate } from "@/lib/hooks/useWorkspaceFilesUpdate";
++import { useWorkspaceUploadUpdate } from "@/lib/hooks/useWorkspaceUploadUpdate";
+ import { ChatLog } from "@/components/Chat";
+ import { Workspace, InMemoryWorkspace } from "@evo-ninja/agent-utils";
+ import { ChatLogType, ChatMessage } from "@evo-ninja/agents";
+@@ -58,8 +58,8 @@ export const useEvoService = (
+   const { data: chats, refetch: fetchChats } = useChats();
+ 
+   // Helpers
+-  const workspaceFilesSync = useWorkspaceFilesSync();
+-  const workspaceUploadSync = useWorkspaceUploadSync();
++  const workspaceFilesUpdate = useWorkspaceFilesUpdate();
++  const workspaceUploadUpdate = useWorkspaceUploadUpdate();
+ 
+   const setChatLog = (chatLog: ChatLog[]) => {
+     // If the most recent message is the user's goal,
+@@ -141,14 +141,14 @@ export const useEvoService = (
+       new SupabaseWorkspace(chatId, supabase.storage) :
+       new InMemoryWorkspace();
+ 
+-    await workspaceUploadSync(workspace);
++    await workspaceUploadUpdate(workspace);
+ 
+     return workspace;
+   };
+ 
+   const setWorkspace = async (workspace: Workspace) => {
+     setWorkspaceAtom(workspace);
+-    await workspaceFilesSync(workspace);
++    await workspaceFilesUpdate(workspace);
+   };
+ 
+   const handleChatLogAdded = async (log: ChatLog) => {
+diff --git a/apps/browser/lib/hooks/useWorkspaceFilesSync.ts b/apps/browser/lib/hooks/useWorkspaceFilesUpdate.ts
+similarity index 94%
+rename from apps/browser/lib/hooks/useWorkspaceFilesSync.ts
+rename to apps/browser/lib/hooks/useWorkspaceFilesUpdate.ts
+index eb4c40ca..54de752c 100644
+--- a/apps/browser/lib/hooks/useWorkspaceFilesSync.ts
++++ b/apps/browser/lib/hooks/useWorkspaceFilesUpdate.ts
+@@ -3,7 +3,7 @@ import { Workspace } from "@evo-ninja/agent-utils";
+ import { InMemoryFile } from "@nerfzael/memory-fs";
+ import { workspaceFilesAtom } from "@/lib/store";
+ 
+-export const useWorkspaceFilesSync = () => {
++export const useWorkspaceFilesUpdate = () => {
+   const [, setWorkspaceFiles] = useAtom(workspaceFilesAtom);
+ 
+   return async (workspace: Workspace) => {
+diff --git a/apps/browser/lib/hooks/useWorkspaceUploadSync.ts b/apps/browser/lib/hooks/useWorkspaceUploadUpdate.ts
+similarity index 75%
+rename from apps/browser/lib/hooks/useWorkspaceUploadSync.ts
+rename to apps/browser/lib/hooks/useWorkspaceUploadUpdate.ts
+index b7548642..2a8e5ad1 100644
+--- a/apps/browser/lib/hooks/useWorkspaceUploadSync.ts
++++ b/apps/browser/lib/hooks/useWorkspaceUploadUpdate.ts
+@@ -1,12 +1,12 @@
+ import { workspaceUploadsAtom } from "@/lib/store";
+-import { useWorkspaceFilesSync } from "@/lib/hooks/useWorkspaceFilesSync";
++import { useWorkspaceFilesUpdate } from "@/lib/hooks/useWorkspaceFilesUpdate";
+ import { useAtom } from "jotai";
+ import { Workspace } from "@evo-ninja/agent-utils";
+ import { InMemoryFile } from "@nerfzael/memory-fs";
+ 
+-export const useWorkspaceUploadSync = () => {
++export const useWorkspaceUploadUpdate = () => {
+   const [workspaceUploads, setWorkspaceUploads] = useAtom(workspaceUploadsAtom);
+-  const workspaceFilesSync = useWorkspaceFilesSync();
++  const workspaceFilesUpdate = useWorkspaceFilesUpdate();
+ 
+   return async (workspace: Workspace, uploads?: InMemoryFile[]) => {
+     uploads = uploads || workspaceUploads;
+@@ -25,6 +25,6 @@ export const useWorkspaceUploadSync = () => {
+         decoder.decode(file.content)
+       ))
+     );
+-    await workspaceFilesSync(workspace);
++    await workspaceFilesUpdate(workspace);
+   }
+ }

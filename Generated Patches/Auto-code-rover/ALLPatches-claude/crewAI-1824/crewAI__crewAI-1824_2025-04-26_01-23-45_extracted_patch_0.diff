@@ -1,0 +1,27 @@
+diff --git a/src/crewai/cli/update_crew.py b/src/crewai/cli/update_crew.py
+index e7ed69aa..95265f5f 100644
+--- a/src/crewai/cli/update_crew.py
++++ b/src/crewai/cli/update_crew.py
+@@ -26,7 +26,10 @@ def migrate_pyproject(input_file, output_file):
+     # Initialize the new project structure
+     new_pyproject = {
+         "project": {},
+-        "build-system": {"requires": ["hatchling"], "build-backend": "hatchling.build"},
++        "build-system": {
++            "requires": ["hatchling", "setuptools>=42", "wheel", "Cython>=3.0.0"],
++            "build-backend": "hatchling.build"
++        },
+     }
+ 
+     # Migrate project metadata
+@@ -65,6 +68,10 @@ def migrate_pyproject(input_file, output_file):
+             else:
+                 new_dep = f"{dep}{parse_version(version)}"
+             new_pyproject["project"]["dependencies"].append(new_dep)
++        
++        # Ensure tiktoken is included with proper version constraint
++        if not any(dep.startswith("tiktoken") for dep in new_pyproject["project"]["dependencies"]):
++            new_pyproject["project"]["dependencies"].append("tiktoken>=0.3.0")
+ 
+     # Migrate or copy scripts
+     if poetry_data and "scripts" in poetry_data:

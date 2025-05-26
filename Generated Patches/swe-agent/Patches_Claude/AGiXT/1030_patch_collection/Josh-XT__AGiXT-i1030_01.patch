@@ -1,0 +1,17 @@
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..8122719
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1,10 @@
++from agixt.Websearch import Websearch
++
++async def test():
++    ws = Websearch()
++    # Test with string input that should be an int
++    await ws.websearch_agent(websearch_depth="3")
++
++if __name__ == "__main__":
++    import asyncio
++    asyncio.run(test())
+\ No newline at end of file

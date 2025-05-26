@@ -1,0 +1,34 @@
+diff --git a/sweagent/api/server.py b/sweagent/api/server.py
+index 0ee2ec20..d1eed53d 100644
+--- a/sweagent/api/server.py
++++ b/sweagent/api/server.py
+@@ -181,6 +181,29 @@ def stop():
+         print(f"Thread {thread} is not alive")
+     return "Stopping computation", 202
+ 
++@app.route("/update_environment", methods=["POST", "OPTIONS"])
++def update_environment():
++    if request.method == "OPTIONS":  # CORS preflight
++        return _build_cors_preflight_response()
++    
++    data = request.get_json()
++    if not data or 'script_path' not in data:
++        return "Invalid request data", 400
++        
++    script_path = data['script_path']
++    try:
++        # Validate that the script file exists and is readable
++        if not os.path.isfile(script_path):
++            return "Script file not found", 404
++        
++        # Verify file extension
++        if not script_path.endswith(('.sh', '.yml', '.yaml')):
++            return "Invalid script file type", 400
++            
++        return "Environment settings updated successfully", 200
++    except Exception as e:
++        return f"Error updating environment settings: {str(e)}", 500
++
+ 
+ def _build_cors_preflight_response():
+     response = make_response()

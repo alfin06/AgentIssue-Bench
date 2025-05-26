@@ -1,0 +1,169 @@
+diff --git a/camel/agents/chat_agent.py b/camel/agents/chat_agent.py
+index c824a15..a5e016a 100644
+--- a/camel/agents/chat_agent.py
++++ b/camel/agents/chat_agent.py
+@@ -240,11 +240,23 @@ class ChatAgent(BaseAgent):
+             if openai_new_api:
+                 if not isinstance(response, ChatCompletion):
+                     raise RuntimeError("OpenAI returned unexpected struct")
+-                output_messages = [
+-                    ChatMessage(role_name=self.role_name, role_type=self.role_type,
+-                                meta_dict=dict(), **dict(choice.message))
+-                    for choice in response.choices
+-                ]
++                output_messages = []
++                for choice in response.choices:
++                    msg_dict = dict(choice.message)
++                    # Only pass expected fields to ChatMessage constructor
++                    msg_params = {
++                        'role_name': self.role_name,
++                        'role_type': self.role_type,
++                        'meta_dict': dict(),
++                        'role': msg_dict.get('role', 'assistant'),
++                        'content': msg_dict.get('content', ''),
++                    }
++                    # Only add optional fields if they exist in msg_dict
++                    if 'function_call' in msg_dict:
++                        msg_params['function_call'] = msg_dict['function_call']
++                    if 'tool_calls' in msg_dict:
++                        msg_params['tool_calls'] = msg_dict['tool_calls']
++                    output_messages.append(ChatMessage(**msg_params))
+                 info = self.get_info(
+                     response.id,
+                     response.usage,
+@@ -254,11 +266,23 @@ class ChatAgent(BaseAgent):
+             else:
+                 if not isinstance(response, dict):
+                     raise RuntimeError("OpenAI returned unexpected struct")
+-                output_messages = [
+-                    ChatMessage(role_name=self.role_name, role_type=self.role_type,
+-                                meta_dict=dict(), **dict(choice["message"]))
+-                    for choice in response["choices"]
+-                ]
++                output_messages = []
++                for choice in response["choices"]:
++                    msg_dict = dict(choice["message"])
++                    # Only pass expected fields to ChatMessage constructor
++                    msg_params = {
++                        'role_name': self.role_name,
++                        'role_type': self.role_type,
++                        'meta_dict': dict(),
++                        'role': msg_dict.get('role', 'assistant'),
++                        'content': msg_dict.get('content', ''),
++                    }
++                    # Only add optional fields if they exist in msg_dict
++                    if 'function_call' in msg_dict:
++                        msg_params['function_call'] = msg_dict['function_call']
++                    if 'tool_calls' in msg_dict:
++                        msg_params['tool_calls'] = msg_dict['tool_calls']
++                    output_messages.append(ChatMessage(**msg_params))
+                 info = self.get_info(
+                     response["id"],
+                     response["usage"],
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..21206b3
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1,38 @@
++from dataclasses import dataclass
++from typing import Dict, Optional
++from enum import Enum, auto
++
++class RoleType(Enum):
++    ASSISTANT = auto()
++    USER = auto()
++
++@dataclass
++class ChatMessage:
++    role_name: str
++    role_type: RoleType
++    meta_dict: Optional[Dict[str, str]]
++    role: str
++    content: str = ""
++    refusal: str = None
++    audio: object = None
++
++# This will work because audio is defined in the class
++msg1 = ChatMessage(
++    role_name="test",
++    role_type=RoleType.ASSISTANT,
++    meta_dict={},
++    role="assistant",
++    content="test content",
++    audio="some audio data"
++)
++print("Message 1 created successfully with audio field")
++
++# This will also work because audio has a default value
++msg2 = ChatMessage(
++    role_name="test",
++    role_type=RoleType.ASSISTANT,
++    meta_dict={},
++    role="assistant",
++    content="test content"
++)
++print("Message 2 created successfully without audio field")
+\ No newline at end of file
+diff --git a/test_chat_agent.py b/test_chat_agent.py
+new file mode 100644
+index 0000000..25b02dc
+--- /dev/null
++++ b/test_chat_agent.py
+@@ -0,0 +1,55 @@
++from dataclasses import dataclass
++from typing import Dict, Optional, List
++from enum import Enum, auto
++
++class RoleType(Enum):
++    ASSISTANT = auto()
++    USER = auto()
++
++@dataclass
++class ChatMessage:
++    role_name: str
++    role_type: RoleType
++    meta_dict: Optional[Dict[str, str]]
++    role: str
++    content: str = ""
++    refusal: str = None
++    audio: object = None
++
++@dataclass
++class Choice:
++    message: Dict
++
++@dataclass
++class MockResponse:
++    id: str
++    choices: List[Choice]
++    usage: Dict
++
++# Test with new OpenAI API response containing unexpected 'audio' field
++mock_response = MockResponse(
++    id="test_id",
++    choices=[
++        Choice(message={
++            "role": "assistant",
++            "content": "Hello!",
++            "audio": "some audio data",  # This would cause the error before our fix
++        })
++    ],
++    usage={"total_tokens": 10}
++)
++
++# Simulate the chat agent's message creation logic
++msg_dict = dict(mock_response.choices[0].message)
++msg_params = {
++    'role_name': "TestAssistant",
++    'role_type': RoleType.ASSISTANT,
++    'meta_dict': dict(),
++    'role': msg_dict.get('role', 'assistant'),
++    'content': msg_dict.get('content', ''),
++}
++
++# This should work now
++chat_message = ChatMessage(**msg_params)
++print(f"Successfully created ChatMessage with content: {chat_message.content}")
++print(f"Audio field has default value: {chat_message.audio}")
+\ No newline at end of file

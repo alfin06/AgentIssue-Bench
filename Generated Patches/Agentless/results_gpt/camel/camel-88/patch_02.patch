@@ -1,0 +1,22 @@
+diff --git a/camel/agents/chat_agent.py b/camel/agents/chat_agent.py
+index fa5f799..bee78e8 100644
+--- a/camel/agents/chat_agent.py
++++ b/camel/agents/chat_agent.py
+@@ -81,6 +81,8 @@ class ChatAgent:
+                             meta_dict=dict(), **dict(choice["message"]))
+                 for choice in response["choices"]
+             ]
++            num_tokens = 0
++            num_tokens = sum(response["usage"]["tokens"])
+             info = self.get_info(
+                 response["id"],
+                 response["usage"],
+@@ -96,6 +98,8 @@ class ChatAgent:
+             self.terminated = True
+             output_messages = None
+ 
++            num_tokens = 0
++            num_tokens = sum(response["usage"]["tokens"])
+             info = self.get_info(
+                 None,
+                 None,

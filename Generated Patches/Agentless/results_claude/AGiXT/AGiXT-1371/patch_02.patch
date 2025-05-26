@@ -1,0 +1,26 @@
+diff --git a/agixt/Chain.py b/agixt/Chain.py
+index 293e1c5..2177323 100644
+--- a/agixt/Chain.py
++++ b/agixt/Chain.py
+@@ -77,16 +77,17 @@ class Chain:
+                 )
+ 
+             # Retrieve argument data for the step
+-            arguments = (
+-                session.query(Argument, ChainStepArgument)
+-                .join(ChainStepArgument, ChainStepArgument.argument_id == Argument.id)
++            chain_step_arguments = (
++                session.query(ChainStepArgument)
+                 .filter(ChainStepArgument.chain_step_id == step.id)
+                 .all()
+             )
+ 
+             prompt_args = {}
+-            for argument, chain_step_argument in arguments:
+-                prompt_args[argument.name] = chain_step_argument.value
++            for chain_step_argument in chain_step_arguments:
++                argument = session.query(Argument).get(chain_step_argument.argument_id)
++                if argument:
++                    prompt_args[argument.name] = chain_step_argument.value
+ 
+             prompt.update(prompt_args)

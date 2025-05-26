@@ -1,0 +1,62 @@
+diff --git a/apps/browser/lib/api/ProxyEmbeddingApi.ts b/apps/browser/lib/api/ProxyEmbeddingApi.ts
+index 774b989..7bf0b99 100644
+--- a/apps/browser/lib/api/ProxyEmbeddingApi.ts
++++ b/apps/browser/lib/api/ProxyEmbeddingApi.ts
+@@ -87,7 +87,7 @@ export class ProxyEmbeddingApi implements EmbeddingApi {
+ 
+         return embeddings.map((embedding: { embedding: number[], index: number }) => ({
+           embedding: embedding.embedding,
+-          input: input[embedding.index]
++          input: inputs[embedding.index]
+         }));
+       })
+     );
+diff --git a/reproduce.ts b/reproduce.ts
+new file mode 100644
+index 0000000..28158bf
+--- /dev/null
++++ b/reproduce.ts
+@@ -0,0 +1,42 @@
++import { ProxyEmbeddingApi } from './apps/browser/lib/api/ProxyEmbeddingApi';
++import { Tokenizer } from '@evo-ninja/agents';
++
++class SimpleTokenizer implements Tokenizer {
++  encode(text: string): number[] {
++    return text.split('').map(c => c.charCodeAt(0));
++  }
++  decode(tokens: number[]): string {
++    return String.fromCharCode(...tokens);
++  }
++}
++
++async function main() {
++  const tokenizer = new SimpleTokenizer();
++  const setCapReached = () => {};
++  const modelConfig = {
++    model: "text-embedding-ada-002",
++    maxTokensPerInput: 10, // Small value to force chunking
++    maxInputsPerRequest: 2 // Small value to force chunking
++  };
++
++  const api = new ProxyEmbeddingApi(tokenizer, setCapReached, modelConfig);
++  api.setGoalId("test-goal");
++
++  // Create a large input array that will need chunking
++  const inputs = [
++    "This is input 1",
++    "This is input 2",
++    "This is input 3",
++    "This is input 4",
++    "This is input 5"
++  ];
++
++  try {
++    const results = await api.createEmbeddings(inputs);
++    console.log('Results:', results);
++  } catch (error) {
++    console.error('Error:', error);
++  }
++}
++
++main();
+\ No newline at end of file

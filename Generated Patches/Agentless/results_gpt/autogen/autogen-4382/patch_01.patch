@@ -1,0 +1,13 @@
+diff --git a/python/packages/autogen-agentchat/src/autogen_agentchat/agents/_society_of_mind_agent.py b/python/packages/autogen-agentchat/src/autogen_agentchat/agents/_society_of_mind_agent.py
+index 8c9e238..4f7f59e 100644
+--- a/python/packages/autogen-agentchat/src/autogen_agentchat/agents/_society_of_mind_agent.py
++++ b/python/packages/autogen-agentchat/src/autogen_agentchat/agents/_society_of_mind_agent.py
+@@ -47,7 +47,7 @@ class SocietyOfMindAgent(BaseChatAgent):
+ 
+ 
+         async def main() -> None:
+-            model_client = OpenAIChatCompletionClient(model="gpt-4o")
++            model_client = OpenAIChatCompletionClient(model="gpt-4o", api_key="YOUR_API_KEY")
+ 
+             agent1 = AssistantAgent("assistant1", model_client=model_client, system_message="You are a helpful assistant.")
+             agent2 = AssistantAgent("assistant2", model_client=model_client, system_message="You are a helpful assistant.")

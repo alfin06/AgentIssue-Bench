@@ -1,0 +1,14 @@
+From 97874cd64e4f61c2879100c9d6598aea9f44265d Mon Sep 17 00:00:00 2001
+From: Kilian Lieret <kilian.lieret@posteo.de>
+Date: Sun, 25 Aug 2024 10:40:41 +0200
+Subject: [PATCH] Fix: Ensure utils is part of package
+
+Closes #741
+---
+ sweagent/utils/__init__.py | 0
+ 1 file changed, 0 insertions(+), 0 deletions(-)
+ create mode 100644 sweagent/utils/__init__.py
+
+diff --git a/sweagent/utils/__init__.py b/sweagent/utils/__init__.py
+new file mode 100644
+index 000000000..e69de29bb

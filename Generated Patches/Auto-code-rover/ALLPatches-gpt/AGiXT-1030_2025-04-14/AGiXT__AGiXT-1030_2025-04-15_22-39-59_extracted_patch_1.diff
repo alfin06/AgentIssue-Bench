@@ -1,0 +1,67 @@
+diff --git a/agixt/Interactions.py b/agixt/Interactions.py
+index 9ad2fb20..eed6f58c 100644
+--- a/agixt/Interactions.py
++++ b/agixt/Interactions.py
+@@ -395,7 +395,8 @@ class Interactions:
+                             text_content,
+                             link_list,
+                         ) = await self.agent_memory.write_website_to_memory(url=link)
+-                        if int(websearch_depth) > 0:
++                        websearch_depth = int(websearch_depth)
++                        if websearch_depth > 0:
+                             if link_list is not None and len(link_list) > 0:
+                                 i = 0
+                                 for sublink in link_list:
+@@ -420,7 +421,7 @@ class Interactions:
+             if search_string != "":
+                 await self.websearch.websearch_agent(
+                     user_input=search_string,
+-                    websearch_depth=websearch_depth,
++                    websearch_depth=int(websearch_depth),
+                     websearch_timeout=websearch_timeout,
+                 )
+         formatted_prompt, unformatted_prompt, tokens = await self.format_prompt(
+diff --git a/agixt/Websearch.py b/agixt/Websearch.py
+index ff00e65c..28f0f30e 100644
+--- a/agixt/Websearch.py
++++ b/agixt/Websearch.py
+@@ -252,6 +252,8 @@ class Websearch:
+         websearch_depth: int = 0,
+         websearch_timeout: int = 0,
+     ):
++        websearch_depth = int(websearch_depth)
++        websearch_timeout = int(websearch_timeout)
+         await self.browse_links_in_input(
+             user_input=user_input, search_depth=websearch_depth
+         )
+@@ -279,14 +281,14 @@ class Websearch:
+                         self.resursive_browsing(user_input=user_input, links=links)
+                     )
+                     self.tasks.append(task)
+-
+-                if int(websearch_timeout) == 0:
++    
++                if websearch_timeout == 0:
+                     await asyncio.gather(*self.tasks)
+                 else:
+                     logging.info(
+                         f"Web searching for {websearch_timeout} seconds... Please wait..."
+                     )
+-                    await asyncio.sleep(int(websearch_timeout))
++                    await asyncio.sleep(websearch_timeout)
+                     logging.info("Websearch tasks completed.")
+             else:
+                 logging.info("No results found.")
+diff --git a/agixt/extensions/agixt_actions.py b/agixt/extensions/agixt_actions.py
+index 83c4d599..102d1e9a 100644
+--- a/agixt/extensions/agixt_actions.py
++++ b/agixt/extensions/agixt_actions.py
+@@ -493,7 +493,7 @@ class agixt_actions(Extensions):
+             prompt_args={
+                 "user_input": user_input,
+                 "websearch": True,
+-                "websearch_depth": 3,
++                "websearch_depth": int(3),  # Converted to int explicitly
+                 "conversation_name": self.conversation_name,
+             },
+         )

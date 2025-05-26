@@ -1,0 +1,15 @@
+diff --git a/python/packages/autogen-core/src/autogen_core/application/_worker_runtime.py b/python/packages/autogen-core/src/autogen_core/application/_worker_runtime.py
+index 0e5fb933a..2ddd6bde0 100644
+--- a/python/packages/autogen-core/src/autogen_core/application/_worker_runtime.py
++++ b/python/packages/autogen-core/src/autogen_core/application/_worker_runtime.py
+@@ -57,7 +57,9 @@
+ try:
+     import grpc.aio
+ except ImportError as e:
+-    raise ImportError(GRPC_IMPORT_ERROR_STR) from e
++    if 'grpc' not in str(e):
++        raise  # Re-raise if it's not a grpc import error
++    raise ImportError(GRPC_IMPORT_ERROR_STR) from None  # Hide original traceback for cleaner error message
+ 
+ if TYPE_CHECKING:
+     from .protos.agent_worker_pb2_grpc import AgentRpcAsyncStub

@@ -1,0 +1,23 @@
+diff --git a/reproduce_enum_error.py b/reproduce_enum_error.py
+new file mode 100644
+index 0000000..606dc70
+--- /dev/null
++++ b/reproduce_enum_error.py
+@@ -0,0 +1,17 @@
++from enum import Enum
++from crewai.memory.storage.kickoff_task_outputs_storage import KickoffTaskOutputsSQLiteStorage
++from crewai.task import Task
++
++class CrewStatus(Enum):
++    TODO = "To Do"
++    SUCCESSFUL = "Successful"
++    FAILED = "Failed"
++
++def main():
++    storage = KickoffTaskOutputsSQLiteStorage(db_path="test.db")
++    task = Task(id=1, expected_output="Expected")
++    output = {"status": CrewStatus.SUCCESSFUL}
++    storage.add(task, output, task_index=0)
++
++if __name__ == "__main__":
++    main()

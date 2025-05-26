@@ -1,0 +1,85 @@
+diff --git a/packages/agents/src/agent-core/embeddings/utils.ts b/packages/agents/src/agent-core/embeddings/utils.ts
+index 7da2349..96e1333 100644
+--- a/packages/agents/src/agent-core/embeddings/utils.ts
++++ b/packages/agents/src/agent-core/embeddings/utils.ts
+@@ -31,7 +31,41 @@ export const splitArray = (
+   for (let str of input) {
+     const strTokens = countTokens(str);
+ 
+-    // Check if adding this string would exceed maxLength or maxBytes
++    // If a single string exceeds the token limit, we need to chunk it
++    if (strTokens > maxTokens) {
++      // First, push the current batch if not empty
++      if (currentSubArray.length > 0) {
++        result.push(currentSubArray);
++        currentSubArray = [];
++        currentTokens = 0;
++      }
++
++      // Split the long string into words and create chunks that fit within maxTokens
++      const words = str.split(' ');
++      let currentChunk: string[] = [];
++      let chunkTokens = 0;
++
++      for (const word of words) {
++        const wordTokens = countTokens(word + ' '); // Add space to account for joining
++        if (chunkTokens + wordTokens > maxTokens) {
++          // Current chunk is full, start a new one
++          result.push([currentChunk.join(' ').trim()]);
++          currentChunk = [word];
++          chunkTokens = wordTokens;
++        } else {
++          currentChunk.push(word);
++          chunkTokens += wordTokens;
++        }
++      }
++
++      // Add the last chunk if not empty
++      if (currentChunk.length > 0) {
++        result.push([currentChunk.join(' ').trim()]);
++      }
++      continue;
++    }
++
++    // Check if adding this string would exceed maxLength or maxTokens
+     if (currentSubArray.length + 1 > maxLength || currentTokens + strTokens > maxTokens) {
+       // Start a new sub-array
+       result.push(currentSubArray);
+diff --git a/reproduce.ts b/reproduce.ts
+new file mode 100644
+index 0000000..eb22b44
+--- /dev/null
++++ b/reproduce.ts
+@@ -0,0 +1,31 @@
++import { splitArray } from './packages/agents/src/agent-core/embeddings/utils';
++
++// Simple token counter that counts words as tokens for testing
++const countTokens = (input: string) => input.split(' ').length;
++
++// Test case 1: Normal input within limits
++const input1 = [
++  "This is a short sentence",
++  "Another short one",
++  "And one more"
++];
++console.log("Test 1 - Normal input:");
++console.log(splitArray(input1, 5, 10, countTokens));
++
++// Test case 2: Input that exceeds token limit
++const input2 = [
++  "This is a very long sentence that should exceed the token limit by itself",
++  "Another normal sentence",
++  "Short one"
++];
++console.log("\nTest 2 - Input exceeding token limit:");
++console.log(splitArray(input2, 5, 8, countTokens));
++
++// Test case 3: Multiple inputs that together exceed the token limit
++const input3 = [
++  "Five word sentence right here",
++  "Another five word sentence here",
++  "Yet another five word one"
++];
++console.log("\nTest 3 - Combined token limit:");
++console.log(splitArray(input3, 5, 8, countTokens));
+\ No newline at end of file

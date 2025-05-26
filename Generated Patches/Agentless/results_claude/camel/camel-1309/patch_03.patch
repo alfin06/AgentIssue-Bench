@@ -1,0 +1,25 @@
+diff --git a/camel/models/openai_model.py b/camel/models/openai_model.py
+index 6d4dc84..10754d2 100644
+--- a/camel/models/openai_model.py
++++ b/camel/models/openai_model.py
+@@ -67,12 +67,14 @@ class OpenAIModel(BaseModelBackend):
+         super().__init__(
+             model_type, model_config_dict, api_key, url, token_counter
+         )
+-        self._client = OpenAI(
+-            timeout=60,
+-            max_retries=3,
+-            base_url=self._url,
+-            api_key=self._api_key,
+-        )
++        client_kwargs = {
++            "timeout": 60.0,
++            "max_retries": 3,
++            "api_key": self._api_key,
++        }
++        if self._url:
++            client_kwargs["base_url"] = self._url
++        self._client = OpenAI(**client_kwargs)
+ 
+     @property
+     def token_counter(self) -> BaseTokenCounter:

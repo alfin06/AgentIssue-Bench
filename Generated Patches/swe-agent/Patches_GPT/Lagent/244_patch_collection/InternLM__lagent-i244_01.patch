@@ -1,0 +1,36 @@
+diff --git a/lagent/llms/__init__.py b/lagent/llms/__init__.py
+index 95679b1..75bb215 100644
+--- a/lagent/llms/__init__.py
++++ b/lagent/llms/__init__.py
+@@ -1,4 +1,4 @@
+-from .anthropic_llm import AsyncClaudeAPI, ClaudeAPI
++# from .anthropic_llm import AsyncClaudeAPI, ClaudeAPI
+ from .base_api import AsyncBaseAPILLM, BaseAPILLM
+ from .base_llm import AsyncBaseLLM, BaseLLM
+ from .huggingface import HFTransformer, HFTransformerCasualLM, HFTransformerChat
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..dfab8af
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1,19 @@
++from lagent.llms.huggingface import HFTransformer
++import sys
++sys.modules['anthropic'] = None
++
++def main():
++    # Initialize the HFTransformer with a dummy model path
++    model_path = "dummy_model_path"  # Replace with an actual model path if available
++    hf_transformer = HFTransformer(path=model_path, tokenizer_only=True)
++
++    # Attempt to call stream_generate to reproduce the error
++    try:
++        inputs = ["Test input"]
++        for status, response, _ in hf_transformer.stream_generate(inputs):
++            print(f"Status: {status}, Response: {response}")
++    except AttributeError as e:
++        print(f"Caught an AttributeError: {e}")
++
++if __name__ == "__main__":
++    main()
+\ No newline at end of file

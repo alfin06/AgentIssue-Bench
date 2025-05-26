@@ -1,0 +1,47 @@
+diff --git a/src/crewai/utilities/evaluators/crew_evaluator_handler.py b/src/crewai/utilities/evaluators/crew_evaluator_handler.py
+index 984dcf9..bcba3c8 100644
+--- a/src/crewai/utilities/evaluators/crew_evaluator_handler.py
++++ b/src/crewai/utilities/evaluators/crew_evaluator_handler.py
+@@ -178,7 +178,8 @@ class CrewEvaluator:
+         evaluation_result = evaluation_task.execute_sync()
+ 
+         if isinstance(evaluation_result.pydantic, TaskEvaluationPydanticOutput):
+-            self._test_result_span = self._telemetry.individual_test_result_span(
++            if self._telemetry.ready:
++                self._test_result_span = self._telemetry.individual_test_result_span(
+                 self.crew,
+                 evaluation_result.pydantic.quality,
+                 current_task.execution_duration,
+diff --git a/src/crewai/utilities/events/event_listener.py b/src/crewai/utilities/events/event_listener.py
+index 3b837d8..2140bca 100644
+--- a/src/crewai/utilities/events/event_listener.py
++++ b/src/crewai/utilities/events/event_listener.py
+@@ -79,13 +79,15 @@ class EventListener(BaseEventListener):
+         @crewai_event_bus.on(CrewKickoffStartedEvent)
+         def on_crew_started(source, event: CrewKickoffStartedEvent):
+             self.formatter.create_crew_tree(event.crew_name or "Crew", source.id)
+-            self._telemetry.crew_execution_span(source, event.inputs)
++            if self._telemetry.ready:
++                self._telemetry.crew_execution_span(source, event.inputs)
+ 
+         @crewai_event_bus.on(CrewKickoffCompletedEvent)
+         def on_crew_completed(source, event: CrewKickoffCompletedEvent):
+             # Handle telemetry
+             final_string_output = event.output.raw
+-            self._telemetry.end_crew(source, final_string_output)
++            if self._telemetry.ready:
++                self._telemetry.end_crew(source, final_string_output)
+ 
+             self.formatter.update_crew_tree(
+                 self.formatter.current_crew_tree,
+@@ -123,7 +125,9 @@ class EventListener(BaseEventListener):
+ 
+         @crewai_event_bus.on(TaskStartedEvent)
+         def on_task_started(source, event: TaskStartedEvent):
+-            span = self._telemetry.task_started(crew=source.agent.crew, task=source)
++            span = None
++                if self._telemetry.ready:
++                    span = self._telemetry.task_started(crew=source.agent.crew, task=source)
+             self.execution_spans[source] = span
+             self.formatter.create_task_branch(
+                 self.formatter.current_crew_tree, source.id

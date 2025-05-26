@@ -1,0 +1,30 @@
+diff --git a/reproduce_issue.py b/reproduce_issue.py
+new file mode 100644
+index 0000000..0e80afb
+--- /dev/null
++++ b/reproduce_issue.py
+@@ -0,0 +1,23 @@
++from gpt_researcher.prompts import generate_subtopic_report_prompt
++from gpt_researcher.config.variables.default import DEFAULT_CONFIG
++
++def test_generate_subtopic_report_prompt():
++    try:
++        prompt = generate_subtopic_report_prompt(
++            current_subtopic="Climate Change",
++            existing_headers=[],
++            relevant_written_contents=[],
++            main_topic="Environment",
++            context="Global warming is a pressing issue.",
++            report_format="apa",
++            max_subsections=5,
++            total_words=800,
++            tone="Objective",
++            language="french"  # This should be passed correctly
++        )
++        print(prompt)
++    except TypeError as e:
++        print(f"Error: {e}")
++
++if __name__ == "__main__":
++    test_generate_subtopic_report_prompt()
+\ No newline at end of file

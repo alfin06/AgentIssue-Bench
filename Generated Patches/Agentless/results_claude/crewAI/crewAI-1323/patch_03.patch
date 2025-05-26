@@ -1,0 +1,24 @@
+diff --git a/src/crewai/agents/agent_builder/base_agent.py b/src/crewai/agents/agent_builder/base_agent.py
+index 93882a2..4b47238 100644
+--- a/src/crewai/agents/agent_builder/base_agent.py
++++ b/src/crewai/agents/agent_builder/base_agent.py
+@@ -191,6 +191,13 @@ class BaseAgent(ABC, BaseModel):
+     def create_agent_executor(self, tools=None) -> None:
+         pass
+ 
++    def _should_exclude_stop_parameter(self) -> bool:
++        """Check if the model being used supports the stop parameter."""
++        if hasattr(self.llm, 'model_name'):
++            model_name = self.llm.model_name.lower()
++            return any(name in model_name for name in ['o1-preview', 'o1-mini'])
++        return False
++
+     @abstractmethod
+     def _parse_tools(self, tools: List[Any]) -> List[Any]:
+         pass
+@@ -269,4 +276,4 @@ class BaseAgent(ABC, BaseModel):
+         """
+         if not self._rpm_controller:
+             self._rpm_controller = rpm_controller
+-            self.create_agent_executor()
++            self.create_agent_executor()

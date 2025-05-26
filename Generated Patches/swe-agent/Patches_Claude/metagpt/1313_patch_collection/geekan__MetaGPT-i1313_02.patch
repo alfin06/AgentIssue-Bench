@@ -1,0 +1,25 @@
+diff --git a/metagpt/ext/werewolf/roles/base_player.py b/metagpt/ext/werewolf/roles/base_player.py
+index a108718..a838a27 100644
+--- a/metagpt/ext/werewolf/roles/base_player.py
++++ b/metagpt/ext/werewolf/roles/base_player.py
+@@ -60,7 +60,9 @@ class BasePlayer(Role):
+             news = self.rc.msg_buffer.pop_all()
+         old_messages = [] if ignore_memory else self.rc.memory.get()
+         for m in news:
+-            if len(m.restricted_to) and self.profile not in m.restricted_to and self.name not in m.restricted_to:
++            # Handle both WwMessage and regular Message cases
++            restricted_to = getattr(m, 'restricted_to', set())
++            if len(restricted_to) and self.profile not in restricted_to and self.name not in restricted_to:
+                 # if the msg is not send to the whole audience ("") nor this role (self.profile or self.name),
+                 # then this role should not be able to receive it and record it into its memory
+                 continue
+@@ -79,7 +81,8 @@ class BasePlayer(Role):
+     async def _think(self):
+         news = self.rc.news[0]
+         assert news.cause_by == any_to_str(InstructSpeak)  # 消息为来自Moderator的指令时，才去做动作
+-        if not news.restricted_to:
++        restricted_to = getattr(news, 'restricted_to', set())
++        if not restricted_to:
+             # 消息接收范围为全体角色的，做公开发言（发表投票观点也算发言）
+             self.rc.todo = Speak()
+         elif self.profile in news.restricted_to:

@@ -1,0 +1,74 @@
+diff --git a/gpt_engineer/core/default/steps.py b/gpt_engineer/core/default/steps.py
+index 6b46263..d6f178b 100644
+--- a/gpt_engineer/core/default/steps.py
++++ b/gpt_engineer/core/default/steps.py
+@@ -348,12 +348,16 @@ def salvage_correct_hunks(
+     # validate and correct diffs
+ 
+     for _, diff in diffs.items():
+-        # if diff is a new file, validation and correction is unnecessary
+-        if not diff.is_new_file():
++        # if diff is a new file or the file doesn't exist yet, validation and correction is unnecessary
++        if not diff.is_new_file() and diff.filename_pre in files_dict:
+             problems = diff.validate_and_correct(
+                 file_to_lines_dict(files_dict[diff.filename_pre])
+             )
+             error_messages.extend(problems)
++        elif not diff.is_new_file() and diff.filename_pre not in files_dict:
++            # The file doesn't exist yet but the diff isn't marked as new file
++            # This is likely a new file that wasn't properly marked as such
++            error_messages.append(f"Warning: File {diff.filename_pre} doesn't exist but diff isn't marked as new file. Treating as new file.")
+     files_dict = apply_diffs(diffs, files_dict)
+     memory.log(IMPROVE_LOG_FILE, "\n\n".join(x.pretty_repr() for x in messages))
+     memory.log(DIFF_LOG_FILE, "\n\n".join(error_messages))
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..2216738
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1,44 @@
++from gpt_engineer.core.default.steps import salvage_correct_hunks
++from gpt_engineer.core.files_dict import FilesDict
++from langchain.schema import AIMessage
++from gpt_engineer.core.base_memory import BaseMemory
++from pathlib import Path
++
++# Mock memory class
++class MockMemory(BaseMemory):
++    def __init__(self):
++        self.path = Path(".")
++    
++    def log(self, filename, content):
++        pass
++
++# Create a files_dict without the required file
++files_dict = FilesDict({
++    "src/main/resources/application.yml": """
++spring:
++  datasource:
++    url: jdbc:postgresql://localhost:5432/mydb
++    username: postgres
++    password: password
++"""
++})
++
++# Create a message that tries to modify a non-existent file
++messages = [AIMessage(content="""
++Here's how we can create separate YAML files for stage and local environments:
++
++diff --git a/src/main/resources/application-stage.yml b/src/main/resources/application-stage.yml
++new file mode 100644
++--- /dev/null
+++++ b/src/main/resources/application-stage.yml
++@@ -0,0 +1,5 @@
+++spring:
+++  datasource:
+++    url: jdbc:postgresql://stage-db:5432/mydb
+++    username: stage_user
+++    password: stage_password
++""")]
++
++# Try to process the diffs
++memory = MockMemory()
++files_dict, errors = salvage_correct_hunks(messages, files_dict, memory)
+\ No newline at end of file

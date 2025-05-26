@@ -1,0 +1,43 @@
+diff --git a/agixt/Websearch.py b/agixt/Websearch.py
+index ff00e65c..336fae85 100644
+--- a/agixt/Websearch.py
++++ b/agixt/Websearch.py
+@@ -226,6 +226,11 @@ class Websearch:
+             return await self.search(query=query)
+ 
+     async def browse_links_in_input(self, user_input: str = "", search_depth: int = 0):
++        try:
++            depth = int(search_depth)
++        except (ValueError, TypeError):
++            depth = 0
++            
+         links = re.findall(r"(?P<url>https?://[^\s]+)", user_input)
+         if links is not None and len(links) > 0:
+             for link in links:
+@@ -233,7 +238,7 @@ class Websearch:
+                     logging.info(f"Browsing link: {link}")
+                     self.browsed_links.append(link)
+                     text_content, link_list = await self.get_web_content(url=link)
+-                    if int(search_depth) > 0:
++                    if depth > 0:
+                         if link_list is not None and len(link_list) > 0:
+                             i = 0
+                             for sublink in link_list:
+@@ -252,10 +257,15 @@ class Websearch:
+         websearch_depth: int = 0,
+         websearch_timeout: int = 0,
+     ):
++        try:
++            depth = int(websearch_depth)
++        except (ValueError, TypeError):
++            depth = 0
++            
+         await self.browse_links_in_input(
+-            user_input=user_input, search_depth=websearch_depth
++            user_input=user_input, search_depth=depth
+         )
+-        if websearch_depth > 0:
++        if depth > 0:
+             search_string = ApiClient.prompt_agent(
+                 agent_name=self.agent_name,
+                 prompt_name="WebSearch",

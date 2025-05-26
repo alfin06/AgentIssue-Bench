@@ -1,0 +1,30 @@
+diff --git a/src/crewai/cli/update_crew.py b/src/crewai/cli/update_crew.py
+index e7ed69aa..7b6db46b 100644
+--- a/src/crewai/cli/update_crew.py
++++ b/src/crewai/cli/update_crew.py
+@@ -89,6 +89,25 @@ def migrate_pyproject(input_file, output_file):
+     # Migrate optional dependencies
+     if poetry_data and "extras" in poetry_data:
+         new_pyproject["project"]["optional-dependencies"] = poetry_data["extras"]
++    else:
++        new_pyproject["project"]["optional-dependencies"] = {}
++    
++    # Ensure tiktoken is moved to optional dependencies
++    if "dependencies" in new_pyproject["project"]:
++        tiktoken_dep = None
++        new_deps = []
++        for dep in new_pyproject["project"]["dependencies"]:
++            if dep.startswith("tiktoken"):
++                tiktoken_dep = dep
++            else:
++                new_deps.append(dep)
++        new_pyproject["project"]["dependencies"] = new_deps
++        
++        # Add tiktoken to full optional dependencies group
++        if tiktoken_dep:
++            if "full" not in new_pyproject["project"]["optional-dependencies"]:
++                new_pyproject["project"]["optional-dependencies"]["full"] = []
++            new_pyproject["project"]["optional-dependencies"]["full"].append(tiktoken_dep)
+ 
+     # Backup the old pyproject.toml
+     backup_file = "pyproject-old.toml"

@@ -1,0 +1,16 @@
+diff --git a/lagent/actions/base_action.py b/lagent/actions/base_action.py
+index 5efd669..fdfe3b6 100644
+--- a/lagent/actions/base_action.py
++++ b/lagent/actions/base_action.py
+@@ -14,10 +14,7 @@ except ImportError:
+ from class_registry import AutoRegister, ClassRegistry
+ from griffe import Docstring
+ 
+-try:
+-    from griffe import DocstringSectionKind
+-except ImportError:
+-    from griffe.enumerations import DocstringSectionKind
++from griffe import DocstringSectionKind
+ 
+ from ..schema import ActionReturn, ActionStatusCode
+ from .parser import BaseParser, JsonParser, ParseError

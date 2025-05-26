@@ -1,0 +1,12 @@
+diff --git a/camel/agents/role_playing.py b/camel/agents/role_playing.py
+index bcb89457..c589d1d8 100644
+--- a/camel/agents/role_playing.py
++++ b/camel/agents/role_playing.py
+@@ -216,6 +216,7 @@ class RolePlaying:
+             return ((None, assistant_terminated, assistant_info),
+                     (user_msg, user_terminated, user_info))
+         assistant_msg = self.process_messages(assistant_msgs)
++        self.assistant_agent.update_messages(assistant_msg)
+ 
+         return (
+             (assistant_msg, assistant_terminated, assistant_info),

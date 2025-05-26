@@ -1,0 +1,42 @@
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..6f515f5
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1,35 @@
++from dataclasses import dataclass
++from typing import Dict, Optional
++from enum import Enum, auto
++
++class RoleType(Enum):
++    ASSISTANT = auto()
++    USER = auto()
++
++@dataclass
++class BaseMessage:
++    pass
++
++@dataclass
++class ChatMessage(BaseMessage):
++    role_name: str
++    role_type: RoleType
++    meta_dict: Optional[Dict[str, str]]
++    role: str
++    content: str = ""
++    refusal: str = None
++    audio: object = None
++
++# This simulates the OpenAI API response that includes an 'audio' field
++mock_response = {
++    'role': 'assistant',
++    'content': 'Hello',
++    'audio': {'some': 'data'}  # This causes the error
++}
++
++# This will raise TypeError: __init__() got an unexpected keyword argument 'audio'
++msg = ChatMessage(
++    role_name="Assistant",
++    role_type=RoleType.ASSISTANT,
++    meta_dict={},
++    **mock_response)
+\ No newline at end of file

@@ -1,0 +1,83 @@
+diff --git a/apps/cli/src/cli.ts b/apps/cli/src/cli.ts
+index 9af65fb..733c385 100644
+--- a/apps/cli/src/cli.ts
++++ b/apps/cli/src/cli.ts
+@@ -5,10 +5,12 @@ import { program } from "commander";
+ 
+ export async function cli(): Promise<void> {
+   program
+-    .option("-s, --session <name>")
+-    .option("-t, --timeout <seconds>")
+-    .option("-r, --root <path>")
+-    .option("-d, --debug")
++    .option("-s, --session <n>", "Session name for storing execution data")
++    .option("-t, --timeout <seconds>", "Timeout in seconds for each goal")
++    .option("-r, --root <path>", "Root directory path")
++    .option("-d, --debug", "Enable debug mode")
++    .option("-c, --continuous", "Enable continuous mode to chain multiple goals")
++    .option("-p, --preserve-context", "Preserve context between goals in continuous mode")
+     .parse();
+ 
+   const options = program.opts();
+@@ -75,20 +77,39 @@ export async function cli(): Promise<void> {
+   let goalCounter = 0;
+ 
+   await app.evo.init();
++  
++  const isContinuousMode = options.continuous;
++  const preserveContext = options.preserveContext;
++
+   while (true) {
+     if (!goal) {
+-      goal = await app.logger.prompt("Enter your goal");
++      if (goalCounter === 0) {
++        goal = await app.logger.prompt("Enter your goal");
++      } else if (isContinuousMode) {
++        await app.logger.info("\n🎯 Previous goal completed! You can now enter another goal or type 'exit' to finish.");
++        goal = await app.logger.prompt("Enter your next goal");
++      } else {
++        break;
++      }
+     } else if (goalCounter === 0) {
+       await app.fileLogger.info("# User\n **Enter your goal:** " + goal);
+     } else {
+       goal = await app.logger.prompt("Enter another goal");
+-      app.evo.reset();
++      if (!preserveContext) {
++        app.evo.reset();
++      }
+     }
+ 
+-    if (!goal || goal.toLocaleLowerCase() === "exit") break;
++    if (!goal || goal.toLocaleLowerCase() === "exit") {
++      if (goalCounter > 0) {
++        await app.logger.info("\n✨ Session completed! All goals have been processed.");
++      }
++      break;
++    }
+ 
+     ++goalCounter;
+     await handleGoal(goal);
++    goal = undefined;
+   }
+ 
+   return Promise.resolve();
+@@ -101,4 +122,4 @@ cli()
+   .catch((err) => {
+     console.error(err);
+     process.abort();
+-  });
++  });
+\ No newline at end of file
+diff --git a/test_continuous.py b/test_continuous.py
+new file mode 100644
+index 0000000..7dc0d48
+--- /dev/null
++++ b/test_continuous.py
+@@ -0,0 +1,5 @@
++def add(a, b):
++    return a + b
++
++def multiply(a, b):
++    return a * b
+\ No newline at end of file

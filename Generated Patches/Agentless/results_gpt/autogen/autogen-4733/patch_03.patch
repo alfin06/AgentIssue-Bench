@@ -1,0 +1,26 @@
+diff --git a/python/packages/autogen-core/src/autogen_core/code_executor/_func_with_reqs.py b/python/packages/autogen-core/src/autogen_core/code_executor/_func_with_reqs.py
+index d9819ba..0f5ecaa 100644
+--- a/python/packages/autogen-core/src/autogen_core/code_executor/_func_with_reqs.py
++++ b/python/packages/autogen-core/src/autogen_core/code_executor/_func_with_reqs.py
+@@ -163,7 +163,7 @@ def build_python_functions_file(
+ ) -> str:
+     """:meta private:"""
+     # First collect all global imports
+-    global_imports: Set[Import] = set()
++    global_imports: List[Import] = []
+     for func in funcs:
+         if isinstance(func, (FunctionWithRequirements, FunctionWithRequirementsStr)):
+             global_imports.update(func.global_imports)
+diff --git a/python/packages/autogen-core/src/autogen_core/components/code_executor/_func_with_reqs.py b/python/packages/autogen-core/src/autogen_core/components/code_executor/_func_with_reqs.py
+index b23d81b..c2b97fe 100644
+--- a/python/packages/autogen-core/src/autogen_core/components/code_executor/_func_with_reqs.py
++++ b/python/packages/autogen-core/src/autogen_core/components/code_executor/_func_with_reqs.py
+@@ -168,7 +168,7 @@ def build_python_functions_file(
+ ) -> str:
+     """:meta private:"""
+     # First collect all global imports
+-    global_imports: Set[Import] = set()
++    global_imports: List[Import] = []
+     for func in funcs:
+         if isinstance(func, (FunctionWithRequirements, FunctionWithRequirementsStr)):  # type: ignore
+             global_imports.update(func.global_imports)

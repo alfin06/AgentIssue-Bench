@@ -1,0 +1,27 @@
+diff --git a/agixt/Agent.py b/agixt/Agent.py
+index 8b81be9..3ab83a7 100644
+--- a/agixt/Agent.py
++++ b/agixt/Agent.py
+@@ -58,8 +58,7 @@ def add_agent(agent_name, provider_settings=None, commands=None, user=DEFAULT_US
+ 
+     if provider_settings is None or provider_settings == "" or provider_settings == {}:
+         provider_settings = DEFAULT_SETTINGS
+-    if commands is None or commands == "" or commands == {}:
+-        commands = {}
++    commands = commands if commands else {}
+     # Get provider ID based on provider name from provider_settings["provider"]
+     provider = (
+         session.query(ProviderModel)
+diff --git a/agixt/DB.py b/agixt/DB.py
+index 8116c41..4dbdd4c 100644
+--- a/agixt/DB.py
++++ b/agixt/DB.py
+@@ -279,7 +279,7 @@ class AgentCommand(Base):
+         nullable=False,
+     )
+     state = Column(Boolean, nullable=False)
+-    command = relationship("Command")  # Add this line to define the relationship
++    command = relationship("Command", back_populates="agent_commands")
+ 
+ 
+ class Conversation(Base):

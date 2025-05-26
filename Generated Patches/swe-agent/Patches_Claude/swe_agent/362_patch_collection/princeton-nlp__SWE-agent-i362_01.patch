@@ -1,0 +1,23 @@
+diff --git a/sweagent/frontend/src/components/controls/LRunControl.js b/sweagent/frontend/src/components/controls/LRunControl.js
+index c7b6d26..87a7f38 100644
+--- a/sweagent/frontend/src/components/controls/LRunControl.js
++++ b/sweagent/frontend/src/components/controls/LRunControl.js
+@@ -79,13 +79,15 @@ function LRunControl({
+       return (
+         <textarea
+           className="form-control"
+-          onChange={(e) =>
++          onChange={(e) => {
++            setPsInputValue(e.target.value);
+             setRunConfig((draft) => {
+               draft.environment.data_path = "text://" + e.target.value;
+-            })
+-          }
++            });
++          }}
+           rows="5"
+           placeholder="Enter problem statement"
++          value={psInputValue}
+         />
+       );
+     }

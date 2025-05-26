@@ -1,0 +1,16 @@
+diff --git a/python/packages/autogen-agentchat/src/autogen_agentchat/teams/_group_chat/_base_group_chat.py b/python/packages/autogen-agentchat/src/autogen_agentchat/teams/_group_chat/_base_group_chat.py
+index b038d8573..aeacbaa60 100644
+--- a/python/packages/autogen-agentchat/src/autogen_agentchat/teams/_group_chat/_base_group_chat.py
++++ b/python/packages/autogen-agentchat/src/autogen_agentchat/teams/_group_chat/_base_group_chat.py
+@@ -4,6 +4,11 @@
+ from abc import ABC, abstractmethod
+ from typing import AsyncGenerator, Callable, List
+ 
++try:
++    import grpc
++except ImportError:
++    raise ImportError("Group chat features require the grpc package. Please install it with: pip install autogen-core[grpc]")
++
+ from autogen_core.application import SingleThreadedAgentRuntime
+ from autogen_core.base import (
+     AgentId,

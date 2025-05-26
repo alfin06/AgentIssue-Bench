@@ -1,0 +1,8 @@
+diff --git a/reproduce.py b/reproduce.py
+new file mode 100644
+index 0000000..e2f2028
+--- /dev/null
++++ b/reproduce.py
+@@ -0,0 +1 @@
++from autogenstudio.cli import run
+\ No newline at end of file

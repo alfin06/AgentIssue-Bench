@@ -1,0 +1,41 @@
+diff --git a/src/crewai/agent.py b/src/crewai/agent.py
+index 0711c741..39bc6d7f 100644
+--- a/src/crewai/agent.py
++++ b/src/crewai/agent.py
+@@ -83,7 +83,7 @@ class Agent(BaseAgent):
+     )
+     llm: Any = Field(
+         default_factory=lambda: ChatOpenAI(
+-            model=os.environ.get("OPENAI_MODEL_NAME", "gpt-4o")
++            model=os.environ.get("OPENAI_MODEL_NAME", "gpt-3.5-turbo")
+         ),
+         description="Language model that will run the agent.",
+     )
+@@ -118,12 +118,21 @@ class Agent(BaseAgent):
+         self.agent_ops_agent_name = self.role
+ 
+         # Different llms store the model name in different attributes
+-        model_name = getattr(self.llm, "model_name", None) or getattr(
+-            self.llm, "deployment_name", None
+-        )
+-
+-        if model_name:
+-            self._setup_llm_callbacks(model_name)
++        try:
++            model_name = None
++            # Try common attribute names for model identification
++            for attr in ["model_name", "deployment_name", "model", "name"]:
++                if hasattr(self.llm, attr):
++                    model_name = getattr(self.llm, attr)
++                    if model_name:
++                        break
++            
++            # If we found a model name, set up callbacks
++            if model_name:
++                self._setup_llm_callbacks(model_name)
++        except Exception:
++            # If we can't determine model name, continue without model-specific callbacks
++            pass
+ 
+         if not self.agent_executor:
+             self._setup_agent_executor()

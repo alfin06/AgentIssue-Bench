@@ -1,0 +1,32 @@
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..8064e7a
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1,25 @@
++from crewai import Agent, Crew, Task
++from langchain_openai import ChatOpenAI
++
++# Create an agent with o1-preview model
++agent = Agent(
++    role='Test Agent',
++    goal='Test the o1-preview model',
++    backstory='I am a test agent',
++    llm=ChatOpenAI(model_name="o1-preview", temperature=1)
++)
++
++# Create a simple task
++task = Task(
++    description='Say hello',
++    agent=agent
++)
++
++# Create a crew with the agent
++crew = Crew(
++    agents=[agent],
++    tasks=[task]
++)
++
++# Run the crew
++result = crew.kickoff()
+\ No newline at end of file

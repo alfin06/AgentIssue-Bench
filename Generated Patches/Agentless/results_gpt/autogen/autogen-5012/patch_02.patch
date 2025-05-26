@@ -1,0 +1,33 @@
+diff --git a/python/packages/autogen-agentchat/src/autogen_agentchat/teams/_group_chat/_base_group_chat.py b/python/packages/autogen-agentchat/src/autogen_agentchat/teams/_group_chat/_base_group_chat.py
+index bcc105c..b10ae92 100644
+--- a/python/packages/autogen-agentchat/src/autogen_agentchat/teams/_group_chat/_base_group_chat.py
++++ b/python/packages/autogen-agentchat/src/autogen_agentchat/teams/_group_chat/_base_group_chat.py
+@@ -258,15 +258,19 @@ class BaseGroupChat(Team, ABC):
+             asyncio.run(main())
+         """
+         result: TaskResult | None = None
+-        async for message in self.run_stream(
+-            task=task,
+-            cancellation_token=cancellation_token,
+-        ):
+-            if isinstance(message, TaskResult):
+-                result = message
+-        if result is not None:
+-            return result
+-        raise AssertionError("The stream should have returned the final result.")
++        async def run_task():
++            result: TaskResult | None = None
++            async for message in self.run_stream(
++                task=task,
++                cancellation_token=cancellation_token,
++            ):
++                if isinstance(message, TaskResult):
++                    result = message
++            if result is not None:
++                return result
++            raise AssertionError("The stream should have returned the final result.")
++        
++        return await run_task()
+ 
+     async def run_stream(
+         self,

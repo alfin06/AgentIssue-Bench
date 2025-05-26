@@ -1,0 +1,37 @@
+From 881a093988dac29f491123f2c336b03c12e13d81 Mon Sep 17 00:00:00 2001
+From: Josh XT <josh@devxt.com>
+Date: Tue, 3 Oct 2023 07:46:14 -0400
+Subject: [PATCH] Fix #1026
+
+---
+ agixt/extensions/voice_chat.py | 16 ++++++++++++----
+ 1 file changed, 12 insertions(+), 4 deletions(-)
+
+diff --git a/agixt/extensions/voice_chat.py b/agixt/extensions/voice_chat.py
+index e358f6e48ea1..6baacb37b48c 100644
+--- a/agixt/extensions/voice_chat.py
++++ b/agixt/extensions/voice_chat.py
+@@ -14,11 +14,19 @@ def __init__(self, **kwargs):
+                 self.voice_prompt = "Voice Chat"
+         self.tts_command = "Speak with TTS with Streamlabs Text to Speech"
+         if "USE_STREAMLABS_TTS" in kwargs:
+-            if kwargs["USE_STREAMLABS_TTS"].lower() == "true":
+-                self.tts_command = "Speak with TTS with Streamlabs Text to Speech"
++            if isinstance(kwargs["USE_STREAMLABS_TTS"], bool):
++                if kwargs["USE_STREAMLABS_TTS"]:
++                    self.tts_command = "Speak with TTS with Streamlabs Text to Speech"
++            else:
++                if kwargs["USE_STREAMLABS_TTS"].lower() == "true":
++                    self.tts_command = "Speak with TTS with Streamlabs Text to Speech"
+         if "USE_GTTS" in kwargs:
+-            if kwargs["USE_GTTS"].lower() == "true":
+-                self.tts_command = "Speak with GTTS"
++            if isinstance(kwargs["USE_GTTS"], bool):
++                if kwargs["USE_GTTS"]:
++                    self.tts_command = "Speak with GTTS"
++            else:
++                if kwargs["USE_GTTS"].lower() == "true":
++                    self.tts_command = "Speak with GTTS"
+         if "USE_HUGGINGFACE_TTS" in kwargs:
+             if (
+                 kwargs["USE_HUGGINGFACE_TTS"].lower() == "true"

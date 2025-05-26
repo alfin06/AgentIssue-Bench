@@ -1,0 +1,42 @@
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..abf3273
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1,35 @@
++import requests
++
++# Define the GraphQL query
++query = """
++query MyQuery {
++  chain(chainName: \"Another Chain\") {
++    steps {
++      prompt {
++        chainName
++        promptCategory
++        commandName
++        promptName
++      }
++      agentName
++      promptType
++      step
++    }
++    chainName
++    id
++  }
++}
++"""
++
++# Define the API endpoint
++url = "http://localhost:8000/graphql"  # Replace with the actual endpoint
++
++# Send the request
++response = requests.post(
++    url,
++    json={"query": query},
++    headers={"Content-Type": "application/json"},
++)
++
++# Print the response
++print(response.json())
+\ No newline at end of file

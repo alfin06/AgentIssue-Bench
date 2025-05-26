@@ -1,0 +1,16 @@
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..6726566
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1,9 @@
++from camel.utils.commons import api_keys_required
++
++class DummyClass:
++    @api_keys_required([("api_key", "DUMMY_TOKEN")])
++    def __init__(self, api_key: str):
++        self._api_key = api_key
++
++# Instantiate the class with an API key passed directly to the constructor
++dc = DummyClass(api_key="xxxxx")
+\ No newline at end of file

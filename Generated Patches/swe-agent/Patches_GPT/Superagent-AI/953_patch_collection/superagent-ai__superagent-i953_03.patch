@@ -1,0 +1,13 @@
+diff --git a/libs/ui/Dockerfile b/libs/ui/Dockerfile
+index b5a9c34..fd1df8f 100644
+--- a/libs/ui/Dockerfile
++++ b/libs/ui/Dockerfile
+@@ -28,6 +28,8 @@ ENV NEXT_PUBLIC_LANGFUSE_BASE_URL=${NEXT_PUBLIC_LANGFUSE_BASE_URL}
+ # Install dependencies only when needed
+ RUN apt-get update && apt-get install -y \
+     libc6-dev \
++# Install the supabase CLI tool
++RUN npm install -g supabase
+     libvips-dev \
+     libfftw3-dev \
+     build-essential \

@@ -1,0 +1,28 @@
+diff --git a/src/crewai/agents/crew_agent_executor.py b/src/crewai/agents/crew_agent_executor.py
+index 286f92e6..a534ec07 100644
+--- a/src/crewai/agents/crew_agent_executor.py
++++ b/src/crewai/agents/crew_agent_executor.py
+@@ -80,10 +80,7 @@ class CrewAgentExecutor(CrewAgentExecutorMixin):
+         self.tool_name_to_tool_map: Dict[str, BaseTool] = {
+             tool.name: tool for tool in self.tools
+         }
+-        if self.llm.stop:
+-            self.llm.stop = list(set(self.llm.stop + self.stop))
+-        else:
+-            self.llm.stop = self.stop
++        self.llm.stop = list(set((self.llm.stop or []) + self.stop))
+ 
+     def invoke(self, inputs: Dict[str, str]) -> Dict[str, Any]:
+         if "system" in self.prompt:
+diff --git a/src/crewai/llm.py b/src/crewai/llm.py
+index 790d13ea..5b39b487 100644
+--- a/src/crewai/llm.py
++++ b/src/crewai/llm.py
+@@ -142,7 +142,6 @@ class LLM:
+         self.temperature = temperature
+         self.top_p = top_p
+         self.n = n
+-        self.stop = stop
+         self.max_completion_tokens = max_completion_tokens
+         self.max_tokens = max_tokens
+         self.presence_penalty = presence_penalty

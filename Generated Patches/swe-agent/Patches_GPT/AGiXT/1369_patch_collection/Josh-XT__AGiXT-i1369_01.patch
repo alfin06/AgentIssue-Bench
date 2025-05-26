@@ -1,0 +1,16 @@
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..56c3b6c
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1,9 @@
++import requests
++
++BASE_URL = "http://localhost:8000/api/chain"
++
++# Test case: POST an empty chain name
++response = requests.post(BASE_URL, json={"chain_name": "", "description": "Test chain with empty name"})
++
++print("Status Code:", response.status_code)
++print("Response:", response.json())
+\ No newline at end of file

@@ -1,0 +1,13 @@
+diff --git a/camel/agents/chat_agent.py b/camel/agents/chat_agent.py
+index fa5f799..f0c613b 100644
+--- a/camel/agents/chat_agent.py
++++ b/camel/agents/chat_agent.py
+@@ -96,6 +96,8 @@ class ChatAgent:
+             self.terminated = True
+             output_messages = None
+ 
++            num_tokens = 0  # Assuming num_tokens should be explicitly set to 0 here
++
+             info = self.get_info(
+                 None,
+                 None,

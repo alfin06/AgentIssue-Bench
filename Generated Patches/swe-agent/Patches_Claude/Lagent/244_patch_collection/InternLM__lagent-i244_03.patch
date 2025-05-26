@@ -1,0 +1,13 @@
+diff --git a/lagent/llms/huggingface.py b/lagent/llms/huggingface.py
+index 87c779a..6a1031b 100644
+--- a/lagent/llms/huggingface.py
++++ b/lagent/llms/huggingface.py
+@@ -192,6 +192,8 @@ class HFTransformer(BaseLLM):
+             logits_processor = self.logits_processor
+             stopping_criteria = self.stopping_criteria
+ 
++            # Handle EOS token tensor compatibility with newer transformers versions
++            generation_config._eos_token_tensor = eos_token_id_tensor
+             logits_processor = self.model._get_logits_processor(
+                 generation_config=generation_config,
+                 input_ids_seq_length=input_ids_seq_length,

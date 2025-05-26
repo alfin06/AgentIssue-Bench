@@ -1,0 +1,22 @@
+diff --git a/sweagent/frontend/src/components/controls/LRunControl.js b/sweagent/frontend/src/components/controls/LRunControl.js
+index c7b6d26..302cd9a 100644
+--- a/sweagent/frontend/src/components/controls/LRunControl.js
++++ b/sweagent/frontend/src/components/controls/LRunControl.js
+@@ -49,7 +49,7 @@ function LRunControl({
+               });
+             }}
+             placeholder={"Example: " + defaultPS}
+-            value={psInputValue}
++            defaultValue=""
+           />
+         </div>
+       );
+@@ -70,7 +70,7 @@ function LRunControl({
+               });
+             }}
+             placeholder="/path/to/your/local/file.md"
+-            value={psInputValue}
++            defaultValue=""
+           />
+         </div>
+       );

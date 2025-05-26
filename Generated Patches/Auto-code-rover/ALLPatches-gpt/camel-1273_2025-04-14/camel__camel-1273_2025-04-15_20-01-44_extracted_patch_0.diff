@@ -1,0 +1,27 @@
+diff --git a/camel/utils/commons.py b/camel/utils/commons.py
+index 5e1565e1..c7754a7f 100644
+--- a/camel/utils/commons.py
++++ b/camel/utils/commons.py
+@@ -278,12 +278,17 @@ def api_keys_required(*required_keys: str) -> Callable[[F], F]:
+             missing_environment_keys = [
+                 k for k in required_keys if k not in os.environ
+             ]
+-            if (
+-                not (args and getattr(args[0], '_api_key', None))
+-                and missing_environment_keys
+-            ):
++            if args:
++                instance_api_keys = getattr(args[0], '_api_key', None) or {}
++                missing_instance_keys = [
++                    k for k in missing_environment_keys if k not in instance_api_keys
++                ]
++            else:
++                missing_instance_keys = missing_environment_keys
++
++            if missing_instance_keys:
+                 raise ValueError(
+-                    f"Missing API keys: {', '.join(missing_environment_keys)}"
++                    f"Missing API keys: {', '.join(missing_instance_keys)}"
+                 )
+             return func(*args, **kwargs)
+ 

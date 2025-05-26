@@ -1,0 +1,13 @@
+diff --git a/gpt_engineer/core/default/steps.py b/gpt_engineer/core/default/steps.py
+index 9605efa..4aa64a2 100644
+--- a/gpt_engineer/core/default/steps.py
++++ b/gpt_engineer/core/default/steps.py
+@@ -346,7 +346,7 @@ def salvage_correct_hunks(
+ 
+     for _, diff in diffs.items():
+         # if diff is a new file, validation and correction is unnecessary
+-        if not diff.is_new_file():
++        if not diff.is_new_file() and diff.filename_pre in files_dict:
+             problems = diff.validate_and_correct(
+                 file_to_lines_dict(files_dict[diff.filename_pre])
+             )

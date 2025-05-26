@@ -1,0 +1,61 @@
+diff --git a/reproduce_toggle_issue.py b/reproduce_toggle_issue.py
+new file mode 100644
+index 0000000..863e784
+--- /dev/null
++++ b/reproduce_toggle_issue.py
+@@ -0,0 +1,41 @@
++import time
++from selenium import webdriver
++from selenium.webdriver.common.by import By
++from selenium.webdriver.support.ui import WebDriverWait
++from selenium.webdriver.support import expected_conditions as EC
++
++# Initialize the WebDriver (Make sure you have the appropriate driver installed)
++driver = webdriver.Chrome()
++
++try:
++    # Navigate to the local development server (adjust the URL as needed)
++    driver.get("http://localhost:3000")
++
++    # Wait for the page to load
++    WebDriverWait(driver, 10).until(
++        EC.presence_of_element_located((By.CLASS_NAME, "input-group"))
++    )
++
++    # Find the first textbox and input some text
++    first_textbox = driver.find_element(By.CSS_SELECTOR, "input[placeholder='/path/to/setup.sh']")
++    first_textbox.send_keys("Test Input")
++
++    # Wait for the input to be registered
++    time.sleep(1)
++
++    # Switch the problem statement input method to "local file"
++    toggle_button = driver.find_element(By.CSS_SELECTOR, "button.toggle-input-method")
++    toggle_button.click()
++
++    # Wait for the toggle to take effect
++    time.sleep(1)
++
++    # Check the value of the input field
++    updated_textbox = driver.find_element(By.CSS_SELECTOR, "input[placeholder='/path/to/setup.sh']")
++    current_value = updated_textbox.get_attribute("value")
++
++    print("Current value after toggling:", current_value)
++
++finally:
++    # Close the browser
++    driver.quit()
+\ No newline at end of file
+diff --git a/sweagent/frontend/src/components/controls/LRunControl.js b/sweagent/frontend/src/components/controls/LRunControl.js
+index c7b6d26..9b18e21 100644
+--- a/sweagent/frontend/src/components/controls/LRunControl.js
++++ b/sweagent/frontend/src/components/controls/LRunControl.js
+@@ -29,7 +29,7 @@ function LRunControl({
+   };
+ 
+   useEffect(() => {
+-    setPsInputValue("");
++    setPsInputValue(runConfigDefault.problem_statement.input);
+   }, [psType]);
+ 
+   function getPsInput() {

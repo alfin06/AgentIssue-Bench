@@ -1,0 +1,24 @@
+diff --git a/autogen/coding/func_with_reqs.py b/autogen/coding/func_with_reqs.py
+index f6e68cf..961c19f 100644
+--- a/autogen/coding/func_with_reqs.py
++++ b/autogen/coding/func_with_reqs.py
+@@ -31,11 +31,19 @@ class Alias:
+     alias: str
+ 
+ 
+-@dataclass
++@dataclass(frozen=True)
+ class ImportFromModule:
+     module: str
+     imports: List[Union[str, Alias]]
+ 
++    def __hash__(self):
++        return hash((self.module, tuple(self.imports)))
++
++    def __eq__(self, other):
++        if not isinstance(other, ImportFromModule):
++            return False
++        return self.module == other.module and self.imports == other.imports
++
+ 
+ Import = Union[str, ImportFromModule, Alias]

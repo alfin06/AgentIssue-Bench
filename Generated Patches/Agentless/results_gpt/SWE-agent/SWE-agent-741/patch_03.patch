@@ -1,0 +1,13 @@
+diff --git a/sweagent/environment/utils.py b/sweagent/environment/utils.py
+index 186217c..f7ac244 100644
+--- a/sweagent/environment/utils.py
++++ b/sweagent/environment/utils.py
+@@ -496,6 +496,8 @@ def get_gh_issue_data(issue_url: str, *, token: str = ""):
+     return api.issues.get(owner, repo, issue_number)
+ 
+ 
++__init__.py
++
+ def get_problem_statement_from_github_issue(owner: str, repo: str, issue_number: str, *, token: str | None = "") -> str:
+     """Return problem statement from github issue"""
+     api = GhApi(token=token)

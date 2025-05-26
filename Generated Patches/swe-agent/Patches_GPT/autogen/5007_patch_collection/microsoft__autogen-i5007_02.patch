@@ -1,0 +1,12 @@
+diff --git a/python/packages/autogen-studio/pyproject.toml b/python/packages/autogen-studio/pyproject.toml
+index 3272972..7ac4430 100644
+--- a/python/packages/autogen-studio/pyproject.toml
++++ b/python/packages/autogen-studio/pyproject.toml
+@@ -36,6 +36,7 @@ dependencies = [
+     "autogen-agentchat>=0.4.9.2,<0.5",
+     "autogen-ext[magentic-one, openai, azure]>=0.4.2,<0.5",
+     "anthropic",
++    "tiktoken", # Added to resolve missing dependency
+ ]
+ optional-dependencies = {web = ["fastapi", "uvicorn"], database = ["psycopg"]}
+ 

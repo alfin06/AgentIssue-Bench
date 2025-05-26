@@ -1,0 +1,43 @@
+diff --git a/camel/toolkits/ask_news_toolkit.py b/camel/toolkits/ask_news_toolkit.py
+index a1043085..f51a6eba 100644
+--- a/camel/toolkits/ask_news_toolkit.py
++++ b/camel/toolkits/ask_news_toolkit.py
+@@ -332,13 +332,13 @@ class AskNewsToolkit(BaseToolkit):
+ 
+     def get_tools(self) -> List[FunctionTool]:
+         r"""Returns a list of FunctionTool objects representing the functions
+-          in the toolkit.
++        in the toolkit.
+ 
+         Returns:
+             List[FunctionTool]: A list of FunctionTool objects representing
+                 the functions in the toolkit.
+         """
+-        return [
++        tools = [
+             FunctionTool(self.get_news),
+             FunctionTool(self.get_stories),
+             FunctionTool(self.get_web_search),
+@@ -346,6 +346,11 @@ class AskNewsToolkit(BaseToolkit):
+             FunctionTool(self.query_finance),
+         ]
+ 
++        # Ensure imports happen when tools are actually used
++        for tool in tools:
++            self._ensure_sdk_imported()
++        return tools
++
+ 
+ class AsyncAskNewsToolkit(BaseToolkit):
+     r"""A class representing a toolkit for interacting with the AskNews API
+diff --git a/camel/toolkits/twitter_toolkit.py b/camel/toolkits/twitter_toolkit.py
+index bd63446e..524a62d3 100644
+--- a/camel/toolkits/twitter_toolkit.py
++++ b/camel/toolkits/twitter_toolkit.py
+@@ -442,4 +442,6 @@ class TwitterToolkit(BaseToolkit):
+             List[FunctionTool]: A list of FunctionTool objects
+                 representing the functions in the toolkit.
+         """
++        # Import dependencies only when needed
++        from .twitter_dependencies import TWITTER_FUNCS
+         return TWITTER_FUNCS

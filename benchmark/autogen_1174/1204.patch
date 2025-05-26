@@ -1,0 +1,68 @@
+From be3a1d276f6075932f42a59860ba11da838f22ae Mon Sep 17 00:00:00 2001
+From: Brian Finney <bri@nfinney.com>
+Date: Wed, 10 Jan 2024 21:52:37 -0800
+Subject: [PATCH 1/2] tool_responses fixes
+
+---
+ autogen/agentchat/conversable_agent.py | 9 +++++----
+ 1 file changed, 5 insertions(+), 4 deletions(-)
+
+diff --git a/autogen/agentchat/conversable_agent.py b/autogen/agentchat/conversable_agent.py
+index 5009d598aec2..047d4607819d 100644
+--- a/autogen/agentchat/conversable_agent.py
++++ b/autogen/agentchat/conversable_agent.py
+@@ -912,9 +912,7 @@ async def a_generate_tool_calls_reply(
+             return True, {
+                 "role": "tool",
+                 "tool_responses": tool_returns,
+-                "content": "\n\n".join(
+-                    [self._str_for_tool_response(tool_return["content"]) for tool_return in tool_returns]
+-                ),
++                "content": "\n\n".join([self._str_for_tool_response(tool_return) for tool_return in tool_returns]),
+             }
+ 
+         return False, None
+@@ -1128,7 +1126,10 @@ async def a_check_termination_and_human_reply(
+                     ]
+                 )
+ 
+-            response = {"role": "user", "content": reply, "tool_responses": tool_returns}
++            response = {"role": "user", "content": reply}
++            if tool_returns:
++                response["tool_responses"] = tool_returns
++
+             return True, response
+ 
+         # increment the consecutive_auto_reply_counter
+
+From 0fe43fe68d76f79d8e377399692d42b40fd47caf Mon Sep 17 00:00:00 2001
+From: Brian Finney <bri@nfinney.com>
+Date: Wed, 10 Jan 2024 22:00:46 -0800
+Subject: [PATCH 2/2] [] is false
+
+---
+ autogen/agentchat/conversable_agent.py | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/autogen/agentchat/conversable_agent.py b/autogen/agentchat/conversable_agent.py
+index 047d4607819d..1b08ade80ebf 100644
+--- a/autogen/agentchat/conversable_agent.py
++++ b/autogen/agentchat/conversable_agent.py
+@@ -871,7 +871,7 @@ def generate_tool_calls_reply(
+                     "content": func_return.get("content", ""),
+                 }
+             )
+-        if len(tool_returns) > 0:
++        if tool_returns:
+             return True, {
+                 "role": "tool",
+                 "tool_responses": tool_returns,
+@@ -907,7 +907,7 @@ async def a_generate_tool_calls_reply(
+             func = self._function_map.get(tool_call.get("function", {}).get("name", None), None)
+             if func and asyncio.coroutines.iscoroutinefunction(func):
+                 async_tool_calls.append(self._a_execute_tool_call(tool_call))
+-        if len(async_tool_calls) > 0:
++        if async_tool_calls:
+             tool_returns = await asyncio.gather(*async_tool_calls)
+             return True, {
+                 "role": "tool",

@@ -1,0 +1,15 @@
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..239d01d
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1,8 @@
++import sys
++print(f"Python version: {sys.version}")
++
++try:
++    import tiktoken
++    print("tiktoken imported successfully")
++except ImportError as e:
++    print(f"Failed to import tiktoken: {e}")
+\ No newline at end of file

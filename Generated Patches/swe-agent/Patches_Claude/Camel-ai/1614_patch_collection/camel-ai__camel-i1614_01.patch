@@ -1,0 +1,24 @@
+diff --git a/camel/models/deepseek_model.py b/camel/models/deepseek_model.py
+index 4123e73..7ea4083 100644
+--- a/camel/models/deepseek_model.py
++++ b/camel/models/deepseek_model.py
+@@ -141,15 +141,16 @@ class DeepSeekModel(OpenAICompatibleModel):
+     def _post_handle_response(
+         self, response: ChatCompletion
+     ) -> ChatCompletion:
+-        r"""Handle reasoning content with <think> tags at the beginning."""
++        r"""Handle reasoning content without <think> tags to support DeepSeek r1 platform."""
+         if (
+             self.model_type in [ModelType.DEEPSEEK_REASONER]
+             and os.environ.get("GET_REASONING_CONTENT", "false").lower()
+             == "true"
+         ):
+             reasoning_content = response.choices[0].message.reasoning_content  # type: ignore[attr-defined]
+-            combined_content = (  # type: ignore[operator]
+-                f"<think>\n{reasoning_content}\n</think>\n"
++            # Combine reasoning content and response without <think> tags
++            combined_content = (
++                f"{reasoning_content}\n\n"
+                 if reasoning_content
+                 else ""
+             ) + response.choices[0].message.content

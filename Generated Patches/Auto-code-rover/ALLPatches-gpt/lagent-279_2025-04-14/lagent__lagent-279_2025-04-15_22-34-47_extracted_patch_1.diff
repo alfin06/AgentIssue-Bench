@@ -1,0 +1,17 @@
+diff --git a/setup.py b/setup.py
+index 699165d..0013edb 100644
+--- a/setup.py
++++ b/setup.py
+@@ -100,9 +100,9 @@ if __name__ == '__main__':
+         data_files=[('.', ['README.md'])],
+         keywords=['artificial general intelligence', 'agent', 'agi', 'llm'],
+         url='https://github.com/InternLM/lagent',
+-        install_requires=parse_requirements('requirements/runtime.txt'),
++        install_requires=parse_requirements('requirements/runtime.txt') + ['tenacity'],
+         extras_require={
+-            'all': parse_requirements('requirements.txt'),
+-            'optional': parse_requirements('requirements/optional.txt'),
++            'all': parse_requirements('requirements.txt') + ['tenacity'],
++            'optional': parse_requirements('requirements/optional.txt') + ['tenacity'],
+         },
+     )

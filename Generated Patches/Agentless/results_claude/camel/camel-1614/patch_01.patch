@@ -1,0 +1,68 @@
+diff --git a/camel/models/deepseek_model.py b/camel/models/deepseek_model.py
+index 32c2102..b95a21a 100644
+--- a/camel/models/deepseek_model.py
++++ b/camel/models/deepseek_model.py
+@@ -113,21 +113,35 @@ class DeepSeekModel(BaseModelBackend):
+                 `ChatCompletion` in the non-stream mode, or
+                 `Stream[ChatCompletionChunk]` in the stream mode.
+         """
+-        # deepseek reasoner has limitations
++        import re
++
++        # Remove thinking content from messages before sending to API for all DeepSeek models
++        # This ensures only the final response is sent, excluding intermediate thought processes
++        messages = [
++            {  # type: ignore[misc]
++                **msg,
++                'content': re.sub(
++                    r'<think>.*?</think>',
++                    '',
++                    msg['content'],  # type: ignore[arg-type]
++                    flags=re.DOTALL,
++                ).strip(),
++            }
++            for msg in messages
++        ]
++
++        # deepseek reasoner has additional limitations
+         # reference: https://api-docs.deepseek.com/guides/reasoning_model#api-parameters
+         if self.model_type in [
+             ModelType.DEEPSEEK_REASONER,
+         ]:
+-            import re
+-
+             logger.warning(
+                 "You are using a DeepSeek Reasoner model, "
+                 "which has certain limitations, reference: "
+                 "`https://api-docs.deepseek.com/guides/reasoning_model#api-parameters`"
+             )
+ 
+-            # Check and remove unsupported parameters and reset the fixed
+-            # parameters
++            # Check and remove unsupported parameters and reset the fixed parameters
+             unsupported_keys = [
+                 "temperature",
+                 "top_p",
+@@ -141,22 +155,6 @@ class DeepSeekModel(BaseModelBackend):
+                 if key in self.model_config_dict:
+                     del self.model_config_dict[key]
+ 
+-            # Remove thinking content from messages before sending to API
+-            # This ensures only the final response is sent, excluding
+-            # intermediate thought processes
+-            messages = [
+-                {  # type: ignore[misc]
+-                    **msg,
+-                    'content': re.sub(
+-                        r'<think>.*?</think>',
+-                        '',
+-                        msg['content'],  # type: ignore[arg-type]
+-                        flags=re.DOTALL,
+-                    ).strip(),
+-                }
+-                for msg in messages
+-            ]
+-
+         response = self._client.chat.completions.create(
+             messages=messages,
+             model=self.model_type,

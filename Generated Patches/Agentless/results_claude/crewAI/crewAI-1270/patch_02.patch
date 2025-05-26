@@ -1,0 +1,37 @@
+diff --git a/src/crewai/project/crew_base.py b/src/crewai/project/crew_base.py
+index cf045ec..6dba65d 100644
+--- a/src/crewai/project/crew_base.py
++++ b/src/crewai/project/crew_base.py
+@@ -35,11 +35,30 @@ def CrewBase(cls):
+         @staticmethod
+         def load_yaml(config_path: Path):
+             try:
+-                with open(config_path, "r") as file:
+-                    return yaml.safe_load(file)
++                # First try UTF-8
++                try:
++                    with open(config_path, "r", encoding='utf-8') as file:
++                        return yaml.safe_load(file)
++                except UnicodeDecodeError:
++                    # If UTF-8 fails, try GBK
++                    try:
++                        with open(config_path, "r", encoding='gbk') as file:
++                            return yaml.safe_load(file)
++                    except UnicodeDecodeError:
++                        # If both fail, use chardet to detect encoding
++                        import chardet
++                        with open(config_path, "rb") as file:
++                            raw_data = file.read()
++                        detected = chardet.detect(raw_data)
++                        encoding = detected['encoding']
++                        with open(config_path, "r", encoding=encoding) as file:
++                            return yaml.safe_load(file)
+             except FileNotFoundError:
+                 print(f"File not found: {config_path}")
+                 raise
++            except Exception as e:
++                print(f"Error loading YAML file: {str(e)}")
++                raise
+ 
+         def _get_all_functions(self):
+             return {

@@ -1,0 +1,25 @@
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..b8678c7
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1,18 @@
++from crewai.memory.short_term.short_term_memory import ShortTermMemory
++from crewai.memory.storage.rag_storage import RAGStorage
++
++# Simulate crew object
++class MockCrew:
++    def __init__(self):
++        self.agents = []
++
++# Initialize short-term memory
++crew = MockCrew()
++short_term_memory = ShortTermMemory(crew=crew)
++
++# Attempt to reset short-term memory
++try:
++    short_term_memory.reset()
++    print("Short-term memory reset successfully.")
++except Exception as e:
++    print(f"Error resetting short-term memory: {e}")
+\ No newline at end of file

@@ -1,0 +1,31 @@
+diff --git a/src/crewai/main.py b/src/crewai/main.py
+index 6b1dca2..e1e1918 100644
+--- a/src/crewai/main.py
++++ b/src/crewai/main.py
+@@ -1,3 +1,4 @@
++
+ #!/usr/bin/env python
+ # src/my_project/main.py
+ import sys
+@@ -5,7 +6,7 @@ from crew import crewaiCrew
+ from dotenv import load_dotenv
+ import os 
+ 
+-os.environ["OTEL_SDK_DISABLED "]="true"
++os.environ["OTEL_SDK_DISABLED"]="true"
+ load_dotenv()
+ 
+ def run():
+diff --git a/src/crewai/telemetry/telemetry.py b/src/crewai/telemetry/telemetry.py
+index 27bf17b..9581285 100644
+--- a/src/crewai/telemetry/telemetry.py
++++ b/src/crewai/telemetry/telemetry.py
+@@ -47,6 +47,8 @@ class Telemetry:
+ 
+     def __init__(self):
+         self.ready = False
++        if os.getenv("OTEL_SDK_DISABLED", "false").lower() == "true":
++            return
+         self.trace_set = False
+         try:
+             telemetry_endpoint = "https://telemetry.crewai.com:4319"

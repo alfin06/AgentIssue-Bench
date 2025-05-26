@@ -1,0 +1,30 @@
+diff --git a/python/packages/agbench/benchmarks/AssistantBench/Templates/MagenticOne/scenario.py b/python/packages/agbench/benchmarks/AssistantBench/Templates/MagenticOne/scenario.py
+index dda79bd8d..b4364b537 100644
+--- a/python/packages/agbench/benchmarks/AssistantBench/Templates/MagenticOne/scenario.py
++++ b/python/packages/agbench/benchmarks/AssistantBench/Templates/MagenticOne/scenario.py
+@@ -5,6 +5,10 @@
+ import re
+ import tiktoken
+ 
++# Ensure that the `tiktoken` library is installed.
++# If it's not installed, you can install it using:
++# pip install tiktoken
++
+ from openai import AzureOpenAI
+ 
+ from typing import List
+diff --git a/python/packages/agbench/benchmarks/GAIA/Templates/MagenticOne/scenario.py b/python/packages/agbench/benchmarks/GAIA/Templates/MagenticOne/scenario.py
+index 32e0a11d3..14a53ed88 100644
+--- a/python/packages/agbench/benchmarks/GAIA/Templates/MagenticOne/scenario.py
++++ b/python/packages/agbench/benchmarks/GAIA/Templates/MagenticOne/scenario.py
+@@ -5,6 +5,10 @@
+ import re
+ import tiktoken
+ 
++# Ensure that the `tiktoken` library is installed.
++# If it's not installed, you can install it using:
++# pip install tiktoken
++
+ from openai import AzureOpenAI
+ 
+ from typing import List

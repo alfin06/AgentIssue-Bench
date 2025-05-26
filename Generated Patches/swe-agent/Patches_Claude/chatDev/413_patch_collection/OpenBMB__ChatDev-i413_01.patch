@@ -1,0 +1,19 @@
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..6e25b3b
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1,12 @@
++from camel.messages import ChatMessage
++from camel.typing import RoleType
++
++# This will raise TypeError: __init__() got an unexpected keyword argument 'refusal'
++msg = ChatMessage(
++    role_name="test",
++    role_type=RoleType.ASSISTANT,
++    meta_dict={},
++    role="assistant",
++    content="test content",
++    refusal="test refusal"  # This will cause the error
++)
+\ No newline at end of file

@@ -1,0 +1,28 @@
+diff --git a/agixt/Agent.py b/agixt/Agent.py
+index 8b81be9..7c2b7f7 100644
+--- a/agixt/Agent.py
++++ b/agixt/Agent.py
+@@ -431,12 +431,9 @@ class Agent:
+             new_extensions.append(new_extension)
+         for extension in new_extensions:
+             for command in extension["commands"]:
+-                if command["friendly_name"] in self.AGENT_CONFIG["commands"]:
+-                    command["enabled"] = self.AGENT_CONFIG["commands"][
+-                        command["friendly_name"]
+-                    ]
+-                else:
+-                    command["enabled"] = False
++                command["enabled"] = self.AGENT_CONFIG["commands"].get(
++                    command["friendly_name"], False
++                )
+         return new_extensions
+ 
+     def update_agent_config(self, new_config, config_key):
+@@ -509,6 +506,7 @@ class Agent:
+                     )
+                     if agent_command:
+                         agent_command.state = enabled
++                        session.add(agent_command)
+                     else:
+                         agent_command = AgentCommand(
+                             agent_id=agent.id, command_id=command.id, state=enabled

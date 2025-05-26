@@ -1,0 +1,42 @@
+diff --git a/camel/agents/chat_agent.py b/camel/agents/chat_agent.py
+index c824a15..f0f5cf2 100644
+--- a/camel/agents/chat_agent.py
++++ b/camel/agents/chat_agent.py
+@@ -242,7 +242,7 @@ class ChatAgent(BaseAgent):
+                     raise RuntimeError("OpenAI returned unexpected struct")
+                 output_messages = [
+                     ChatMessage(role_name=self.role_name, role_type=self.role_type,
+-                                meta_dict=dict(), **dict(choice.message))
++                                meta_dict=dict(), **{k: v for k, v in dict(choice.message).items() if k in ['role_name', 'role_type', 'meta_dict', 'role', 'content', 'refusal', 'audio']})
+                     for choice in response.choices
+                 ]
+                 info = self.get_info(
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..b10b523
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1,23 @@
++from camel.agents.chat_agent import ChatAgent
++from camel.messages.chat_messages import ChatMessage
++from camel.typing import RoleType
++from camel.messages import SystemMessage
++
++# Mocking necessary components
++class MockModelBackend:
++    def run(self, messages):
++        return {"choices": [{"message": {"role_name": "test_role", "role_type": RoleType.USER, "meta_dict": {}, "role": "user", "content": "test_content", "refusal": "test_refusal"}}]}
++
++# Mocking SystemMessage
++system_message = SystemMessage(role_name="test_role", role_type=RoleType.USER, content="test_content")
++
++# Initializing ChatAgent
++agent = ChatAgent(system_message=system_message)
++agent.model_backend = MockModelBackend()
++
++# Creating a test input message
++input_message = ChatMessage(role_name="test_role", role_type=RoleType.USER, meta_dict={}, role="user", content="test_input")
++
++# Running the step function
++response = agent.step(input_message)
++print(response)

@@ -1,0 +1,13 @@
+diff --git a/agixt/Interactions.py b/agixt/Interactions.py
+index 9ad2fb20..8e005255 100644
+--- a/agixt/Interactions.py
++++ b/agixt/Interactions.py
+@@ -420,7 +420,7 @@ class Interactions:
+             if search_string != "":
+                 await self.websearch.websearch_agent(
+                     user_input=search_string,
+-                    websearch_depth=websearch_depth,
++                    websearch_depth=int(websearch_depth),
+                     websearch_timeout=websearch_timeout,
+                 )
+         formatted_prompt, unformatted_prompt, tokens = await self.format_prompt(

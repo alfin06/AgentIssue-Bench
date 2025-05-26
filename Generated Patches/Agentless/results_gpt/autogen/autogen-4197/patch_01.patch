@@ -1,0 +1,24 @@
+diff --git a/python/packages/autogen-agentchat/src/autogen_agentchat/base/_chat_agent.py b/python/packages/autogen-agentchat/src/autogen_agentchat/base/_chat_agent.py
+index 757bd3e..2a26242 100644
+--- a/python/packages/autogen-agentchat/src/autogen_agentchat/base/_chat_agent.py
++++ b/python/packages/autogen-agentchat/src/autogen_agentchat/base/_chat_agent.py
+@@ -40,11 +40,11 @@ class ChatAgent(TaskRunner, Protocol):
+         """The types of messages that the agent produces."""
+         ...
+ 
+-    async def on_messages(self, messages: Sequence[ChatMessage], cancellation_token: CancellationToken) -> Response:
++    async def on_messages(self, messages: Sequence[ChatMessage], cancellation_token: "CancellationToken") -> Response:
+         """Handles incoming messages and returns a response."""
+         ...
+ 
+-    def on_messages_stream(
++    async def on_messages_stream(
+         self, messages: Sequence[ChatMessage], cancellation_token: CancellationToken
+     ) -> AsyncGenerator[AgentMessage | Response, None]:
+         """Handles incoming messages and returns a stream of inner messages and
+@@ -53,4 +53,4 @@ class ChatAgent(TaskRunner, Protocol):
+ 
+     async def on_reset(self, cancellation_token: CancellationToken) -> None:
+         """Resets the agent to its initialization state."""
+-        ...
++        ...

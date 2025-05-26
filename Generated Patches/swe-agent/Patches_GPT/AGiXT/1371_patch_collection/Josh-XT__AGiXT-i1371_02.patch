@@ -1,0 +1,47 @@
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..19b4904
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1,40 @@
++import sys
++sys.path.append('/Josh-XT__AGiXT.git/agixt')
++from Chain import Chain
++
++def reproduce_error():
++    chain_name = "Another Chain"
++    chain = Chain()
++
++    try:
++        steps = chain.get_steps(chain_name=chain_name)
++        print("Steps:", steps)
++
++        for step in steps:
++            print("Step details:", step.prompt, step.agent_name, step.prompt_type, step.step)
++
++        chain_data = {
++            "chainName": chain_name,
++            "steps": [
++                {
++                    "prompt": {
++                        "chainName": step.prompt.chainName,
++                        "promptCategory": step.prompt.promptCategory,
++                        "commandName": step.prompt.commandName,
++                        "promptName": step.prompt.promptName,
++                    },
++                    "agentName": step.agent_name,
++                    "promptType": step.prompt_type,
++                    "step": step.step,
++                }
++                for step in steps
++            ],
++            "id": chain.get_chain(chain_name=chain_name)["id"],
++        }
++
++        print("Chain Data:", chain_data)
++    except Exception as e:
++        print("Error:", str(e))
++
++if __name__ == "__main__":
++    reproduce_error()
+\ No newline at end of file

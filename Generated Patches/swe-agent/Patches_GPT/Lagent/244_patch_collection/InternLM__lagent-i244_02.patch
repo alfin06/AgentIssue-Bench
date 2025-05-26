@@ -1,0 +1,24 @@
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..650c2eb
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1,17 @@
++from lagent.llms.huggingface import HFTransformer
++
++def main():
++    # Initialize HFTransformer with dummy parameters
++    model_path = "dummy_model_path"  # Replace with actual model path
++    hf_transformer = HFTransformer(path=model_path, tokenizer_only=True)
++
++    # Attempt to call stream_generate to reproduce the error
++    try:
++        inputs = ["Test input"]
++        for status, response, _ in hf_transformer.stream_generate(inputs):
++            print(status, response)
++    except AttributeError as e:
++        print("Error:", e)
++
++if __name__ == "__main__":
++    main()
+\ No newline at end of file

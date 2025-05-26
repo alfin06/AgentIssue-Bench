@@ -1,0 +1,41 @@
+diff --git a/src/crewai/agents/crew_agent_executor.py b/src/crewai/agents/crew_agent_executor.py
+index 7c5549a..281cf73 100644
+--- a/src/crewai/agents/crew_agent_executor.py
++++ b/src/crewai/agents/crew_agent_executor.py
+@@ -160,19 +160,27 @@ class CrewAgentExecutor(CrewAgentExecutorMixin):
+ 
+     def _get_llm_response(self) -> str:
+         """Call the LLM and return the response, handling any invalid responses."""
+-        answer = self.llm.call(
+-            self.messages,
+-            callbacks=self.callbacks,
+-        )
++        try:
++            answer = self.llm.call(
++                self.messages,
++                callbacks=self.callbacks,
++            )
+ 
+-        if not answer:
++            if not answer:
++                self._printer.print(
++                    content="Received None or empty response from LLM call.",
++                    color="red",
++                )
++                raise ValueError("Invalid response from LLM call - None or empty.")
++
++            return answer
++            
++        except Exception as e:
+             self._printer.print(
+-                content="Received None or empty response from LLM call.",
++                content=f"Error during LLM call: {str(e)}",
+                 color="red",
+             )
+-            raise ValueError("Invalid response from LLM call - None or empty.")
+-
+-        return answer
++            raise RuntimeError(f"LLM call failed: {str(e)}")
+ 
+     def _process_llm_response(self, answer: str) -> Union[AgentAction, AgentFinish]:
+         """Process the LLM response and format it into an AgentAction or AgentFinish."""

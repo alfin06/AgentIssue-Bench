@@ -1,0 +1,41 @@
+diff --git a/src/crewai/agents/crew_agent_executor.py b/src/crewai/agents/crew_agent_executor.py
+index 00545e76..3ff2793f 100644
+--- a/src/crewai/agents/crew_agent_executor.py
++++ b/src/crewai/agents/crew_agent_executor.py
+@@ -143,6 +143,8 @@ class CrewAgentExecutor(CrewAgentExecutorMixin):
+                         tool_result = self._execute_tool_and_check_finality(
+                             formatted_answer
+                         )
++                        if self.step_callback:
++                            self.step_callback(tool_result)
+                         formatted_answer.text += f"\nObservation: {tool_result.result}"
+                         formatted_answer.result = tool_result.result
+                         if tool_result.result_as_answer:
+@@ -153,9 +155,6 @@ class CrewAgentExecutor(CrewAgentExecutorMixin):
+                             )
+                         self._show_logs(formatted_answer)
+ 
+-                    if self.step_callback:
+-                        self.step_callback(formatted_answer)
+-
+                     if self._should_force_answer():
+                         if self.have_forced_answer:
+                             return AgentFinish(
+diff --git a/src/crewai/project/utils.py b/src/crewai/project/utils.py
+index be3f757d..4195bfe2 100644
+--- a/src/crewai/project/utils.py
++++ b/src/crewai/project/utils.py
+@@ -1,11 +1,11 @@
+ def memoize(func):
+     cache = {}
+-
++    
++    @wraps(func)
+     def memoized_func(*args, **kwargs):
+         key = (args, tuple(kwargs.items()))
+         if key not in cache:
+             cache[key] = func(*args, **kwargs)
+         return cache[key]
+ 
+-    memoized_func.__dict__.update(func.__dict__)
+     return memoized_func

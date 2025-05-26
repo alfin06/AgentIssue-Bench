@@ -1,0 +1,93 @@
+diff --git a/packages/agents/src/agents/Evo/findBestAgent.ts b/packages/agents/src/agents/Evo/findBestAgent.ts
+index 62f5724..1483fb0 100644
+--- a/packages/agents/src/agents/Evo/findBestAgent.ts
++++ b/packages/agents/src/agents/Evo/findBestAgent.ts
+@@ -2,7 +2,6 @@ import { FunctionDefinition, Rag, ArrayRecombiner } from "@/agent-core";
+ import { AgentContext } from "@/agent-core";
+ import { AgentFunctionBase } from "../../functions/utils";
+ import { Agent, GoalRunArgs } from "../utils/Agent";
+-import { DeveloperAgent } from "../Developer";
+ import { CsvAnalystAgent } from "../CsvAnalyst";
+ import { ResearcherAgent } from "../Researcher";
+ import { SynthesizerAgent } from "../Synthesizer";
+@@ -28,7 +27,6 @@ export const findBestAgent = async (
+   AgentFunctionBase<unknown>[]
+ ]> => {
+   const allAgents: Agent[] = [
+-    DeveloperAgent,
+     CsvAnalystAgent,
+     ResearcherAgent,
+     SynthesizerAgent,
+diff --git a/packages/agents/src/agents/Evo/prompts.ts b/packages/agents/src/agents/Evo/prompts.ts
+index 6af8133..4b4b15f 100644
+--- a/packages/agents/src/agents/Evo/prompts.ts
++++ b/packages/agents/src/agents/Evo/prompts.ts
+@@ -21,9 +21,15 @@ export const prompts = {
+   variablesExplainer:
+     "Function results will be stored in variables if they are very large. Variables are declared using the syntax ${variable-name}. Variables are created as needed, DO NOT use variable names that are not previously stated. When using variables within function arguments, YOU MUST use the ${variable-name} syntax. Relevant chunks of variable data will be shown to you as needed.",
+   evoExplainer: new Prompt(`
+-      If asked about your expertise, you should say that you are an expert assistant capable of accomplishing a multitude of tasks.
+-      Depending on the goal, you adopt a persona that is most suitable for the goal.
+-      The personas available to you are: CsvAnalyst, Researcher, Synthesizer.
++      You are Evo, an expert assistant capable of accomplishing a multitude of tasks by directly embodying different personas.
++      You have deep knowledge of each persona's capabilities and can seamlessly switch between them based on the task at hand.
++      Your core personas are:
++      - CsvAnalyst: For data analysis and manipulation tasks
++      - Researcher: For gathering and synthesizing information
++      - Synthesizer: For combining and processing information into actionable insights
++      
++      You don't need any external agents to help you adopt these personas - you have direct access to their capabilities.
++      When working on a task, you'll automatically embody the most suitable persona while maintaining your core identity as Evo.
+     `)
+     .line(`CsvAnalyst expertise: ` + csvAnalystPrompts.expertise)
+     .line(`Researcher expertise: ` + researcherPrompts.expertise)
+diff --git a/test_evo_personas.ts b/test_evo_personas.ts
+new file mode 100644
+index 0000000..8f49c64
+--- /dev/null
++++ b/test_evo_personas.ts
+@@ -0,0 +1,43 @@
++import { AgentContext } from "@/agent-core";
++import { Evo } from "./packages/agents/src/agents/Evo";
++import { findBestAgent } from "./packages/agents/src/agents/Evo/findBestAgent";
++
++// Mock context
++const mockContext = {
++  llm: {
++    getMaxContextTokens: () => 8000,
++    getMaxResponseTokens: () => 1000,
++    getModel: () => "gpt-4",
++  },
++  variables: {
++    saveThreshold: 1000,
++  },
++  chat: {
++    persistent: async (messages) => {},
++    chatLogs: {
++      messages: [],
++    },
++  },
++  logger: {
++    notice: async (msg) => console.log(msg),
++    info: async (msg) => console.log(msg),
++  },
++  scripts: [],
++  workspace: {
++    readdir: async () => [],
++  },
++  cloneEmpty: () => mockContext,
++} as unknown as AgentContext;
++
++// Test Evo initialization
++const evo = new Evo(mockContext);
++evo.init().then(() => {
++  console.log("Evo initialized successfully");
++});
++
++// Test findBestAgent
++const testPrediction = "I need to analyze a CSV file with sales data";
++findBestAgent(testPrediction, mockContext).then(([agent, funcs, persona, allFuncs]) => {
++  console.log("Selected agent:", agent.config.prompts.name);
++  console.log("Selected persona:", persona);
++});
+\ No newline at end of file

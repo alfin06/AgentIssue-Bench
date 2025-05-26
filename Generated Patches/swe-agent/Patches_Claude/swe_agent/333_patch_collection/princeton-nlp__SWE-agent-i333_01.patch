@@ -1,0 +1,64 @@
+diff --git a/test_setup_script.js b/test_setup_script.js
+new file mode 100644
+index 0000000..744b8fb
+--- /dev/null
++++ b/test_setup_script.js
+@@ -0,0 +1,57 @@
++// Test script to verify setup script input behavior
++import React, { useState } from 'react';
++import { render, fireEvent, screen } from '@testing-library/react';
++import LRunControl from './sweagent/frontend/src/components/controls/LRunControl';
++
++// Mock component setup
++const TestComponent = () => {
++  const [tabKey, setTabKey] = useState('env');
++  const [runConfig, setRunConfig] = useState({
++    environment: {
++      script: '',
++      image_name: '',
++    },
++    agent: {
++      model: {
++        model_name: 'gpt4',
++      },
++    },
++    extra: {
++      test_run: false,
++    },
++  });
++
++  return (
++    <LRunControl
++      isComputing={false}
++      isConnected={true}
++      handleStop={() => {}}
++      handleSubmit={() => {}}
++      tabKey={tabKey}
++      setTabKey={setTabKey}
++      runConfig={runConfig}
++      setRunConfig={setRunConfig}
++      runConfigDefault={{
++        environment: {
++          image_name: 'default-image',
++        },
++      }}
++    />
++  );
++};
++
++// Test cases
++describe('LRunControl Setup Script', () => {
++  it('should allow editing setup script', () => {
++    render(<TestComponent />);
++    
++    // Find the setup script input
++    const setupInput = screen.getByPlaceholderText('/path/to/setup.sh');
++    
++    // Try to change the value
++    fireEvent.change(setupInput, { target: { value: '/test/setup.sh' } });
++    
++    // Verify the value changed
++    expect(setupInput.value).toBe('/test/setup.sh');
++  });
++});
+\ No newline at end of file

@@ -1,0 +1,23 @@
+diff --git a/test_error.py b/test_error.py
+new file mode 100644
+index 0000000..15bcd3d
+--- /dev/null
++++ b/test_error.py
+@@ -0,0 +1,16 @@
++from chatdev.chat_chain import ChatChain
++from camel.typing import ModelType
++
++config_path = "CompanyConfig/Default/ChatChainConfig.json"
++config_phase_path = "CompanyConfig/Default/PhaseConfig.json"
++config_role_path = "CompanyConfig/Default/RoleConfig.json"
++
++chat_chain = ChatChain(
++    config_path=config_path,
++    config_phase_path=config_phase_path,
++    config_role_path=config_role_path,
++    task_prompt="Test task",
++    project_name="Test",
++    org_name="TestOrg",
++    model_type=ModelType.GPT_3_5_TURBO
++)
+\ No newline at end of file

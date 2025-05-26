@@ -1,0 +1,21 @@
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..32e5d20
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1,14 @@
++import os
++from src.crewai.telemetry.telemetry import Telemetry
++
++# Set the environment variable to disable telemetry
++os.environ['OTEL_SDK_DISABLED'] = 'true'
++
++# Initialize the Telemetry class
++telemetry = Telemetry()
++
++# Check if telemetry is ready
++if telemetry.ready:
++    print("Telemetry is incorrectly enabled.")
++else:
++    print("Telemetry is correctly disabled.")
+\ No newline at end of file

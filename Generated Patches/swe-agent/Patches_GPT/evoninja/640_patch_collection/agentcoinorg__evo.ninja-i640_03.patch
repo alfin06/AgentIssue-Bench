@@ -1,0 +1,63 @@
+diff --git a/packages/agents/src/agents/Evo/index.ts b/packages/agents/src/agents/Evo/index.ts
+index 6aa689a..10c6f47 100644
+--- a/packages/agents/src/agents/Evo/index.ts
++++ b/packages/agents/src/agents/Evo/index.ts
+@@ -29,7 +29,7 @@ export class Evo extends Agent<GoalRunArgs> {
+   private goal: string = "";
+ 
+   constructor(context: AgentContext, timeout?: Timeout, private enableQuickTermination?: boolean) {
+-    super(new AgentConfig(agentPrompts, [], context.scripts, timeout), context);
++    super(new AgentConfig(agentPrompts, [], context.scripts, timeout, context.llm.getModel()), context);
+     this._chunker = new MessageChunker({
+       maxChunkSize: context.variables.saveThreshold,
+     });
+@@ -176,7 +176,7 @@ export class Evo extends Agent<GoalRunArgs> {
+               : ""
+           }`),
+       {
+-        model: this.context.llm.getModel(),
++        model: this.config.model,
+       }
+     );
+   }
+diff --git a/packages/agents/src/agents/utils/AgentConfig.ts b/packages/agents/src/agents/utils/AgentConfig.ts
+index a4a78fb..0fb651d 100644
+--- a/packages/agents/src/agents/utils/AgentConfig.ts
++++ b/packages/agents/src/agents/utils/AgentConfig.ts
+@@ -16,6 +16,7 @@ export class AgentConfig<TRunArgs> {
+     public readonly functions: AgentFunctionBase<unknown>[],
+     scripts: Scripts,
+     public readonly timeout?: Timeout,
++    public readonly model?: string,
+     shouldTerminate?: (functionCalled: ExecuteAgentFunctionCalled) => boolean,
+     overrideDefaultFunctions?: boolean,
+   ) {
+diff --git a/test_script.py b/test_script.py
+new file mode 100644
+index 0000000..4ecb9f1
+--- /dev/null
++++ b/test_script.py
+@@ -0,0 +1,23 @@
++from packages.agents.src.agents.Evo import Evo
++from packages.agents.src.agent_core.llm.LlmApi import LlmApi
++
++# Mock context and timeout for testing
++class MockContext:
++    def __init__(self):
++        self.llm = MockLlmApi()
++        self.chat = MockChat()
++        self.variables = MockVariables()
++        self.logger = MockLogger()
++        self.workspace = MockWorkspace()
++
++class MockLlmApi(LlmApi):
++    def getModel(self):
++        return "gpt-4"
++
++# Instantiate Evo with mock context
++evo_instance = Evo(context=MockContext(), timeout=None)
++
++# Test predictBestNextStep method
++messages = []
++result = evo_instance.predictBestNextStep(messages, None)
++print("Prediction Result:", result)

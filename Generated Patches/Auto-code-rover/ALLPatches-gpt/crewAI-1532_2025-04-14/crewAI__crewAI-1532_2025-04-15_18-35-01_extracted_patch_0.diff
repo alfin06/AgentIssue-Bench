@@ -1,0 +1,30 @@
+diff --git a/src/crewai/telemetry/telemetry.py b/src/crewai/telemetry/telemetry.py
+index a08ccd96..7c30aee6 100644
+--- a/src/crewai/telemetry/telemetry.py
++++ b/src/crewai/telemetry/telemetry.py
+@@ -49,20 +49,23 @@ class Telemetry:
+         self.ready = False
+         self.trace_set = False
+         try:
++            if os.getenv('OTEL_SDK_DISABLE', 'false').lower() == 'true':
++                return
++            
+             telemetry_endpoint = "https://telemetry.crewai.com:4319"
+             self.resource = Resource(
+                 attributes={SERVICE_NAME: "crewAI-telemetry"},
+             )
+             with suppress_warnings():
+                 self.provider = TracerProvider(resource=self.resource)
+-
++    
+             processor = BatchSpanProcessor(
+                 OTLPSpanExporter(
+                     endpoint=f"{telemetry_endpoint}/v1/traces",
+                     timeout=30,
+                 )
+             )
+-
++    
+             self.provider.add_span_processor(processor)
+             self.ready = True
+         except Exception as e:

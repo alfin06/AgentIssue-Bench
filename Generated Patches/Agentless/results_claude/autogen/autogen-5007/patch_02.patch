@@ -1,0 +1,16 @@
+diff --git a/python/packages/autogen-ext/src/autogen_ext/models/openai/_openai_client.py b/python/packages/autogen-ext/src/autogen_ext/models/openai/_openai_client.py
+index aa0d828..6f80647 100644
+--- a/python/packages/autogen-ext/src/autogen_ext/models/openai/_openai_client.py
++++ b/python/packages/autogen-ext/src/autogen_ext/models/openai/_openai_client.py
+@@ -795,6 +795,11 @@ class BaseOpenAIChatCompletionClient(ChatCompletionClient):
+         return self._total_usage
+ 
+     def count_tokens(self, messages: Sequence[LLMMessage], *, tools: Sequence[Tool | ToolSchema] = []) -> int:
++        if tiktoken is None:
++            raise ImportError(
++                "tiktoken is required for token counting. "
++                "Install with 'pip install tiktoken'"
++            )
+         model = self._create_args["model"]
+         try:
+             encoding = tiktoken.encoding_for_model(model)

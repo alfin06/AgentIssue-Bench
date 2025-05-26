@@ -1,0 +1,68 @@
+diff --git a/packages/agents/src/agents/Evo/index.ts b/packages/agents/src/agents/Evo/index.ts
+index 6aa689a..4682e2a 100644
+--- a/packages/agents/src/agents/Evo/index.ts
++++ b/packages/agents/src/agents/Evo/index.ts
+@@ -174,10 +174,7 @@ export class Evo extends Agent<GoalRunArgs> {
+             terminationStr && this.goal.length < 350
+               ? `If you are 100% sure the user's goal has been achieved, simply respond with "${terminationStr}". The user's goal is: "${this.goal}". If the user asks for an output file, has it been written?`
+               : ""
+-          }`),
+-      {
+-        model: this.context.llm.getModel(),
+-      }
++          }`)
+     );
+   }
+ 
+diff --git a/test_model_consistency.ts b/test_model_consistency.ts
+new file mode 100644
+index 0000000..2ce5163
+--- /dev/null
++++ b/test_model_consistency.ts
+@@ -0,0 +1,45 @@
++import { Evo } from './packages/agents/src/agents/Evo';
++import { AgentContext } from './packages/agents/src/agent-core/agent/AgentContext';
++import { OpenAILlmApi } from './packages/agents/src/agent-core/llm/OpenAILlmApi';
++import { LlmModels } from './packages/agents/src/agent-core/llm';
++
++// Mock dependencies
++const mockLogger = {
++  info: () => Promise.resolve(),
++  warning: () => Promise.resolve(),
++  notice: () => Promise.resolve(),
++};
++
++const mockWorkspace = {
++  readdir: () => Promise.resolve([]),
++};
++
++const mockEnv = {};
++const mockScripts = {};
++
++// Create test context with GPT-4
++const llmApi = new OpenAILlmApi(
++  'test-key',
++  LlmModels.GPT4,
++  8000,
++  1000,
++  mockLogger
++);
++
++const context = new AgentContext(
++  llmApi,
++  null as any,
++  null as any,
++  mockLogger as any,
++  mockWorkspace as any,
++  mockWorkspace as any,
++  mockEnv as any,
++  mockScripts as any
++);
++
++// Create Evo instance
++const evo = new Evo(context);
++
++// Test that the model is consistent
++console.log('Model from context:', context.llm.getModel());
++console.log('Model matches GPT4:', context.llm.getModel() === LlmModels.GPT4);
+\ No newline at end of file

@@ -1,0 +1,41 @@
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..d19c652
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1,34 @@
++import requests
++import json
++
++# Define the URL for the Flask server
++url = "http://localhost:8000/run"
++
++# Define the environment configuration with a sample shell script
++environment_config = {
++    "agent": {
++        "model": {
++            "model_name": "test_model",
++        },
++    },
++    "environment": {
++        "image_name": "python:3.9",
++        "script": "echo 'Hello, World!'",
++        "repo_path": "",
++        "base_commit": "",
++    },
++    "problem_statement": {
++        "input": "",
++        "type": "",
++    },
++    "extra": {
++        "test_run": False,
++    },
++}
++
++# Send the request to the server
++response = requests.get(url, params={"runConfig": json.dumps(environment_config)})
++
++# Print the response
++print("Status Code:", response.status_code)
++print("Response Text:", response.text)
+\ No newline at end of file

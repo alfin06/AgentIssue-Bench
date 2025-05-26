@@ -1,0 +1,44 @@
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..f3ab346
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1,37 @@
++import requests
++import json
++
++# Define the base URL for the web UI
++BASE_URL = "http://localhost:8000"
++
++# Define the run configuration with an invalid script
++run_config = {
++    "environment": {
++        "image_name": "python:3.9",
++        "script": "echo 'Invalid script'",
++        "repo_path": "",
++        "base_commit": "",
++    },
++    "agent": {
++        "model": {
++            "model_name": "test-model",
++        },
++    },
++    "problem_statement": {
++        "input": "",
++        "type": "test",
++    },
++    "extra": {
++        "test_run": False,
++    },
++}
++
++# Send a GET request to the /run endpoint
++response = requests.get(
++    f"{BASE_URL}/run",
++    params={"runConfig": json.dumps(run_config)}
++)
++
++# Print the response
++print("Status Code:", response.status_code)
++print("Response Text:", response.text)
+\ No newline at end of file

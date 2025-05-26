@@ -1,0 +1,27 @@
+diff --git a/src/crewai/telemetry/telemetry.py b/src/crewai/telemetry/telemetry.py
+index a08ccd96..93e1fcf1 100644
+--- a/src/crewai/telemetry/telemetry.py
++++ b/src/crewai/telemetry/telemetry.py
+@@ -48,6 +48,11 @@ class Telemetry:
+     def __init__(self):
+         self.ready = False
+         self.trace_set = False
++        
++        # Check if telemetry is explicitly disabled
++        if os.getenv("OTEL_SDK_DISABLED", "").lower() == "true":
++            return
++            
+         try:
+             telemetry_endpoint = "https://telemetry.crewai.com:4319"
+             self.resource = Resource(
+@@ -74,6 +79,10 @@ class Telemetry:
+             self.ready = False
+ 
+     def set_tracer(self):
++        # Double check telemetry is not disabled
++        if os.getenv("OTEL_SDK_DISABLED", "").lower() == "true":
++            return
++            
+         if self.ready and not self.trace_set:
+             try:
+                 with suppress_warnings():

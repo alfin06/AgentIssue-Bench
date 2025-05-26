@@ -1,0 +1,31 @@
+diff --git a/test_encoding.py b/test_encoding.py
+new file mode 100644
+index 0000000..323cab4
+--- /dev/null
++++ b/test_encoding.py
+@@ -0,0 +1,12 @@
++import yaml
++from pathlib import Path
++
++def load_yaml(config_path: Path):
++    with open(config_path, "r") as file:
++        return yaml.safe_load(file)
++
++try:
++    config = load_yaml(Path("test_encoding.yaml"))
++    print("Successfully loaded YAML:", config)
++except Exception as e:
++    print(f"Error loading YAML: {e}")
+\ No newline at end of file
+diff --git a/test_encoding.yaml b/test_encoding.yaml
+new file mode 100644
+index 0000000..e8ffd4f
+--- /dev/null
++++ b/test_encoding.yaml
+@@ -0,0 +1,5 @@
++test_agent:
++  name: "测试代理"
++  role: "这是一个测试角色"
++  goal: "这是测试目标"
++  backstory: "这是测试背景故事"
+\ No newline at end of file

@@ -1,0 +1,16 @@
+diff --git a/camel/models/openai_model.py b/camel/models/openai_model.py
+index 6d4dc84..318f45d 100644
+--- a/camel/models/openai_model.py
++++ b/camel/models/openai_model.py
+@@ -68,10 +68,8 @@ class OpenAIModel(BaseModelBackend):
+             model_type, model_config_dict, api_key, url, token_counter
+         )
+         self._client = OpenAI(
+-            timeout=60,
+-            max_retries=3,
+-            base_url=self._url,
+             api_key=self._api_key,
++            base_url=self._url,
+         )
+ 
+     @property

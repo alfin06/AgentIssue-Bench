@@ -1,0 +1,19 @@
+diff --git a/examples/Listen.py b/examples/Listen.py
+index c8bf8ae..ea536e4 100644
+--- a/examples/Listen.py
++++ b/examples/Listen.py
+@@ -202,6 +202,14 @@ class AGiXTListen:
+             context_results=6,
+         )
+ 
++    def speak_with_streamlabs_tts(self, text):
++        if self.sdk.get_extension_settings()['streamlabs_tts']['USE_STREAMLABS_TTS']:
++            voice = self.sdk.get_extension_settings()['streamlabs_tts']['STREAMLABS_VOICE']
++            # Assuming there's a method in AGiXTSDK to handle Streamlabs TTS
++            self.sdk.speak_with_streamlabs_tts(text=text, voice=voice)
++        else:
++            logging.warning("Streamlabs TTS is not enabled.")
++
+     def process_wake_word(self):
+         CHUNK = 1024
+         FORMAT = pyaudio.paInt16

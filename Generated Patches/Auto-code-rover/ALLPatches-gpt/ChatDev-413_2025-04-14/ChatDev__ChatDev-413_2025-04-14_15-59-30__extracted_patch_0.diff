@@ -1,0 +1,33 @@
+diff --git a/camel/messages/chat_messages.py b/camel/messages/chat_messages.py
+index a79d05a..c1fce5d 100644
+--- a/camel/messages/chat_messages.py
++++ b/camel/messages/chat_messages.py
+@@ -35,7 +35,7 @@ class ChatMessage(BaseMessage):
+         role_type (RoleType): The type of role, either
+             :obj:`RoleType.ASSISTANT` or :obj:`RoleType.USER`.
+         meta_dict (Optional[Dict[str, str]]): Additional metadata dictionary
+-            for the message.
++        for the message.
+         role (str): The role of the message in OpenAI chat system.
+         content (str): The content of the message. (default: :obj:`""`)
+         refusal (str): The refusal to build argument.
+@@ -50,6 +50,19 @@ class ChatMessage(BaseMessage):
+         function_call: Optional[FunctionCall] = None
+         tool_calls: Optional[ChatCompletionMessageToolCall] = None
+ 
++    def __init__(self, role_name: str, role_type: RoleType, 
++                 meta_dict: Optional[Dict[str, str]] = None, role: str = "user", 
++                 content: str = "", refusal: str = None):
++        self.role_name = role_name
++        self.role_type = role_type
++        self.meta_dict = meta_dict
++        self.role = role
++        self.content = content
++        self.refusal = refusal
++        if openai_new_api:
++            self.function_call = None
++            self.tool_calls = None
++
+     def set_user_role_at_backend(self: BaseMessage):
+         return self.__class__(
+             role_name=self.role_name,

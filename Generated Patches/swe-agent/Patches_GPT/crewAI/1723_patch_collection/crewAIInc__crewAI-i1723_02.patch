@@ -1,0 +1,22 @@
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..7378e73
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1,15 @@
++import logging
++from crewai.memory.storage.rag_storage import RAGStorage
++
++# Configure logging
++logging.basicConfig(level=logging.DEBUG)
++
++# Initialize RAGStorage
++rag_storage = RAGStorage(type='short_term', allow_reset=True)
++
++# Attempt to reset the memory
++try:
++    rag_storage.reset()
++    print("Memory reset successfully.")
++except Exception as e:
++    print(f"An error occurred: {e}")
+\ No newline at end of file

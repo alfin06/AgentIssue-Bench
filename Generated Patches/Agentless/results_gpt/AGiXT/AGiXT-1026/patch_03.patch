@@ -1,0 +1,33 @@
+diff --git a/agixt/extensions/voice_chat.py b/agixt/extensions/voice_chat.py
+index 3b44331..daeddbc 100644
+--- a/agixt/extensions/voice_chat.py
++++ b/agixt/extensions/voice_chat.py
+@@ -13,20 +13,14 @@ class voice_chat(Extensions):
+             if len(kwargs["enabled_commands"]) > 0:
+                 self.voice_prompt = "Voice Chat"
+         self.tts_command = "Speak with TTS with Streamlabs Text to Speech"
+-        if "USE_STREAMLABS_TTS" in kwargs:
+-            if kwargs["USE_STREAMLABS_TTS"].lower() == "true":
+-                self.tts_command = "Speak with TTS with Streamlabs Text to Speech"
+-        if "USE_GTTS" in kwargs:
+-            if kwargs["USE_GTTS"].lower() == "true":
+-                self.tts_command = "Speak with GTTS"
+-        if "USE_HUGGINGFACE_TTS" in kwargs:
+-            if (
+-                kwargs["USE_HUGGINGFACE_TTS"].lower() == "true"
+-                and "HUGGINGFACE_API_KEY" in kwargs
+-            ):
+-                if kwargs["HUGGINGFACE_API_KEY"] != "":
+-                    self.tts_command = "Read Audio with Huggingface"
+-        if "ELEVENLABS_API_KEY" in kwargs:
++        if isinstance(kwargs.get("USE_STREAMLABS_TTS"), str) and kwargs["USE_STREAMLABS_TTS"].lower() == "true":
++            self.tts_command = "Speak with TTS with Streamlabs Text to Speech"
++        elif isinstance(kwargs.get("USE_GTTS"), str) and kwargs["USE_GTTS"].lower() == "true":
++            self.tts_command = "Speak with GTTS"
++        elif isinstance(kwargs.get("USE_HUGGINGFACE_TTS"), str) and kwargs["USE_HUGGINGFACE_TTS"].lower() == "true" and kwargs.get("HUGGINGFACE_API_KEY"):
++            if kwargs["HUGGINGFACE_API_KEY"] != "":
++                self.tts_command = "Read Audio with Huggingface"
++        elif kwargs.get("ELEVENLABS_API_KEY"):
+             if kwargs["ELEVENLABS_API_KEY"] != "":
+                 self.tts_command = "Speak with TTS Using Elevenlabs"
+         self.commands = {

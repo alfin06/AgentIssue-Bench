@@ -1,0 +1,127 @@
+diff --git a/packages/agents/src/agents/Developer/testInputs/Battleship/__pycache__/abstract_class.cpython-311.pyc b/packages/agents/src/agents/Developer/testInputs/Battleship/__pycache__/abstract_class.cpython-311.pyc
+new file mode 100644
+index 0000000..d6074e1
+Binary files /dev/null and b/packages/agents/src/agents/Developer/testInputs/Battleship/__pycache__/abstract_class.cpython-311.pyc differ
+diff --git a/packages/agents/src/agents/Developer/testInputs/Battleship/__pycache__/concrete_battleship.cpython-311.pyc b/packages/agents/src/agents/Developer/testInputs/Battleship/__pycache__/concrete_battleship.cpython-311.pyc
+new file mode 100644
+index 0000000..171ffd1
+Binary files /dev/null and b/packages/agents/src/agents/Developer/testInputs/Battleship/__pycache__/concrete_battleship.cpython-311.pyc differ
+diff --git a/packages/agents/src/agents/Developer/testInputs/Battleship/__pycache__/evo_config.cpython-311.pyc b/packages/agents/src/agents/Developer/testInputs/Battleship/__pycache__/evo_config.cpython-311.pyc
+new file mode 100644
+index 0000000..cb64079
+Binary files /dev/null and b/packages/agents/src/agents/Developer/testInputs/Battleship/__pycache__/evo_config.cpython-311.pyc differ
+diff --git a/packages/agents/src/agents/Developer/testInputs/Battleship/abstract_class.py b/packages/agents/src/agents/Developer/testInputs/Battleship/abstract_class.py
+index dec3bcb..a530e26 100644
+--- a/packages/agents/src/agents/Developer/testInputs/Battleship/abstract_class.py
++++ b/packages/agents/src/agents/Developer/testInputs/Battleship/abstract_class.py
+@@ -105,3 +105,9 @@ class AbstractBattleship(ABC):
+         Create a new game.
+         """
+         pass
++    @abstractmethod
++    def predict_next_step(self, game_id: str, context: dict) -> dict:
++        """
++        Predict the next step in the game using the LLM model defined in Evo configuration.
++        """
++        pass
+diff --git a/packages/agents/src/agents/Developer/testInputs/Battleship/concrete_battleship.py b/packages/agents/src/agents/Developer/testInputs/Battleship/concrete_battleship.py
+new file mode 100644
+index 0000000..5dc56e3
+--- /dev/null
++++ b/packages/agents/src/agents/Developer/testInputs/Battleship/concrete_battleship.py
+@@ -0,0 +1,48 @@
++from abstract_class import AbstractBattleship
++from evo_config import EvoConfig
++from abstract_class import ShipPlacement, Turn, TurnResponse, Game, GameStatus
++
++class ConcreteBattleship(AbstractBattleship):
++    def create_game(self) -> None:
++        """Create a new game."""
++        pass
++
++    def create_ship_placement(self, game_id: str, placement: ShipPlacement) -> None:
++        """Place a ship on the grid."""
++        pass
++
++    def create_turn(self, game_id: str, turn: Turn) -> TurnResponse:
++        """Players take turns to target a grid cell."""
++        return TurnResponse(result="hit", ship_type="battleship")
++
++    def delete_game(self, game_id: str) -> None:
++        """Delete a game given its ID."""
++        pass
++
++    def get_game(self) -> Game:
++        """Retrieve the state of the game."""
++        return Game(game_id="mock_game", players=["player_1", "player_2"], board={}, ships=[], turns=[])
++
++    def get_game_status(self, game_id: str) -> GameStatus:
++        """Check if the game is over and get the winner if there's one."""
++        return GameStatus(is_game_over=False, winner=None)
++
++    def get_winner(self, game_id: str) -> str:
++        """Get the winner of the game."""
++        return "player_1"
++
++class ConcreteBattleship(AbstractBattleship):
++    def predict_next_step(self, game_id: str, context: dict) -> dict:
++        """
++        Predict the next step in the game using the LLM model defined in Evo configuration.
++        """
++        llm_model = EvoConfig.get_llm_model()
++
++        # Simulate prediction logic (replace with actual LLM API call)
++        prediction = {
++            "game_id": game_id,
++            "next_step": "Simulated prediction using model: " + llm_model,
++            "context": context
++        }
++
++        return prediction
+\ No newline at end of file
+diff --git a/packages/agents/src/agents/Developer/testInputs/Battleship/evo_config.py b/packages/agents/src/agents/Developer/testInputs/Battleship/evo_config.py
+new file mode 100644
+index 0000000..2f42aa5
+--- /dev/null
++++ b/packages/agents/src/agents/Developer/testInputs/Battleship/evo_config.py
+@@ -0,0 +1,15 @@
++import os
++
++class EvoConfig:
++    """
++    Utility class to fetch Evo configuration.
++    """
++
++    @staticmethod
++    def get_llm_model():
++        """
++        Fetch the LLM model from Evo configuration.
++        """
++        # For simplicity, we'll use an environment variable to simulate Evo configuration.
++        # In a real-world scenario, this might fetch data from a database or a configuration file.
++        return os.getenv("EVO_LLM_MODEL", "gpt-3.5")
+\ No newline at end of file
+diff --git a/packages/agents/src/agents/Developer/testInputs/Battleship/test_predict.py b/packages/agents/src/agents/Developer/testInputs/Battleship/test_predict.py
+new file mode 100644
+index 0000000..478808e
+--- /dev/null
++++ b/packages/agents/src/agents/Developer/testInputs/Battleship/test_predict.py
+@@ -0,0 +1,17 @@
++from concrete_battleship import ConcreteBattleship
++
++# Create an instance of the concrete class
++battleship = ConcreteBattleship()
++
++# Define a mock game ID and context
++game_id = "test_game_123"
++context = {
++    "current_state": "mock_state",
++    "player_turn": "player_1"
++}
++
++# Call the predict_next_step method
++prediction = battleship.predict_next_step(game_id, context)
++
++# Print the prediction
++print("Prediction:", prediction)
+\ No newline at end of file

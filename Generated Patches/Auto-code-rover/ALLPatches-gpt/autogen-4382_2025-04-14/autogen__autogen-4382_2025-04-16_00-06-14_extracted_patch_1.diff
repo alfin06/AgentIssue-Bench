@@ -1,0 +1,48 @@
+diff --git a/python/packages/autogen-core/src/autogen_core/application/_worker_runtime.py b/python/packages/autogen-core/src/autogen_core/application/_worker_runtime.py
+index 0e5fb933a..26d4d1233 100644
+--- a/python/packages/autogen-core/src/autogen_core/application/_worker_runtime.py
++++ b/python/packages/autogen-core/src/autogen_core/application/_worker_runtime.py
+@@ -54,10 +54,7 @@
+ from .protos import agent_worker_pb2, agent_worker_pb2_grpc
+ from .telemetry import MessageRuntimeTracingConfig, TraceHelper, get_telemetry_grpc_metadata
+ 
+-try:
+-    import grpc.aio
+-except ImportError as e:
+-    raise ImportError(GRPC_IMPORT_ERROR_STR) from e
++import grpc.aio
+ 
+ if TYPE_CHECKING:
+     from .protos.agent_worker_pb2_grpc import AgentRpcAsyncStub
+diff --git a/python/packages/autogen-core/src/autogen_core/application/_worker_runtime_host.py b/python/packages/autogen-core/src/autogen_core/application/_worker_runtime_host.py
+index d7fee07ff..af6926d3f 100644
+--- a/python/packages/autogen-core/src/autogen_core/application/_worker_runtime_host.py
++++ b/python/packages/autogen-core/src/autogen_core/application/_worker_runtime_host.py
+@@ -7,10 +7,7 @@
+ from ._utils import GRPC_IMPORT_ERROR_STR
+ from ._worker_runtime_host_servicer import WorkerAgentRuntimeHostServicer
+ 
+-try:
+-    import grpc
+-except ImportError as e:
+-    raise ImportError(GRPC_IMPORT_ERROR_STR) from e
++import grpc
+ from .protos import agent_worker_pb2_grpc
+ 
+ logger = logging.getLogger("autogen_core")
+diff --git a/python/packages/autogen-core/src/autogen_core/application/_worker_runtime_host_servicer.py b/python/packages/autogen-core/src/autogen_core/application/_worker_runtime_host_servicer.py
+index 7c597bd07..8aa6adacb 100644
+--- a/python/packages/autogen-core/src/autogen_core/application/_worker_runtime_host_servicer.py
++++ b/python/packages/autogen-core/src/autogen_core/application/_worker_runtime_host_servicer.py
+@@ -11,10 +11,7 @@
+ from ._helpers import SubscriptionManager
+ from ._utils import GRPC_IMPORT_ERROR_STR
+ 
+-try:
+-    import grpc
+-except ImportError as e:
+-    raise ImportError(GRPC_IMPORT_ERROR_STR) from e
++import grpc
+ 
+ from .protos import agent_worker_pb2, agent_worker_pb2_grpc
+ 

@@ -1,0 +1,32 @@
+diff --git a/sweagent/environment/swe_env.py b/sweagent/environment/swe_env.py
+index 1307c7f..6234779 100644
+--- a/sweagent/environment/swe_env.py
++++ b/sweagent/environment/swe_env.py
+@@ -630,7 +630,7 @@ class SWEEnv(gym.Env):
+         if location == "host":
+             return self._run_shell_script_host(script_path)
+         elif location == "container":
+-            raise NotImplementedError
++            return self._run_shell_script_container(script_path)
+         raise ValueError(f"Invalid 'location': {location}")
+     
+     def _run_shell_script_host(self, script_path: Path) -> None:
+@@ -645,7 +645,17 @@ class SWEEnv(gym.Env):
+                 timeout_duration=LONG_TIMEOUT,
+             )
+ 
+-    def install_env(self) -> None:
++    def _run_shell_script_container(self, script_path: Path) -> None:
++        """Run shell script file (located in container) in the container"""
++        if not script_path.is_file():
++            raise FileNotFoundError(f"Script not found at {script_path}")
++        shell_commands = Path(script_path).read_text().splitlines()
++        for i, cmd in enumerate(shell_commands):
++            self.communicate_with_handling(
++                cmd,
++                error_msg=f"Failed to execute line {i}.",
++                timeout_duration=LONG_TIMEOUT,
++            )
+         """
+         Creates conda environment and installs third party dependencies to allow code execution
+         """

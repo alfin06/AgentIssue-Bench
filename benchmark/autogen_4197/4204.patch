@@ -1,0 +1,32 @@
+From 66b1fa3f2372237e1e54128ad954358c5c70e092 Mon Sep 17 00:00:00 2001
+From: Jack Gerrits <jack@jackgerrits.com>
+Date: Thu, 14 Nov 2024 16:37:41 -0500
+Subject: [PATCH] Ensure all imports present for example
+
+---
+ .../user-guide/agentchat-user-guide/tutorial/agents.ipynb    | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/python/packages/autogen-core/docs/src/user-guide/agentchat-user-guide/tutorial/agents.ipynb b/python/packages/autogen-core/docs/src/user-guide/agentchat-user-guide/tutorial/agents.ipynb
+index 9c01c45b1bdc..05aef4bfdfc1 100644
+--- a/python/packages/autogen-core/docs/src/user-guide/agentchat-user-guide/tutorial/agents.ipynb
++++ b/python/packages/autogen-core/docs/src/user-guide/agentchat-user-guide/tutorial/agents.ipynb
+@@ -312,7 +312,8 @@
+     "\n",
+     "from autogen_agentchat.agents import BaseChatAgent\n",
+     "from autogen_agentchat.base import Response\n",
+-    "from autogen_agentchat.messages import AgentMessage, ChatMessage\n",
++    "from autogen_agentchat.messages import AgentMessage, ChatMessage, TextMessage\n",
++    "from autogen_core.base import CancellationToken\n",
+     "\n",
+     "\n",
+     "class CountDownAgent(BaseChatAgent):\n",
+@@ -437,7 +438,7 @@
+    "name": "python",
+    "nbconvert_exporter": "python",
+    "pygments_lexer": "ipython3",
+-   "version": "3.11.5"
++   "version": "3.12.5"
+   }
+  },
+  "nbformat": 4,

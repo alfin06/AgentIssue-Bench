@@ -1,0 +1,22 @@
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..26bab78
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1,15 @@
++import os
++from crewai.telemetry.telemetry import Telemetry
++
++# Set the environment variable to disable telemetry
++os.environ['OTEL_SDK_DISABLED'] = 'true'
++
++# Initialize telemetry
++telemetry = Telemetry()
++
++# Check if telemetry is ready
++print(f'Telemetry ready: {telemetry.ready}')
++
++# Attempt to set tracer
++telemetry.set_tracer()
++print(f'Trace set: {telemetry.trace_set}')
+\ No newline at end of file

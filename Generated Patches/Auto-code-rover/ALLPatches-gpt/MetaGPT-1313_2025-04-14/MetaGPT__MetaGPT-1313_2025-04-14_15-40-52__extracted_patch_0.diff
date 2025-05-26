@@ -1,0 +1,20 @@
+diff --git a/metagpt/schema.py b/metagpt/schema.py
+index 071518d6..8678e505 100644
+--- a/metagpt/schema.py
++++ b/metagpt/schema.py
+@@ -187,6 +187,15 @@ class Documents(BaseModel):
+ 
+ class Message(BaseModel):
+     """list[<role>: <content>]"""
++    
++    id: str = Field(default="", validate_default=True)  # According to Section 2.2.3.1.1 of RFC 135
++    content: str
++    instruct_content: Optional[BaseModel] = Field(default=None, validate_default=True)
++    role: str = "user"  # system / user / assistant
++    cause_by: str = Field(default="", validate_default=True)
++    sent_from: str = Field(default="", validate_default=True)
++    send_to: set[str] = Field(default={MESSAGE_ROUTE_TO_ALL}, validate_default=True)
++    restricted_to: set[str] = Field(default_factory=set)
+ 
+     id: str = Field(default="", validate_default=True)  # According to Section 2.2.3.1.1 of RFC 135
+     content: str

@@ -1,0 +1,47 @@
+From 5a6c6a28ebfdb1f781370c26e616e82edef66501 Mon Sep 17 00:00:00 2001
+From: LeonOstrez <leon.ostrez@gmail.com>
+Date: Tue, 18 Jul 2023 14:45:05 +0200
+Subject: [PATCH] fix non existing directory /pythagora_tests/unit
+
+---
+ src/helpers/starting.js | 20 +++++++++++++++-----
+ 1 file changed, 15 insertions(+), 5 deletions(-)
+
+diff --git a/src/helpers/starting.js b/src/helpers/starting.js
+index d983b02c..a76aefb0 100644
+--- a/src/helpers/starting.js
++++ b/src/helpers/starting.js
+@@ -7,7 +7,8 @@ const {
+     EXPORTED_TESTS_DATA_DIR,
+     PYTHAGORA_METADATA_DIR,
+     METADATA_FILENAME,
+-    EXPORT_METADATA_FILENAME
++    EXPORT_METADATA_FILENAME,
++    PYTHAGORA_UNIT_DIR
+ } = require("../const/common");
+ let args = require('../utils/getArgs.js');
+ 
+@@ -91,10 +92,19 @@ function startPythagora(args, app) {
+ 
+ function setUpPythagoraDirs() {
+     let root = args.pythagora_root;
+-    if (!fs.existsSync(path.resolve(root, PYTHAGORA_TESTS_DIR))) fs.mkdirSync(path.resolve(root, PYTHAGORA_TESTS_DIR));
+-    if (!fs.existsSync(path.resolve(root, EXPORTED_TESTS_DIR))) fs.mkdirSync(path.resolve(root, EXPORTED_TESTS_DIR));
+-    if (!fs.existsSync(path.resolve(root, EXPORTED_TESTS_DATA_DIR))) fs.mkdirSync(path.resolve(root, EXPORTED_TESTS_DATA_DIR));
+-    if (!fs.existsSync(path.resolve(root, PYTHAGORA_METADATA_DIR))) fs.mkdirSync(path.resolve(root, PYTHAGORA_METADATA_DIR));
++    const directories = [
++        PYTHAGORA_TESTS_DIR,
++        EXPORTED_TESTS_DIR,
++        EXPORTED_TESTS_DATA_DIR,
++        PYTHAGORA_UNIT_DIR,
++        PYTHAGORA_METADATA_DIR
++    ];
++
++    directories.forEach(directory => {
++        const directoryPath = path.resolve(root, directory);
++        if (!fs.existsSync(directoryPath)) fs.mkdirSync(directoryPath);
++    });
++
+     if (!fs.existsSync(path.resolve(root, PYTHAGORA_METADATA_DIR, METADATA_FILENAME))) fs.writeFileSync(path.resolve(root, PYTHAGORA_METADATA_DIR, METADATA_FILENAME), '{}');
+     if (!fs.existsSync(path.resolve(root, PYTHAGORA_METADATA_DIR, EXPORT_METADATA_FILENAME))) fs.writeFileSync(path.resolve(root, PYTHAGORA_METADATA_DIR, EXPORT_METADATA_FILENAME), '{}');
+ }

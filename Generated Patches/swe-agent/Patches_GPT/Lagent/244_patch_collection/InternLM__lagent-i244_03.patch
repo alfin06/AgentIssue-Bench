@@ -1,0 +1,22 @@
+diff --git a/examples/reproduce_error.py b/examples/reproduce_error.py
+new file mode 100644
+index 0000000..87e89e7
+--- /dev/null
++++ b/examples/reproduce_error.py
+@@ -0,0 +1,15 @@
++from lagent.llms.huggingface import HFTransformer
++
++def main():
++    # Initialize HFTransformer with dummy parameters
++    model = HFTransformer(path='dummy_path')
++
++    # Simulate stream_chat call to reproduce the error
++    try:
++        for _ in model.stream_chat(inputs=[{'content': 'Hello'}]):
++            pass
++    except AttributeError as e:
++        print(f"Error: {e}")
++
++if __name__ == "__main__":
++    main()
+\ No newline at end of file

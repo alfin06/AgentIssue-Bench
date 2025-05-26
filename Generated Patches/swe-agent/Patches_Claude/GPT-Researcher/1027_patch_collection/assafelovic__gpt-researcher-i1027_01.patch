@@ -1,0 +1,34 @@
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..276ce5f
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1,27 @@
++from gpt_researcher.prompts import PromptFamily
++from gpt_researcher.utils.enum import Tone, ReportType
++from gpt_researcher.config import Config
++
++# Create a config instance
++config = Config()
++
++# Create a PromptFamily instance
++prompt_family = PromptFamily(config)
++
++# Try to generate a subtopic report with language parameter
++try:
++    result = prompt_family.generate_subtopic_report_prompt(
++        current_subtopic="Test subtopic",
++        existing_headers=["Header 1", "Header 2"],
++        relevant_written_contents=["Content 1", "Content 2"],
++        main_topic="Main topic",
++        context="Some context",
++        report_format="apa",
++        max_subsections=5,
++        total_words=800,
++        tone=Tone.Objective,
++        language="français"
++    )
++    print("Success! Result:", result[:100])  # Print first 100 chars
++except Exception as e:
++    print("Error:", str(e))
+\ No newline at end of file

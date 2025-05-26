@@ -1,0 +1,48 @@
+diff --git a/agixt/Models.py b/agixt/Models.py
+index ad8b60a..2c2835c 100644
+--- a/agixt/Models.py
++++ b/agixt/Models.py
+@@ -356,6 +356,12 @@ class ChainName(BaseModel):
+     chain_name: str
+     description: Optional[str] = None
+ 
++    @validator('chain_name')
++    def validate_chain_name(cls, v):
++        if not v or not v.strip():
++            raise ValueError('Chain name cannot be empty or whitespace only')
++        return v.strip()
++
+ 
+ class StepInfo(BaseModel):
+     step_number: int
+diff --git a/test_empty_chain.py b/test_empty_chain.py
+new file mode 100644
+index 0000000..cd732dc
+--- /dev/null
++++ b/test_empty_chain.py
+@@ -0,0 +1,24 @@
++import requests
++import json
++
++# Test empty chain name in POST /api/chain endpoint
++def test_empty_chain_post():
++    url = "http://localhost:8000/api/chain"
++    headers = {
++        "Content-Type": "application/json",
++        "Authorization": "test_key"  # Replace with actual API key if needed
++    }
++    data = {
++        "chain_name": "",  # Empty chain name
++        "description": "Test description"
++    }
++    
++    try:
++        response = requests.post(url, headers=headers, json=data)
++        print(f"POST /api/chain response status: {response.status_code}")
++        print(f"Response body: {response.text}")
++    except Exception as e:
++        print(f"Error making request: {e}")
++
++if __name__ == "__main__":
++    test_empty_chain_post()
+\ No newline at end of file

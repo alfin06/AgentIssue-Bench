@@ -1,0 +1,13 @@
+diff --git a/libs/superagent/app/vectorstores/base.py b/libs/superagent/app/vectorstores/base.py
+index 785cf222..d9f1c2ea 100644
+--- a/libs/superagent/app/vectorstores/base.py
++++ b/libs/superagent/app/vectorstores/base.py
+@@ -10,7 +10,7 @@ from app.vectorstores.abstract import VectorStoreBase
+ from app.vectorstores.astra import AstraVectorStore
+ from app.vectorstores.pinecone import PineconeVectorStore
+ from app.vectorstores.qdrant import QdrantVectorStore
+-from app.vectorstores.supabase import SupabaseVectorStore
++from app.vectorstores.supabase import SupabaseVectorStore  # Ensure this path is correct and module exists
+ from app.vectorstores.weaviate import WeaviateVectorStore
+ from prisma.enums import VectorDbProvider
+ 

@@ -1,0 +1,23 @@
+diff --git a/agixt/Chain.py b/agixt/Chain.py
+index e222addc..a737cffd 100644
+--- a/agixt/Chain.py
++++ b/agixt/Chain.py
+@@ -163,13 +163,17 @@ class Chain:
+         return chain_list
+ 
+     def add_chain(self, chain_name):
++        if not chain_name or chain_name.strip() == "":
++            raise ValueError("Chain name cannot be empty.")
+         session = get_session()
+-        chain = ChainDB(name=chain_name, user_id=self.user_id)
++        chain = ChainDB(name=chain_name, user_id=self.user_id) 
+         session.add(chain)
+         session.commit()
+         session.close()
+ 
+     def rename_chain(self, chain_name, new_name):
++        if not new_name or new_name.strip() == "":
++            raise ValueError("Chain name cannot be empty.")
+         session = get_session()
+         chain = (
+             session.query(ChainDB)

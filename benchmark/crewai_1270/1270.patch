@@ -1,0 +1,23 @@
+From 8cb251fe26793edac80231492dd96af6daff1630 Mon Sep 17 00:00:00 2001
+From: "ccw@cht.com.tw" <ccw@cht.com.tw>
+Date: Wed, 11 Sep 2024 01:29:56 +0800
+Subject: [PATCH] Fix encoding issue when loading YAML file
+
+related to #1270
+---
+ src/crewai/project/crew_base.py | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/crewai/project/crew_base.py b/src/crewai/project/crew_base.py
+index 5e0f154ea8..c529a56570 100644
+--- a/src/crewai/project/crew_base.py
++++ b/src/crewai/project/crew_base.py
+@@ -35,7 +35,7 @@ def __init__(self, *args, **kwargs):
+         @staticmethod
+         def load_yaml(config_path: Path):
+             try:
+-                with open(config_path, "r") as file:
++                with open(config_path, "r", encoding="utf-8") as file:
+                     return yaml.safe_load(file)
+             except FileNotFoundError:
+                 print(f"File not found: {config_path}")

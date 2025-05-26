@@ -1,0 +1,31 @@
+From 2940ae868c64fc921741c8dd3aca3d96566e1d1f Mon Sep 17 00:00:00 2001
+From: Taylor Dolezal <onlydole@gmail.com>
+Date: Tue, 17 Dec 2024 14:46:56 -0800
+Subject: [PATCH] Update the generate_subtopic_report_prompt method to support
+ the new language setting
+
+Signed-off-by: Taylor Dolezal <onlydole@gmail.com>
+---
+ gpt_researcher/prompts.py | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/gpt_researcher/prompts.py b/gpt_researcher/prompts.py
+index cebf1d43f..26f364665 100644
+--- a/gpt_researcher/prompts.py
++++ b/gpt_researcher/prompts.py
+@@ -293,6 +293,7 @@ def generate_subtopic_report_prompt(
+     max_subsections=5,
+     total_words=800,
+     tone: Tone = Tone.Objective,
++    language: str = "english",
+ ) -> str:
+     return f"""
+ Context:
+@@ -346,6 +347,7 @@ def generate_subtopic_report_prompt(
+ Assume the current date is {datetime.now(timezone.utc).strftime('%B %d, %Y')} if required.
+ 
+ "IMPORTANT!":
++- Write the report in {language}.
+ - The focus MUST be on the main topic! You MUST Leave out any information un-related to it!
+ - Must NOT have any introduction, conclusion, summary or reference section.
+ - You MUST include hyperlinks with markdown syntax ([url website](url)) related to the sentences wherever necessary.

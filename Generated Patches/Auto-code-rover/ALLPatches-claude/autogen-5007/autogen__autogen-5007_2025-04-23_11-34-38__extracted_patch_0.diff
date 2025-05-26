@@ -1,0 +1,13 @@
+diff --git a/python/packages/autogen-core/src/autogen_core/models/_types.py b/python/packages/autogen-core/src/autogen_core/models/_types.py
+index fb118562e..a3d6af1ed 100644
+--- a/python/packages/autogen-core/src/autogen_core/models/_types.py
++++ b/python/packages/autogen-core/src/autogen_core/models/_types.py
+@@ -52,7 +52,7 @@ class RequestUsage:
+     completion_tokens: int
+ 
+ 
+-FinishReasons = Literal["stop", "length", "function_calls", "content_filter"]
++FinishReasons = Literal["stop", "length", "function_calls", "content_filter", "unknown"]
+ 
+ 
+ @dataclass

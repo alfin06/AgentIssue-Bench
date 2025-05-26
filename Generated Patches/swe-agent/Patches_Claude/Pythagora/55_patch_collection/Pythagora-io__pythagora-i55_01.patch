@@ -1,0 +1,66 @@
+diff --git a/src/helpers/starting.js b/src/helpers/starting.js
+index f206b75..a8afd71 100644
+--- a/src/helpers/starting.js
++++ b/src/helpers/starting.js
+@@ -103,6 +103,12 @@ function setUpPythagoraDirs() {
+     directories.forEach(directory => {
+         const directoryPath = path.resolve(root, directory);
+         if (!fs.existsSync(directoryPath)) fs.mkdirSync(directoryPath);
++        
++        // Create unit subdirectory for PYTHAGORA_UNIT_DIR
++        if (directory === PYTHAGORA_UNIT_DIR) {
++            const unitPath = path.resolve(directoryPath, 'unit');
++            if (!fs.existsSync(unitPath)) fs.mkdirSync(unitPath);
++        }
+     });
+ 
+     if (!fs.existsSync(path.resolve(root, PYTHAGORA_METADATA_DIR, METADATA_FILENAME))) fs.writeFileSync(path.resolve(root, PYTHAGORA_METADATA_DIR, METADATA_FILENAME), '{}');
+diff --git a/src/helpers/unitTests.js b/src/helpers/unitTests.js
+index 9f2b1a9..0c094e5 100644
+--- a/src/helpers/unitTests.js
++++ b/src/helpers/unitTests.js
+@@ -33,7 +33,11 @@ async function generateTestsForDirectory(args) {
+     screen.destroy();
+     process.stdout.write('\x1B[2J\x1B[0f');
+     if (errors.length) {
+-        let errLogPath = `${path.resolve(PYTHAGORA_UNIT_DIR, 'errorLogs.log')}`;
++        const unitDir = path.resolve(PYTHAGORA_UNIT_DIR, 'unit');
++        if (!fs.existsSync(unitDir)) {
++            fs.mkdirSync(unitDir, { recursive: true });
++        }
++        let errLogPath = path.resolve(unitDir, 'errorLogs.log');
+         fs.writeFileSync(errLogPath, JSON.stringify(errors, null, 2));
+         console.error('There were errors encountered while trying to generate unit tests.\n');
+         console.error(`You can find logs here: ${errLogPath}`);
+diff --git a/src/helpers/unitTestsExpand.js b/src/helpers/unitTestsExpand.js
+index 78b1106..9dda551 100644
+--- a/src/helpers/unitTestsExpand.js
++++ b/src/helpers/unitTestsExpand.js
+@@ -32,7 +32,11 @@ async function expandTestsForDirectory(args) {
+     screen.destroy();
+     process.stdout.write('\x1B[2J\x1B[0f');
+     if (errors.length) {
+-        let errLogPath = `${path.resolve(PYTHAGORA_UNIT_DIR, 'errorLogs.log')}`;
++        const unitDir = path.resolve(PYTHAGORA_UNIT_DIR, 'unit');
++        if (!fs.existsSync(unitDir)) {
++            fs.mkdirSync(unitDir, { recursive: true });
++        }
++        let errLogPath = path.resolve(unitDir, 'errorLogs.log');
+         fs.writeFileSync(errLogPath, JSON.stringify(errors, null, 2));
+         console.error('There were errors encountered while trying to expand unit tests.\n');
+         console.error(`You can find logs here: ${errLogPath}`);
+diff --git a/test_error.js b/test_error.js
+new file mode 100644
+index 0000000..7eaf0e9
+--- /dev/null
++++ b/test_error.js
+@@ -0,0 +1,8 @@
++const fs = require('fs');
++const path = require('path');
++const {PYTHAGORA_UNIT_DIR} = require("@pythagora.io/js-code-processing").common;
++
++// Simulate error logging
++const errors = [{error: "Test error"}];
++let errLogPath = `${path.resolve(PYTHAGORA_UNIT_DIR, 'unit/errorLogs.log')}`;
++fs.writeFileSync(errLogPath, JSON.stringify(errors, null, 2));
+\ No newline at end of file

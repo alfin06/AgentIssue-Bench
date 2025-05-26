@@ -1,0 +1,13 @@
+diff --git a/requirements/runtime.txt b/requirements/runtime.txt
+index ac0b85c..e8b828d 100644
+--- a/requirements/runtime.txt
++++ b/requirements/runtime.txt
+@@ -6,7 +6,7 @@ asyncer
+ distro
+ filelock
+ func_timeout
+-griffe<1.0
++griffe>=0.25.0,<1.0
+ json5
+ jsonschema
+ jupyter==1.0.0

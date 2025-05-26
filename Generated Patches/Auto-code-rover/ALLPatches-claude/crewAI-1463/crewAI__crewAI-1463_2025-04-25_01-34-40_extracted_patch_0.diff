@@ -1,0 +1,31 @@
+diff --git a/src/crewai/flow/flow.py b/src/crewai/flow/flow.py
+index de9b2eeb..e926b381 100644
+--- a/src/crewai/flow/flow.py
++++ b/src/crewai/flow/flow.py
+@@ -238,9 +238,16 @@ class Flow(Generic[T], metaclass=FlowMeta):
+             # Use the path as the new trigger method
+             trigger_method = path
+ 
++        # Normalize trigger method name if it's a function reference
++        if callable(trigger_method):
++            trigger_method = trigger_method.__name__
++
+         for listener, (condition_type, methods) in self._listeners.items():
++            # Normalize method names in the methods list
++            normalized_methods = set(m.__name__ if callable(m) else m for m in methods)
++            
+             if condition_type == "OR":
+-                if trigger_method in methods:
++                if trigger_method in normalized_methods:
+                     listener_tasks.append(
+                         self._execute_single_listener(listener, result)
+                     )
+@@ -248,7 +255,7 @@ class Flow(Generic[T], metaclass=FlowMeta):
+                 if listener not in self._pending_and_listeners:
+                     self._pending_and_listeners[listener] = set()
+                 self._pending_and_listeners[listener].add(trigger_method)
+-                if set(methods) == self._pending_and_listeners[listener]:
++                if normalized_methods == self._pending_and_listeners[listener]:
+                     listener_tasks.append(
+                         self._execute_single_listener(listener, result)
+                     )

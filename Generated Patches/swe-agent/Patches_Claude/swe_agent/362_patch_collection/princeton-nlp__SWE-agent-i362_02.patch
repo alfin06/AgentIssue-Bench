@@ -1,0 +1,45 @@
+diff --git a/sweagent/frontend/src/components/controls/LRunControl.js b/sweagent/frontend/src/components/controls/LRunControl.js
+index c7b6d26..fc08350 100644
+--- a/sweagent/frontend/src/components/controls/LRunControl.js
++++ b/sweagent/frontend/src/components/controls/LRunControl.js
+@@ -29,7 +29,11 @@ function LRunControl({
+   };
+ 
+   useEffect(() => {
++    // Reset both the local state and the runConfig when input type changes
+     setPsInputValue("");
++    setRunConfig((draft) => {
++      draft.environment.data_path = "";
++    });
+   }, [psType]);
+ 
+   function getPsInput() {
+@@ -49,7 +53,8 @@ function LRunControl({
+               });
+             }}
+             placeholder={"Example: " + defaultPS}
+-            value={psInputValue}
++            defaultValue=""
++            key="gh-input"
+           />
+         </div>
+       );
+@@ -70,7 +75,8 @@ function LRunControl({
+               });
+             }}
+             placeholder="/path/to/your/local/file.md"
+-            value={psInputValue}
++            defaultValue=""
++            key="local-input"
+           />
+         </div>
+       );
+@@ -86,6 +92,8 @@ function LRunControl({
+           }
+           rows="5"
+           placeholder="Enter problem statement"
++          defaultValue=""
++          key="write-input"
+         />
+       );
+     }

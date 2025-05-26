@@ -1,0 +1,21 @@
+diff --git a/metagpt/ext/werewolf/roles/base_player.py b/metagpt/ext/werewolf/roles/base_player.py
+index a6ae95c..8b95590 100644
+--- a/metagpt/ext/werewolf/roles/base_player.py
++++ b/metagpt/ext/werewolf/roles/base_player.py
+@@ -60,7 +60,9 @@ class BasePlayer(Role):
+             news = self.rc.msg_buffer.pop_all()
+         old_messages = [] if ignore_memory else self.rc.memory.get()
+         for m in news:
+-            if len(m.restricted_to) and self.profile not in m.restricted_to and self.name not in m.restricted_to:
++            # Check if restricted_to exists and handle messages without it
++            restricted_to = getattr(m, 'restricted_to', set())
++            if restricted_to and self.profile not in restricted_to and self.name not in restricted_to:
+                 # if the msg is not send to the whole audience ("") nor this role (self.profile or self.name),
+                 # then this role should not be able to receive it and record it into its memory
+                 continue
+@@ -173,4 +175,4 @@ class BasePlayer(Role):
+             exp.round_id = round_id
+             exp.outcome = outcome
+             exp.game_setup = game_setup
+-        AddNewExperiences().run(experiences)
++        AddNewExperiences().run(experiences)

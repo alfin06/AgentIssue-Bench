@@ -1,0 +1,36 @@
+diff --git a/src/crewai/agents/agent_builder/base_agent.py b/src/crewai/agents/agent_builder/base_agent.py
+index 93882a2..fa3a200 100644
+--- a/src/crewai/agents/agent_builder/base_agent.py
++++ b/src/crewai/agents/agent_builder/base_agent.py
+@@ -127,6 +127,25 @@ class BaseAgent(ABC, BaseModel):
+     max_tokens: Optional[int] = Field(
+         default=None, description="Maximum number of tokens for the agent's execution."
+     )
++    
++    def _get_model_specific_config(self) -> Dict[str, Any]:
++        """Get model-specific configurations.
++        
++        This method handles special cases for different model providers and types.
++        Returns a dictionary of valid parameters for the specific model.
++        """
++        if not self.llm:
++            return {}
++            
++        # Handle Claude/Anthropic models
++        if getattr(self.llm, "model_name", "").startswith("claude-"):
++            return {"stop": None}
++            
++        # Handle Together AI models
++        if getattr(self.llm, "model_name", "").startswith("o1-"):
++            return {"stop": None}
++            
++        return {}
+ 
+     @model_validator(mode="before")
+     @classmethod
+@@ -269,4 +288,4 @@ class BaseAgent(ABC, BaseModel):
+         """
+         if not self._rpm_controller:
+             self._rpm_controller = rpm_controller
+-            self.create_agent_executor()
++            self.create_agent_executor()

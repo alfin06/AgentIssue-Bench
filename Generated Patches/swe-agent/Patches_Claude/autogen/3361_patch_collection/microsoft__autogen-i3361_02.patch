@@ -1,0 +1,17 @@
+diff --git a/python/packages/autogen-core/src/autogen_core/code_executor/_func_with_reqs.py b/python/packages/autogen-core/src/autogen_core/code_executor/_func_with_reqs.py
+index b236ea5..ded7575 100644
+--- a/python/packages/autogen-core/src/autogen_core/code_executor/_func_with_reqs.py
++++ b/python/packages/autogen-core/src/autogen_core/code_executor/_func_with_reqs.py
+@@ -54,6 +54,12 @@ def __init__(
+         else:
+             object.__setattr__(self, "imports", imports)
+ 
++    def __hash__(self) -> int:
++        # Hash based on module name and imports tuple
++        # Since imports is a tuple of str/Alias which are both hashable,
++        # we can use them directly in the hash computation
++        return hash((self.module, self.imports))
++
+ 
+ Import = Union[str, ImportFromModule, Alias]
+ 

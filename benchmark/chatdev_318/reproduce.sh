@@ -1,0 +1,1 @@
+python3 run.py --task "design a 2048 game" --name "2048" --config "Human" 

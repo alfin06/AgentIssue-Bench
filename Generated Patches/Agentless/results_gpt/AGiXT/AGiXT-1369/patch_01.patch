@@ -1,0 +1,13 @@
+diff --git a/agixt/Chain.py b/agixt/Chain.py
+index b6be198..e24a2a9 100644
+--- a/agixt/Chain.py
++++ b/agixt/Chain.py
+@@ -163,6 +163,8 @@ class Chain:
+         return chain_list
+ 
+     def add_chain(self, chain_name):
++        if not chain_name:
++            raise ValueError("Chain name cannot be empty")
+         session = get_session()
+         chain = ChainDB(name=chain_name, user_id=self.user_id)
+         session.add(chain)

@@ -1,0 +1,17 @@
+diff --git a/autogen/retrieve_utils.py b/autogen/retrieve_utils.py
+index c3e50c7a9..3a0d0a751 100644
+--- a/autogen/retrieve_utils.py
++++ b/autogen/retrieve_utils.py
+@@ -102,8 +102,10 @@ def split_text_to_chunks(
+                 logger.warning("Failed to split docs with must_break_at_empty_line being True, set to False.")
+                 must_break_at_empty_line = False
+         chunks.append(prev) if len(prev) > 10 else None  # don't add chunks less than 10 characters
+-        lines = lines[cnt:]
+-        lines_tokens = lines_tokens[cnt:]
++        # Keep overlap lines from previous chunk
++        overlap_start = max(0, cnt - overlap) if chunk_mode != "one_line" else max(0, cnt - 1)
++        lines = lines[overlap_start:]
++        lines_tokens = lines_tokens[overlap_start:]
+         sum_tokens = sum(lines_tokens)
+     text_to_chunk = "\n".join(lines)
+     chunks.append(text_to_chunk) if len(text_to_chunk) > 10 else None  # don't add chunks less than 10 characters

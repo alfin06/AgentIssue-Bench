@@ -1,0 +1,22 @@
+diff --git a/autogen/coding/func_with_reqs.py b/autogen/coding/func_with_reqs.py
+index f6e68cf..cd2a97e 100644
+--- a/autogen/coding/func_with_reqs.py
++++ b/autogen/coding/func_with_reqs.py
+@@ -31,10 +31,15 @@ class Alias:
+     alias: str
+ 
+ 
+-@dataclass
++@dataclass(frozen=True, eq=True)
+ class ImportFromModule:
+     module: str
+-    imports: List[Union[str, Alias]]
++    imports: Tuple[Union[str, Alias], ...]  # Changed from List to Tuple to make it hashable
++    
++    def __post_init__(self):
++        # Convert list to tuple if needed
++        if isinstance(self.imports, list):
++            object.__setattr__(self, 'imports', tuple(self.imports))
+ 
+ 
+ Import = Union[str, ImportFromModule, Alias]

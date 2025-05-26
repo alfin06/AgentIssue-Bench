@@ -1,0 +1,15 @@
+diff --git a/sweagent/environment/utils.py b/sweagent/environment/utils.py
+index 186217c..0f919cc 100644
+--- a/sweagent/environment/utils.py
++++ b/sweagent/environment/utils.py
+@@ -496,6 +496,10 @@ def get_gh_issue_data(issue_url: str, *, token: str = ""):
+     return api.issues.get(owner, repo, issue_number)
+ 
+ 
++# Add a new __init__.py file to utils directory
++# File: sweagent/environment/utils/__init__.py
++# Contents: (empty file)
++
+ def get_problem_statement_from_github_issue(owner: str, repo: str, issue_number: str, *, token: str | None = "") -> str:
+     """Return problem statement from github issue"""
+     api = GhApi(token=token)

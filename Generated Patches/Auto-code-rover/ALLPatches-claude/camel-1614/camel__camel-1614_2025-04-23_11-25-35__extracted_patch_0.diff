@@ -1,0 +1,25 @@
+diff --git a/camel/models/deepseek_model.py b/camel/models/deepseek_model.py
+index 40375749..a590b376 100644
+--- a/camel/models/deepseek_model.py
++++ b/camel/models/deepseek_model.py
+@@ -163,18 +163,16 @@ class DeepSeekModel(BaseModelBackend):
+             **self.model_config_dict,
+         )
+ 
+-        # Handle reasoning content with <think> tags at the beginning
++        # Handle reasoning content for DeepSeek Reasoner model
+         if (
+             self.model_type
+             in [
+                 ModelType.DEEPSEEK_REASONER,
+             ]
+-            and os.environ.get("GET_REASONING_CONTENT", "false").lower()
+-            == "true"
+         ):
+             reasoning_content = response.choices[0].message.reasoning_content
+             combined_content = (
+-                f"<think>\n{reasoning_content}\n</think>\n"
++                f"{reasoning_content}\n\n"
+                 if reasoning_content
+                 else ""
+             ) + response.choices[0].message.content

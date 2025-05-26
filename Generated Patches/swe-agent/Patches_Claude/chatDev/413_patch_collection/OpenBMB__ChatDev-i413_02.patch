@@ -1,0 +1,24 @@
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..61b8a07
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1,17 @@
++from camel.messages import ChatMessage
++from camel.typing import RoleType
++
++# This will raise the error because we're passing an unexpected 'refusal' argument
++message_dict = {
++    "role": "assistant",
++    "content": "Hello",
++    "refusal": "some refusal"  # This field doesn't exist in OpenAI's response
++}
++
++# Try to create a ChatMessage with the dict
++ChatMessage(
++    role_name="Assistant",
++    role_type=RoleType.ASSISTANT,
++    meta_dict={},
++    **message_dict
++)
+\ No newline at end of file

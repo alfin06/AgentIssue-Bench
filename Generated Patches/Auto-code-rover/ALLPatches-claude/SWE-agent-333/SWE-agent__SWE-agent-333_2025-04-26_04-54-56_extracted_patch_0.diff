@@ -1,0 +1,44 @@
+diff --git a/sweagent/api/server.py b/sweagent/api/server.py
+index 0ee2ec20..7e2f4e1f 100644
+--- a/sweagent/api/server.py
++++ b/sweagent/api/server.py
+@@ -102,6 +102,39 @@ def handle_connect():
+     print("Client connected")
+ 
+ 
++@socketio.on("update_environment_script")
++def handle_environment_script_update(data):
++    """Handle updates to the environment setup script."""
++    try:
++        if 'script' not in data:
++            return {'status': 'error', 'message': 'Missing script content'}
++        
++        # Use the existing socketio instance for updates
++        web_update = WebUpdate(socketio)
++        env_hook = EnvUpdateHook(web_update)
++        
++        # Send update notification
++        web_update.up_env(
++            message="Updating environment setup script...",
++            type_="setup",
++            format="text"
++        )
++        
++        # Install new environment configuration
++        from sweagent.environment.swe_env import install_env
++        install_env(script_path=data['script'])
++        
++        # Send success notification
++        web_update.up_env(
++            message="Environment setup script updated successfully",
++            type_="success",
++            format="text"
++        )
++        return {'status': 'success'}
++    except Exception as e:
++        return {'status': 'error', 'message': str(e)}
++
++
+ def write_env_yaml(data: Dict[str, Any]) -> str:
+     path = Path(tempfile.NamedTemporaryFile(delete=False, suffix=".yml").name)
+     atexit.register(path.unlink)

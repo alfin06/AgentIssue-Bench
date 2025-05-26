@@ -1,0 +1,37 @@
+diff --git a/src/crewai/cli/create_flow.py b/src/crewai/cli/create_flow.py
+index ec68611b..cb8b73c4 100644
+--- a/src/crewai/cli/create_flow.py
++++ b/src/crewai/cli/create_flow.py
+@@ -35,7 +35,7 @@ def create_flow(name):
+     templates_dir = package_dir / "templates" / "flow"
+ 
+     # List of template files to copy
+-    root_template_files = [".gitignore", "pyproject.toml", "README.md"]
++    root_template_files = [".gitignore", "pyproject.toml", "README.md", "tiktoken"]
+     src_template_files = ["__init__.py", "main.py"]
+     tools_template_files = ["tools/__init__.py", "tools/custom_tool.py"]
+ 
+diff --git a/src/crewai/cli/update_crew.py b/src/crewai/cli/update_crew.py
+index e7ed69aa..9bc71f92 100644
+--- a/src/crewai/cli/update_crew.py
++++ b/src/crewai/cli/update_crew.py
+@@ -50,7 +50,8 @@ def migrate_pyproject(input_file, output_file):
+     # Migrate or copy dependencies
+     if "dependencies" in new_pyproject["project"]:
+         # If dependencies are already in the new format, keep them as is
+-        pass
++        if "tiktoken" not in new_pyproject["project"]["dependencies"]:
++            new_pyproject["project"]["dependencies"].append("tiktoken")
+     elif poetry_data and "dependencies" in poetry_data:
+         new_pyproject["project"]["dependencies"] = []
+         for dep, version in poetry_data["dependencies"].items():
+@@ -66,6 +67,9 @@ def migrate_pyproject(input_file, output_file):
+                 new_dep = f"{dep}{parse_version(version)}"
+             new_pyproject["project"]["dependencies"].append(new_dep)
+ 
++        if "tiktoken" not in new_pyproject["project"]["dependencies"]:
++            new_pyproject["project"]["dependencies"].append("tiktoken")
++
+     # Migrate or copy scripts
+     if poetry_data and "scripts" in poetry_data:
+         new_pyproject["project"]["scripts"] = poetry_data["scripts"]

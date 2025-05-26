@@ -1,0 +1,14 @@
+diff --git a/camel/toolkits/__init__.py b/camel/toolkits/__init__.py
+index 1d6d17c..22eefd4 100644
+--- a/camel/toolkits/__init__.py
++++ b/camel/toolkits/__init__.py
+@@ -35,7 +35,8 @@ from .github_toolkit import GithubToolkit
+ from .google_scholar_toolkit import GoogleScholarToolkit
+ from .arxiv_toolkit import ArxivToolkit
+ from .slack_toolkit import SlackToolkit
+-from .twitter_toolkit import TwitterToolkit, TWITTER_FUNCS
++# TwitterToolkit is not imported here because it has optional dependencies.
++# from .twitter_toolkit import TwitterToolkit, TWITTER_FUNCS
+ from .open_api_toolkit import OpenAPIToolkit
+ from .retrieval_toolkit import RetrievalToolkit
+ from .notion_toolkit import NotionToolkit

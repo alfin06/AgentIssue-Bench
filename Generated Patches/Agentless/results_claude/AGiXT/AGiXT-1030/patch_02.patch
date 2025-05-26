@@ -1,0 +1,13 @@
+diff --git a/agixt/Websearch.py b/agixt/Websearch.py
+index f6dbe52..809e521 100644
+--- a/agixt/Websearch.py
++++ b/agixt/Websearch.py
+@@ -252,6 +252,8 @@ class Websearch:
+         websearch_depth: int = 0,
+         websearch_timeout: int = 0,
+     ):
++        # Convert websearch_depth to int in case it comes as string
++        websearch_depth = int(websearch_depth)
+         await self.browse_links_in_input(
+             user_input=user_input, search_depth=websearch_depth
+         )

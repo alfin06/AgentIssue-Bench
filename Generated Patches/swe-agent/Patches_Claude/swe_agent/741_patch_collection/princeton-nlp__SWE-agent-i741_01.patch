@@ -1,0 +1,46 @@
+diff --git a/check_build.py b/check_build.py
+new file mode 100644
+index 0000000..275c8ea
+--- /dev/null
++++ b/check_build.py
+@@ -0,0 +1,39 @@
++import os
++import subprocess
++import shutil
++from pathlib import Path
++
++def check_build():
++    # Clean any existing build artifacts
++    shutil.rmtree('build', ignore_errors=True)
++    shutil.rmtree('dist', ignore_errors=True)
++    
++    # Build the package
++    subprocess.run(['pip', 'install', '-e', '.'], check=True)
++    
++    # Get the site-packages directory
++    result = subprocess.run(['pip', 'show', 'sweagent'], capture_output=True, text=True, check=True)
++    location = None
++    for line in result.stdout.split('\n'):
++        if line.startswith('Location:'):
++            location = line.split(':', 1)[1].strip()
++            break
++    
++    if not location:
++        print("Could not find installation location")
++        return
++    
++    # Check if utils directory exists in the installed package
++    utils_path = Path(location) / 'sweagent' / 'utils'
++    print(f"\nChecking for utils directory at: {utils_path}")
++    
++    if utils_path.exists():
++        print("✅ utils directory exists")
++        print("\nContents of utils directory:")
++        for item in utils_path.iterdir():
++            print(f"  - {item.name}")
++    else:
++        print("❌ utils directory is missing!")
++
++if __name__ == "__main__":
++    check_build()
+\ No newline at end of file

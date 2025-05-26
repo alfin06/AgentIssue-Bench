@@ -1,0 +1,15 @@
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..a1c0bfb
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1,8 @@
++from autogen_ext.runtimes.grpc import GrpcWorkerAgentRuntimeHost
++
++def main():
++    host = GrpcWorkerAgentRuntimeHost(address="0.0.0.0:50051")
++    host.start()  # Start a host service in the background.
++
++if __name__ == "__main__":
++    main()
+\ No newline at end of file

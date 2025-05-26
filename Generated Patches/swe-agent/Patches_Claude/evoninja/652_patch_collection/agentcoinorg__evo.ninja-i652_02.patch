@@ -1,0 +1,98 @@
+diff --git a/apps/browser/test_example_prompts.ts b/apps/browser/test_example_prompts.ts
+new file mode 100644
+index 0000000..b281ca1
+--- /dev/null
++++ b/apps/browser/test_example_prompts.ts
+@@ -0,0 +1,91 @@
++import { Workspace } from "@evo-ninja/agent-utils";
++import { InMemoryFile } from "@nerfzael/memory-fs";
++
++// Mock workspace with existing files
++const existingWorkspace = {
++  readFile: async (path: string) => "test content",
++  writeFile: async (path: string, content: string) => {},
++  readdir: async (path: string) => [{
++    name: "existing_file.txt",
++    type: "file"
++  }]
++} as Workspace;
++
++// Mock example prompt files
++const file1 = new InMemoryFile("file1.csv", new TextEncoder().encode("test,data"));
++const file2 = new InMemoryFile("file2.csv", new TextEncoder().encode("more,data"));
++
++// Mock state
++let workspaceFiles: InMemoryFile[] = [];
++let workspaceUploads: InMemoryFile[] = [];
++
++// Mock hooks
++const useWorkspaceFilesUpdate = () => {
++  return async (workspace: Workspace | undefined) => {
++    if (!workspace) {
++      workspaceFiles = [];
++      return;
++    }
++
++    const files: InMemoryFile[] = [];
++    const encoder = new TextEncoder();
++    const entries = await workspace.readdir("./");
++    for (const entry of entries) {
++      if (entry.type === "directory") {
++        files.push({
++          path: entry.name
++        });
++      } else {
++        files.push({
++          path: entry.name,
++          content: encoder.encode(
++            await workspace.readFile(entry.name)
++          )
++        });
++      }
++    }
++    workspaceFiles = files;
++  }
++};
++
++const useWorkspaceUploadUpdate = () => {
++  return async (workspace: Workspace, uploads?: InMemoryFile[]) => {
++    uploads = uploads || workspaceUploads;
++    if (uploads.length === 0) {
++      return;
++    }
++
++    const decoder = new TextDecoder();
++    const files = [...uploads];
++    workspaceUploads = [];
++
++    // Write all uploaded files
++    await Promise.all(
++      files.map((file) => workspace.writeFile(
++        file.path,
++        decoder.decode(file.content)
++      ))
++    );
++    await useWorkspaceFilesUpdate()(workspace);
++  }
++};
++
++// Test scenario
++async function testExamplePromptClick() {
++  console.log("Initial state:");
++  console.log("Workspace files:", workspaceFiles);
++  console.log("Workspace uploads:", workspaceUploads);
++
++  // 1. Set up existing workspace with files
++  await useWorkspaceFilesUpdate()(existingWorkspace);
++  console.log("\nAfter loading existing workspace:");
++  console.log("Workspace files:", workspaceFiles);
++
++  // 2. Click example prompt
++  workspaceUploads = [file1, file2];
++  await useWorkspaceUploadUpdate()(existingWorkspace);
++  console.log("\nAfter clicking example prompt:");
++  console.log("Workspace files:", workspaceFiles);
++}
++
++testExamplePromptClick().catch(console.error);
+\ No newline at end of file

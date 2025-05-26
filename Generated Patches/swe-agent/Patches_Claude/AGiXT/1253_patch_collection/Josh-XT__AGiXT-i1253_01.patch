@@ -1,0 +1,41 @@
+diff --git a/agixt/Chain.py b/agixt/Chain.py
+index da2647e..b38ec1c 100644
+--- a/agixt/Chain.py
++++ b/agixt/Chain.py
+@@ -929,16 +929,31 @@ class Chain:
+                 logging.error(f"Unrecognized prompt_type: {prompt_type}")
+                 continue
+ 
+-            if target_id is None:
+-                # Handle the case where the target is not found
++            argument_value = prompt[argument_key]
++            prompt_arguments = prompt.copy()
++            del prompt_arguments[argument_key]
++            
++            # If target_id is None and prompt_type is chain, we'll create a placeholder chain
++            if target_id is None and prompt_type == "chain":
++                # Create a placeholder chain that can be updated later
++                placeholder_chain = ChainDB(
++                    name=prompt[argument_key],
++                    user_id=self.user_id,
++                    description="Placeholder chain - needs to be imported"
++                )
++                session.add(placeholder_chain)
++                session.commit()
++                target_id = placeholder_chain.id
++                logging.warning(
++                    f"Created placeholder chain '{prompt[argument_key]}' - please import this chain later"
++                )
++            elif target_id is None:
++                # For other types (prompt, command), log error but continue
+                 logging.error(
+                     f"Target not found for {prompt_type}: {prompt[argument_key]}"
+                 )
+                 continue
+ 
+-            argument_value = prompt[argument_key]
+-            prompt_arguments = prompt.copy()
+-            del prompt_arguments[argument_key]
+             chain_step = ChainStep(
+                 chain_id=chain.id,
+                 step_number=step_data["step"],

@@ -1,0 +1,30 @@
+diff --git a/src/crewai/utilities/crew_json_encoder.py b/src/crewai/utilities/crew_json_encoder.py
+index d71150b..dbade5d 100644
+--- a/src/crewai/utilities/crew_json_encoder.py
++++ b/src/crewai/utilities/crew_json_encoder.py
+@@ -1,7 +1,9 @@
++
+ import json
+ from datetime import date, datetime
+ from decimal import Decimal
+ from uuid import UUID
++from enum import Enum
+ 
+ from pydantic import BaseModel
+ 
+@@ -16,6 +18,9 @@ class CrewJSONEncoder(json.JSONEncoder):
+         elif isinstance(obj, datetime) or isinstance(obj, date):
+             return obj.isoformat()
+ 
++        elif isinstance(obj, Enum):
++            return obj.value
++
+         return super().default(obj)
+ 
+     def _handle_pydantic_model(self, obj):
+@@ -31,4 +36,4 @@ class CrewJSONEncoder(json.JSONEncoder):
+         except RecursionError:
+             return str(
+                 obj
+-            )  # Fall back to string representation if circular reference is detected
++            )  # Fall back to string representation if circular reference is detected

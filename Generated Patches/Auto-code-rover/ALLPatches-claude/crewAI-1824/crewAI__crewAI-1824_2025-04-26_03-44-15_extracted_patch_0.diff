@@ -1,0 +1,19 @@
+diff --git a/src/crewai/__init__.py b/src/crewai/__init__.py
+index 0833afd5..6e687831 100644
+--- a/src/crewai/__init__.py
++++ b/src/crewai/__init__.py
+@@ -1,5 +1,14 @@
+ import warnings
+ 
++try:
++    import tiktoken
++except ImportError:
++    warnings.warn(
++        "tiktoken is not installed. Some functionality may be limited. "
++        "Install with 'pip install tiktoken' if needed.",
++        ImportWarning
++    )
++
+ from crewai.agent import Agent
+ from crewai.crew import Crew
+ from crewai.flow.flow import Flow

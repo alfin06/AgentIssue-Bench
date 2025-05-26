@@ -1,0 +1,47 @@
+diff --git a/test_model.ts b/test_model.ts
+new file mode 100644
+index 0000000..c531033
+--- /dev/null
++++ b/test_model.ts
+@@ -0,0 +1,40 @@
++import { OpenAILlmApi, LlmModels } from './packages/agents/src/agent-core/llm';
++import { Logger } from '@evo-ninja/agent-utils';
++
++// Create a simple logger
++const logger = {
++  notice: async (msg: string) => console.log(msg),
++  warning: async (msg: string) => console.warn(msg),
++  info: async (msg: string) => console.info(msg),
++  error: async (msg: string) => console.error(msg),
++} as Logger;
++
++// Create OpenAILlmApi with different models
++const gpt3Api = new OpenAILlmApi(
++  'dummy-key',
++  LlmModels.GPT3,
++  4096,
++  1024,
++  logger
++);
++
++const gpt4Api = new OpenAILlmApi(
++  'dummy-key',
++  LlmModels.GPT4,
++  8192,
++  2048,
++  logger
++);
++
++const gpt4TurboApi = new OpenAILlmApi(
++  'dummy-key',
++  LlmModels.GPT4_TURBO,
++  128000,
++  4096,
++  logger
++);
++
++// Test that each API returns its configured model
++console.log('GPT-3 API model:', gpt3Api.getModel());
++console.log('GPT-4 API model:', gpt4Api.getModel());
++console.log('GPT-4 Turbo API model:', gpt4TurboApi.getModel());
+\ No newline at end of file

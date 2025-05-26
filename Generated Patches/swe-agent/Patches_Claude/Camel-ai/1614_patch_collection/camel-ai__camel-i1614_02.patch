@@ -1,0 +1,102 @@
+diff --git a/camel/models/deepseek_model.py b/camel/models/deepseek_model.py
+index 4123e73..c4e0ac2 100644
+--- a/camel/models/deepseek_model.py
++++ b/camel/models/deepseek_model.py
+@@ -141,17 +141,16 @@ class DeepSeekModel(OpenAICompatibleModel):
+     def _post_handle_response(
+         self, response: ChatCompletion
+     ) -> ChatCompletion:
+-        r"""Handle reasoning content with <think> tags at the beginning."""
++        r"""Handle reasoning content without <think> tags."""
+         if (
+             self.model_type in [ModelType.DEEPSEEK_REASONER]
+             and os.environ.get("GET_REASONING_CONTENT", "false").lower()
+             == "true"
+         ):
+             reasoning_content = response.choices[0].message.reasoning_content  # type: ignore[attr-defined]
+-            combined_content = (  # type: ignore[operator]
+-                f"<think>\n{reasoning_content}\n</think>\n"
+-                if reasoning_content
+-                else ""
++            # Combine reasoning content and response content without <think> tags
++            combined_content = (
++                f"{reasoning_content}\n" if reasoning_content else ""
+             ) + response.choices[0].message.content
+ 
+             response = ChatCompletion.construct(
+diff --git a/examples/reproduce_think_issue.py b/examples/reproduce_think_issue.py
+new file mode 100644
+index 0000000..5b26477
+--- /dev/null
++++ b/examples/reproduce_think_issue.py
+@@ -0,0 +1,22 @@
++import os
++from camel.models import DeepSeekModel
++from camel.types import ModelType
++from camel.messages import OpenAIMessage
++
++# Set environment variable to true to test the issue
++os.environ["GET_REASONING_CONTENT"] = "true"
++
++# Create a DeepSeek model instance
++model = DeepSeekModel(model_type=ModelType.DEEPSEEK_REASONER)
++
++# Create a test message with <think> tags
++messages = [
++    {"role": "user", "content": "What is 2+2?"},
++    {"role": "assistant", "content": "<think>Let me reason about this...</think>4"}
++]
++
++# Run the model
++response = model.run(messages)
++
++# Print the response to check if <think> tags are present
++print("Response content:", response.choices[0].message.content)
+\ No newline at end of file
+diff --git a/examples/test_think_removal.py b/examples/test_think_removal.py
+new file mode 100644
+index 0000000..ff56942
+--- /dev/null
++++ b/examples/test_think_removal.py
+@@ -0,0 +1,40 @@
++from camel.models.base_model import BaseModelBackend
++from camel.types import ModelType
++
++# Create a minimal test class
++class TestModel(BaseModelBackend):
++    @property
++    def token_counter(self):
++        return None
++
++    def _run(self, messages, response_format=None, tools=None):
++        return messages
++
++    async def _arun(self, messages, response_format=None, tools=None):
++        return messages
++
++    def check_model_config(self):
++        pass
++
++# Test messages with <think> tags
++messages = [
++    {"role": "user", "content": "What is 2+2?"},
++    {"role": "assistant", "content": "<think>Let me reason about this...</think>4"},
++    {"role": "user", "content": "Now what is 3+3?\n<think>I need to think</think>"},
++    {"role": "assistant", "content": "Let me calculate...\n<think>Adding 3 and 3</think>\nThe answer is 6"}
++]
++
++# Create model instance
++model = TestModel(model_type=ModelType.DEEPSEEK_REASONER)
++
++# Process messages
++processed = model.preprocess_messages(messages)
++
++# Print original vs processed
++print("Original messages:")
++for msg in messages:
++    print(f"{msg['role']}: {msg['content']}")
++
++print("\nProcessed messages:")
++for msg in processed:
++    print(f"{msg['role']}: {msg['content']}")
+\ No newline at end of file

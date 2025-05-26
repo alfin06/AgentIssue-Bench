@@ -1,0 +1,24 @@
+diff --git a/autogen/retrieve_utils.py b/autogen/retrieve_utils.py
+index c3e50c7a9..3c968931a 100644
+--- a/autogen/retrieve_utils.py
++++ b/autogen/retrieve_utils.py
+@@ -67,7 +67,7 @@ def split_text_to_chunks(
+     must_break_at_empty_line: bool = True,
+     overlap: int = 10,
+ ):
+-    """Split a long text into chunks of max_tokens."""
++    """Split a long text into chunks of max_tokens, with overlapping lines between chunks."""
+     if chunk_mode not in VALID_CHUNK_MODES:
+         raise AssertionError
+     if chunk_mode == "one_line":
+@@ -102,8 +102,8 @@ def split_text_to_chunks(
+                 logger.warning("Failed to split docs with must_break_at_empty_line being True, set to False.")
+                 must_break_at_empty_line = False
+         chunks.append(prev) if len(prev) > 10 else None  # don't add chunks less than 10 characters
+-        lines = lines[cnt:]
+-        lines_tokens = lines_tokens[cnt:]
++        lines = lines[max(cnt - overlap, 0):]  # retain the last 'overlap' lines for the next chunk
++        lines_tokens = lines_tokens[max(cnt - overlap, 0):]  # adjust tokens accordingly
+         sum_tokens = sum(lines_tokens)
+     text_to_chunk = "\n".join(lines)
+     chunks.append(text_to_chunk) if len(text_to_chunk) > 10 else None  # don't add chunks less than 10 characters

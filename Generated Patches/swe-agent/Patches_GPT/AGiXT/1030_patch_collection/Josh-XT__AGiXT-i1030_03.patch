@@ -1,0 +1,7 @@
+diff --git a/test_websearch_agent.py b/test_websearch_agent.py
+new file mode 100644
+index 0000000..d231b58
+--- /dev/null
++++ b/test_websearch_agent.py
+@@ -0,0 +1 @@
++from agixt.Websearch import Websearch\n\nwebsearch = Websearch()\n\nasync def test_websearch_agent():\n    await websearch.websearch_agent(\n        user_input='Test input',\n        search_string='Test search',\n        websearch_depth='invalid_string',\n        websearch_timeout=0,\n        conversation_name='Test Conversation',\n        activity_id='Test Activity'\n    )\n\nimport asyncio\nasyncio.run(test_websearch_agent())

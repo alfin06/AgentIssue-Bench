@@ -1,0 +1,49 @@
+diff --git a/camel/agents/chat_agent.py b/camel/agents/chat_agent.py
+index c824a15..478a203 100644
+--- a/camel/agents/chat_agent.py
++++ b/camel/agents/chat_agent.py
+@@ -242,7 +242,11 @@ class ChatAgent(BaseAgent):
+                     raise RuntimeError("OpenAI returned unexpected struct")
+                 output_messages = [
+                     ChatMessage(role_name=self.role_name, role_type=self.role_type,
+-                                meta_dict=dict(), **dict(choice.message))
++                                meta_dict=dict(),
++                                role=dict(choice.message).get('role', ''),
++                                content=dict(choice.message).get('content', ''),
++                                refusal=dict(choice.message).get('refusal', None),
++                                audio=dict(choice.message).get('audio', None))
+                     for choice in response.choices
+                 ]
+                 info = self.get_info(
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..940d848
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1,25 @@
++from camel.messages import ChatMessage
++from camel.typing import RoleType
++
++def test_chat_message():
++    try:
++        # Simulate the problematic instantiation
++        message_data = {
++            'role': 'user',
++            'content': 'Hello!',
++            'refusal': 'Not applicable',
++            'audio': None,
++            'unexpected_key': 'unexpected_value'
++        }
++        chat_message = ChatMessage(
++            role_name='TestRole',
++            role_type=RoleType.USER,
++            meta_dict={},
++            **message_data
++        )
++        print("ChatMessage created successfully:", chat_message)
++    except TypeError as e:
++        print("Error:", e)
++
++if __name__ == "__main__":
++    test_chat_message()
+\ No newline at end of file

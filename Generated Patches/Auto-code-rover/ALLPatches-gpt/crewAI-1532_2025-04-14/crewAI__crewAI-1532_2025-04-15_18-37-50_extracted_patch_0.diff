@@ -1,0 +1,27 @@
+diff --git a/src/crewai/agent.py b/src/crewai/agent.py
+index 937710f5..deb44877 100644
+--- a/src/crewai/agent.py
++++ b/src/crewai/agent.py
+@@ -195,15 +195,20 @@ class Agent(BaseAgent):
+         tools: Optional[List[Any]] = None,
+     ) -> str:
+         """Execute a task with the agent.
+-
++        
+         Args:
+             task: Task to execute.
+             context: Context to execute the task in.
+             tools: Tools to use for the task.
+-
++        
+         Returns:
+             Output of the agent
+         """
++        if os.getenv("OTEL_SDK_DISABLE", "false").lower() == "true":
++            # Skip OpenTelemetry SDK functionalities if disabled
++            self._logger.log("info", "OpenTelemetry SDK is disabled by environment variable.")
++            return "Telemetry is disabled."
++    
+         if self.tools_handler:
+             self.tools_handler.last_used_tool = {}  # type: ignore # Incompatible types in assignment (expression has type "dict[Never, Never]", variable has type "ToolCalling")
+ 

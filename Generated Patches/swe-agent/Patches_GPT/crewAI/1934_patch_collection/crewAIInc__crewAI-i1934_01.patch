@@ -1,0 +1,29 @@
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..5ee7611
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1,23 @@
++import os
++import sys
++sys.path.insert(0, '/crewAIInc__crewAI.git/src')
++from crewai import Agent, Crew, Task
++
++os.environ["OPENAI_API_KEY"] = "sk-fake"
++
++simple_agent_1 = Agent(
++    role="City Selection Expert",
++    goal="Select the best city based on weather, season, and prices",
++    backstory="An expert in analyzing travel data to pick ideal destinations",
++    tools=[],
++    llm="gpt-4",
++)
++
++task_1 = Task(
++    description="Analyze and select the best city for the trip",
++    agent=simple_agent_1,
++    expected_output="Detailed report on the chosen city",
++)
++
++crew = Crew(agents=[simple_agent_1], tasks=[task_1])
++print(crew.kickoff())

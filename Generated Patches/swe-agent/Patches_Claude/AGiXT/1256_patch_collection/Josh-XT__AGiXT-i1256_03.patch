@@ -1,0 +1,54 @@
+diff --git a/reproduce_issue.py b/reproduce_issue.py
+new file mode 100644
+index 0000000..e1abedb
+--- /dev/null
++++ b/reproduce_issue.py
+@@ -0,0 +1,47 @@
++from agixt.Agent import Agent, add_agent
++from agixt.DB import get_session, Command, Extension
++import logging
++
++# Set up logging
++logging.basicConfig(level="INFO")
++
++def main():
++    # Create a test agent
++    agent_name = "test_agent"
++    add_agent(agent_name)
++    
++    # Create agent instance
++    agent = Agent(agent_name)
++    
++    # Get available extensions and their commands
++    extensions = agent.get_agent_extensions()
++    
++    # Print initial state
++    print("\nInitial state:")
++    for ext in extensions:
++        print(f"\nExtension: {ext['extension_name']}")
++        for cmd in ext['commands']:
++            print(f"  Command: {cmd['friendly_name']} - Enabled: {cmd.get('enabled', False)}")
++    
++    # Try to enable some commands
++    commands_to_enable = {}
++    for ext in extensions:
++        for cmd in ext['commands'][:2]:  # Enable first 2 commands of each extension
++            commands_to_enable[cmd['friendly_name']] = True
++    
++    # Update agent config with new commands
++    agent.update_agent_config(commands_to_enable, "commands")
++    
++    # Refresh agent to get new state
++    agent = Agent(agent_name)
++    extensions = agent.get_agent_extensions()
++    
++    # Print final state
++    print("\nFinal state after enabling commands:")
++    for ext in extensions:
++        print(f"\nExtension: {ext['extension_name']}")
++        for cmd in ext['commands']:
++            print(f"  Command: {cmd['friendly_name']} - Enabled: {cmd.get('enabled', False)}")
++
++if __name__ == "__main__":
++    main()
+\ No newline at end of file

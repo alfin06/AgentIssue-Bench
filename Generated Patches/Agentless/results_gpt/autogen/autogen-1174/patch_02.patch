@@ -1,0 +1,17 @@
+diff --git a/autogen/agentchat/conversable_agent.py b/autogen/agentchat/conversable_agent.py
+index 509360e..b0e3052 100644
+--- a/autogen/agentchat/conversable_agent.py
++++ b/autogen/agentchat/conversable_agent.py
+@@ -455,8 +455,10 @@ class ConversableAgent(Agent):
+         print(colored(sender.name, "yellow"), "(to", f"{self.name}):\n", flush=True)
+         message = self._message_to_dict(message)
+ 
+-        if message.get("tool_responses"):  # Handle tool multi-call responses
+-            for tool_response in message["tool_responses"]:
++        # Handle tool multi-call responses separately and ensure they aren't sent to the OpenAI API
++        tool_responses = message.pop("tool_responses", None)
++        if tool_responses:
++            for tool_response in tool_responses:
+                 self._print_received_message(tool_response, sender)
+             if message.get("role") == "tool":
+                 return  # If role is tool, then content is just a concatenation of all tool_responses

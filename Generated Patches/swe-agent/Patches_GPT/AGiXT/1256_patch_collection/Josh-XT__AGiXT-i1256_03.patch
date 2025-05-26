@@ -1,0 +1,35 @@
+diff --git a/reproduce_issue.py b/reproduce_issue.py
+new file mode 100644
+index 0000000..2f8bf02
+--- /dev/null
++++ b/reproduce_issue.py
+@@ -0,0 +1,28 @@
++from agixt.Agent import Agent
++
++def reproduce_issue():
++    agent_name = "TestAgent"
++    user = "test_user@example.com"
++
++    # Initialize the agent
++    agent = Agent(agent_name=agent_name, user=user)
++
++    # Define commands to save
++    commands_to_save = {
++        "Command1": True,
++        "Command2": False,
++        "Command3": True,
++    }
++
++    # Update agent configuration with commands
++    result = agent.update_agent_config(new_config=commands_to_save, config_key="commands")
++    print("Update Result:", result)
++
++    # Verify saved commands
++    session = agent.get_session()
++    agent_commands = session.query(agent.AgentCommand).filter_by(agent_id=agent.agent_id).all()
++    for command in agent_commands:
++        print(f"Command: {command.command_id}, State: {command.state}")
++
++if __name__ == "__main__":
++    reproduce_issue()
+\ No newline at end of file

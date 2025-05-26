@@ -1,0 +1,29 @@
+diff --git a/test_empty_chain.py b/test_empty_chain.py
+new file mode 100644
+index 0000000..586fe6f
+--- /dev/null
++++ b/test_empty_chain.py
+@@ -0,0 +1,22 @@
++import requests
++import json
++
++# Test empty chain name
++def test_empty_chain_name():
++    # Try to create a chain with empty name
++    url = "http://localhost:8001/api/chain"  # Adjust port if needed
++    headers = {
++        "Content-Type": "application/json",
++        "Authorization": "test_key"  # Replace with valid key if needed
++    }
++    data = {
++        "chain_name": "",  # Empty chain name
++        "description": "Test chain"
++    }
++    
++    response = requests.post(url, headers=headers, json=data)
++    print(f"Status code: {response.status_code}")
++    print(f"Response: {response.text}")
++
++if __name__ == "__main__":
++    test_empty_chain_name()
+\ No newline at end of file

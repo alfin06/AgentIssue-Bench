@@ -1,0 +1,28 @@
+diff --git a/sweagent/api/server.py b/sweagent/api/server.py
+index 84c7651..9d6cfab 100644
+--- a/sweagent/api/server.py
++++ b/sweagent/api/server.py
+@@ -109,11 +109,22 @@ def write_env_yaml(data: Dict[str, Any]) -> str:
+     return str(path)
+ 
+ 
+-@app.route("/run", methods=["GET", "OPTIONS"])
++@app.route("/run", methods=["GET", "OPTIONS", "POST"])
+ def run():
+     session_id = ensure_session_id_set()
+     if request.method == "OPTIONS":  # CORS preflight
+         return _build_cors_preflight_response()
++    elif request.method == "POST":
++        data = request.json
++        script_path = data.get("script_path")
++        if script_path:
++            try:
++                # Assuming there is a method to handle new script path
++                update_script_path(script_path)
++                return jsonify({"status": "success"}), 200
++            except Exception as e:
++                return jsonify({"status": "error", "message": str(e)}), 400
++        return jsonify({"status": "error", "message": "No script path provided"}), 400
+     # While we're running as a local UI, let's make sure that there's at most
+     # one run at a time
+     global THREADS

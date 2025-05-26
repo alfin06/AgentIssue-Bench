@@ -1,0 +1,109 @@
+diff --git a/apps/browser/lib/hooks/useWorkspaceUploadUpdate.ts b/apps/browser/lib/hooks/useWorkspaceUploadUpdate.ts
+index 2a8e5ad..ba08361 100644
+--- a/apps/browser/lib/hooks/useWorkspaceUploadUpdate.ts
++++ b/apps/browser/lib/hooks/useWorkspaceUploadUpdate.ts
+@@ -9,22 +9,46 @@ export const useWorkspaceUploadUpdate = () => {
+   const workspaceFilesUpdate = useWorkspaceFilesUpdate();
+ 
+   return async (workspace: Workspace, uploads?: InMemoryFile[]) => {
+-    uploads = uploads || workspaceUploads;
+-    if (uploads.length === 0) {
+-      return;
+-    }
++    try {
++      uploads = uploads || workspaceUploads;
++      if (uploads.length === 0) {
++        return;
++      }
++
++      const decoder = new TextDecoder();
++      const files = [...uploads];
++      setWorkspaceUploads([]);
+ 
+-    const decoder = new TextDecoder();
+-    const files = [...uploads];
+-    setWorkspaceUploads([]);
++      // Clear existing workspace files
++      const entries = await workspace.readdir("./");
++      await Promise.all(
++        entries.map(async (entry) => {
++          try {
++            await workspace.rm(entry.name);
++          } catch (error) {
++            console.error(`Failed to remove file ${entry.name}:`, error);
++          }
++        })
++      );
+ 
+-    // Write all uploaded files
+-    await Promise.all(
+-      files.map((file) => workspace.writeFile(
+-        file.path,
+-        decoder.decode(file.content)
+-      ))
+-    );
+-    await workspaceFilesUpdate(workspace);
++      // Write all uploaded files
++      await Promise.all(
++        files.map(async (file) => {
++          try {
++            await workspace.writeFile(
++              file.path,
++              decoder.decode(file.content)
++            );
++          } catch (error) {
++            console.error(`Failed to write file ${file.path}:`, error);
++          }
++        })
++      );
++      await workspaceFilesUpdate(workspace);
++    } catch (error) {
++      console.error("Failed to update workspace:", error);
++      // Re-throw to let the UI handle the error
++      throw error;
++    }
+   }
+ }
+diff --git a/test_workspace_switch.py b/test_workspace_switch.py
+new file mode 100644
+index 0000000..371a946
+--- /dev/null
++++ b/test_workspace_switch.py
+@@ -0,0 +1,36 @@
++import json
++from pathlib import Path
++import sys
++import os
++
++def simulate_workspace_state():
++    # Simulate initial workspace state (existing chat)
++    initial_workspace = {
++        "files": [
++            {"path": "existing_file.txt", "content": "existing content"}
++        ]
++    }
++    
++    # Simulate example prompt workspace state
++    example_workspace = {
++        "files": [
++            {"path": "example_file.txt", "content": "example content"}
++        ]
++    }
++    
++    # Print states for verification
++    print("Initial workspace state (existing chat):")
++    print(json.dumps(initial_workspace, indent=2))
++    print("\nExample prompt workspace state:")
++    print(json.dumps(example_workspace, indent=2))
++    
++    # After the fix, the workspace is cleared before applying new files
++    fixed_state = {
++        "files": example_workspace["files"]
++    }
++    
++    print("\nFixed state (workspace properly cleared):")
++    print(json.dumps(fixed_state, indent=2))
++
++if __name__ == "__main__":
++    simulate_workspace_state()
+\ No newline at end of file

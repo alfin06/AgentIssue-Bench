@@ -1,0 +1,44 @@
+diff --git a/sweagent/environment/swe_env.py b/sweagent/environment/swe_env.py
+index 1307c7f..2315c11 100644
+--- a/sweagent/environment/swe_env.py
++++ b/sweagent/environment/swe_env.py
+@@ -633,17 +633,30 @@ class SWEEnv(gym.Env):
+             raise NotImplementedError
+         raise ValueError(f"Invalid 'location': {location}")
+     
+-    def _run_shell_script_host(self, script_path: Path) -> None:
+-        """Run shell script file (located on host) in container""" 
+-        if not script_path.is_file():
++    def _run_shell_script_host(self, script_path: Path, new_content: str = None) -> None:
++        """Run shell script file (located on host) in container
++        
++        Args:
++            script_path: Path to the shell script
++            new_content: If provided, update the script with this content before running
++        """ 
++        if not script_path.is_file() and new_content is None:
+             raise FileNotFoundError(f"Script not found at {script_path}")
+-        shell_commands = Path(script_path).read_text().splitlines()
++            
++        # Update script content if provided
++        if new_content is not None:
++            script_path.write_text(new_content)
++            shell_commands = new_content.splitlines()
++        else:
++            shell_commands = Path(script_path).read_text().splitlines()
++            
+         for i, cmd in enumerate(shell_commands):
+-            self.communicate_with_handling(
+-                cmd,
+-                error_msg=f"Failed to execute line {i}.",
+-                timeout_duration=LONG_TIMEOUT,
+-            )
++            if cmd.strip():  # Skip empty lines
++                self.communicate_with_handling(
++                    cmd,
++                    error_msg=f"Failed to execute line {i}.",
++                    timeout_duration=LONG_TIMEOUT,
++                )
+ 
+     def install_env(self) -> None:
+         """

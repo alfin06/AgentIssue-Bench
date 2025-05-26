@@ -1,0 +1,43 @@
+diff --git a/camel/toolkits/__init__.py b/camel/toolkits/__init__.py
+index 1d6d17c..01f5ab0 100644
+--- a/camel/toolkits/__init__.py
++++ b/camel/toolkits/__init__.py
+@@ -26,19 +26,28 @@ from .weather_toolkit import WeatherToolkit, WEATHER_FUNCS
+ from .dalle_toolkit import DalleToolkit, DALLE_FUNCS
+ from .ask_news_toolkit import AskNewsToolkit, AsyncAskNewsToolkit
+ 
+-from .linkedin_toolkit import LinkedInToolkit
+-from .reddit_toolkit import RedditToolkit
++# Import base toolkit and tools
+ from .base import BaseToolkit
+-from .google_maps_toolkit import GoogleMapsToolkit
++from .math_toolkit import MathToolkit
++
++# Core toolkits that don't require optional dependencies
+ from .code_execution import CodeExecutionToolkit
+-from .github_toolkit import GithubToolkit
+-from .google_scholar_toolkit import GoogleScholarToolkit
+-from .arxiv_toolkit import ArxivToolkit
+-from .slack_toolkit import SlackToolkit
+-from .twitter_toolkit import TwitterToolkit, TWITTER_FUNCS
+-from .open_api_toolkit import OpenAPIToolkit
+ from .retrieval_toolkit import RetrievalToolkit
+-from .notion_toolkit import NotionToolkit
++
++# Optional toolkits that require additional dependencies
++# These will be imported only when explicitly used
++__optional_toolkits__ = {
++    'LinkedInToolkit': '.linkedin_toolkit',
++    'RedditToolkit': '.reddit_toolkit',
++    'GoogleMapsToolkit': '.google_maps_toolkit', 
++    'GithubToolkit': '.github_toolkit',
++    'GoogleScholarToolkit': '.google_scholar_toolkit',
++    'ArxivToolkit': '.arxiv_toolkit',
++    'SlackToolkit': '.slack_toolkit',
++    'TwitterToolkit': '.twitter_toolkit',
++    'OpenAPIToolkit': '.open_api_toolkit',
++    'NotionToolkit': '.notion_toolkit'
++}
+ 
+ __all__ = [
+     'BaseToolkit',

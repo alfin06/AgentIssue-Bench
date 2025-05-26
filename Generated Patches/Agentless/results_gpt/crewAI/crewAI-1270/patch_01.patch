@@ -1,0 +1,32 @@
+diff --git a/src/crewai/project/crew_base.py b/src/crewai/project/crew_base.py
+index cf045ec..6b46ccf 100644
+--- a/src/crewai/project/crew_base.py
++++ b/src/crewai/project/crew_base.py
+@@ -32,14 +32,26 @@ def CrewBase(cls):
+             self.map_all_agent_variables()
+             self.map_all_task_variables()
+ 
++        import chardet
++
+         @staticmethod
+         def load_yaml(config_path: Path):
+             try:
+-                with open(config_path, "r") as file:
++                # Detect the encoding of the file
++                with open(config_path, "rb") as file:
++                    raw_data = file.read()
++                    result = chardet.detect(raw_data)
++                    encoding = result['encoding']
++
++                # Open the file with the detected encoding
++                with open(config_path, "r", encoding=encoding) as file:
+                     return yaml.safe_load(file)
+             except FileNotFoundError:
+                 print(f"File not found: {config_path}")
+                 raise
++            except UnicodeDecodeError as e:
++                print(f"Failed to decode file {config_path}: {e}")
++                raise
+ 
+         def _get_all_functions(self):
+             return {

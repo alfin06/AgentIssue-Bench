@@ -1,0 +1,43 @@
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..dda7b66
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1,36 @@
++import requests
++import json
++
++# Define the runConfig with a script modification
++runConfig = {
++    "agent": {
++        "model": {
++            "model_name": "gpt4",
++        },
++    },
++    "problem_statement": {
++        "type": "",
++        "input": "",
++    },
++    "environment": {
++        "image_name": "",
++        "script": "echo 'Test script'",
++        "repo": {
++            "type": "",
++            "input": "",
++        },
++    },
++    "extra": {
++        "test_run": False,
++    },
++}
++
++# Send the runConfig to the server
++response = requests.get(
++    "http://localhost:8000/run",
++    params={"runConfig": json.dumps(runConfig)}
++)
++
++# Print the response
++print("Response status code:", response.status_code)
++print("Response text:", response.text)
+\ No newline at end of file

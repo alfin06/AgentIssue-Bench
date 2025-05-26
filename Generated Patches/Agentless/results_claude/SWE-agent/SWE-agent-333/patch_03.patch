@@ -1,0 +1,24 @@
+diff --git a/sweagent/environment/swe_env.py b/sweagent/environment/swe_env.py
+index 1307c7f..eef51d1 100644
+--- a/sweagent/environment/swe_env.py
++++ b/sweagent/environment/swe_env.py
+@@ -637,13 +637,12 @@ class SWEEnv(gym.Env):
+         """Run shell script file (located on host) in container""" 
+         if not script_path.is_file():
+             raise FileNotFoundError(f"Script not found at {script_path}")
+-        shell_commands = Path(script_path).read_text().splitlines()
+-        for i, cmd in enumerate(shell_commands):
+-            self.communicate_with_handling(
+-                cmd,
+-                error_msg=f"Failed to execute line {i}.",
+-                timeout_duration=LONG_TIMEOUT,
+-            )
++        script_content = Path(script_path).read_text()
++        self.communicate_with_handling(
++            f"bash -c '{script_content}'",
++            error_msg="Failed to execute shell script.",
++            timeout_duration=LONG_TIMEOUT,
++        )
+ 
+     def install_env(self) -> None:
+         """

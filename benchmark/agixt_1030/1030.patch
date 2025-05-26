@@ -1,0 +1,111 @@
+From 3e28776a7035d41a513891fdbe3b70fb76640b4b Mon Sep 17 00:00:00 2001
+From: Josh XT <josh@devxt.com>
+Date: Wed, 4 Oct 2023 12:38:33 -0400
+Subject: [PATCH 1/2] Fix #1030, add Local-LLM provider
+
+---
+ agixt/Websearch.py       |  8 ++++++
+ agixt/providers/local.py | 56 ++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 64 insertions(+)
+ create mode 100644 agixt/providers/local.py
+
+diff --git a/agixt/Websearch.py b/agixt/Websearch.py
+index ff00e65cb7d4..8ae1b5689d8b 100644
+--- a/agixt/Websearch.py
++++ b/agixt/Websearch.py
+@@ -255,6 +255,14 @@ async def websearch_agent(
+         await self.browse_links_in_input(
+             user_input=user_input, search_depth=websearch_depth
+         )
++        try:
++            websearch_depth = int(websearch_depth)
++        except:
++            websearch_depth = 0
++        try:
++            websearch_timeout = int(websearch_timeout)
++        except:
++            websearch_timeout = 0
+         if websearch_depth > 0:
+             search_string = ApiClient.prompt_agent(
+                 agent_name=self.agent_name,
+diff --git a/agixt/providers/local.py b/agixt/providers/local.py
+new file mode 100644
+index 000000000000..46e7834a4c7b
+--- /dev/null
++++ b/agixt/providers/local.py
+@@ -0,0 +1,56 @@
++import openai
++import time
++import logging
++import requests
++
++
++class LocalProvider:
++    def __init__(
++        self,
++        LOCAL_API_KEY: str = "",
++        AI_MODEL: str = "TheBloke/Mistral-7B-OpenOrca-GGUF",
++        API_URI: str = "https://localhost:8091/v1",
++        MAX_TOKENS: int = 8192,
++        AI_TEMPERATURE: float = 1.31,
++        AI_TOP_P: float = 1.0,
++        WAIT_BETWEEN_REQUESTS: int = 1,
++        WAIT_AFTER_FAILURE: int = 3,
++        **kwargs,
++    ):
++        self.requirements = ["requests"]
++        self.AI_MODEL = AI_MODEL if AI_MODEL else "TheBloke/Mistral-7B-OpenOrca-GGUF"
++        self.AI_TEMPERATURE = AI_TEMPERATURE if AI_TEMPERATURE else 1.31
++        self.AI_TOP_P = AI_TOP_P if AI_TOP_P else 1.0
++        self.MAX_TOKENS = MAX_TOKENS if MAX_TOKENS else 8192
++        self.API_URI = API_URI if API_URI else "https://localhost:8091/v1"
++        self.WAIT_AFTER_FAILURE = WAIT_AFTER_FAILURE if WAIT_AFTER_FAILURE else 3
++        self.WAIT_BETWEEN_REQUESTS = (
++            WAIT_BETWEEN_REQUESTS if WAIT_BETWEEN_REQUESTS else 1
++        )
++        self.stream = False
++        openai.api_base = self.API_URI
++        openai.api_key = LOCAL_API_KEY
++
++    def models(self):
++        models = requests.get("http://localhost:8091/v1/models")
++        return models.json()
++
++    async def instruct(self, prompt, tokens: int = 0):
++        max_new_tokens = int(self.MAX_TOKENS) - tokens
++        if int(self.WAIT_BETWEEN_REQUESTS) > 0:
++            time.sleep(int(self.WAIT_BETWEEN_REQUESTS))
++        try:
++            response = openai.Completion.create(
++                model=self.AI_MODEL,
++                prompt=prompt,
++                temperature=float(self.AI_TEMPERATURE),
++                max_tokens=max_new_tokens,
++                top_p=float(self.AI_TOP_P),
++            )
++            return response.choices[0].text.strip()
++        except Exception as e:
++            logging.info(f"Local-LLM API Error: {e}")
++            if int(self.WAIT_AFTER_FAILURE) > 0:
++                time.sleep(int(self.WAIT_AFTER_FAILURE))
++                return await self.instruct(prompt=prompt, tokens=tokens)
++            return str(response)
+
+From d483087a68fc432d71f6b39fd6ea5be3c0cbe737 Mon Sep 17 00:00:00 2001
+From: Josh XT <josh@devxt.com>
+Date: Wed, 4 Oct 2023 12:39:00 -0400
+Subject: [PATCH 2/2] v1.4.8
+
+---
+ agixt/version | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/agixt/version b/agixt/version
+index 880b851599e2..e98f49902ee0 100644
+--- a/agixt/version
++++ b/agixt/version
+@@ -1 +1 @@
+-v1.4.7
+\ No newline at end of file
++v1.4.8
+\ No newline at end of file

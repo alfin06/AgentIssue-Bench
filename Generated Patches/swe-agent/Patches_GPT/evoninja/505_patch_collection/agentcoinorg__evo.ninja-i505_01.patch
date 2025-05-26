@@ -1,0 +1,37 @@
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..32fbe68
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1,30 @@
++from apps.browser.lib.api.ProxyEmbeddingApi import ProxyEmbeddingApi
++from packages.agents.src.agent_core.chunking.TextChunker import TextChunker
++
++# Mock tokenizer
++class MockTokenizer:
++    def encode(self, text):
++        return list(text)
++
++# Initialize ProxyEmbeddingApi with mock tokenizer
++proxy_api = ProxyEmbeddingApi(
++    tokenizer=MockTokenizer(),
++    _setCapReached=lambda: print("Cap reached"),
++    modelConfig={
++        "model": "test-model",
++        "maxTokensPerInput": 10,
++        "maxInputsPerRequest": 2
++    }
++)
++
++# Set goal ID
++proxy_api.setGoalId("test-goal")
++
++# Test input that exceeds max tokens per input
++input_text = ["This is a very long input that should exceed the token limit.", "Another long input."]
++
++try:
++    embeddings = proxy_api.createEmbeddings(input_text)
++    print("Embeddings created successfully:", embeddings)
++except Exception as e:
++    print("Error:", e)
+\ No newline at end of file

@@ -1,0 +1,14 @@
+diff --git a/agixt/endpoints/GQL.py b/agixt/endpoints/GQL.py
+index d16a61f5..834e8800 100644
+--- a/agixt/endpoints/GQL.py
++++ b/agixt/endpoints/GQL.py
+@@ -1406,8 +1406,8 @@ class Subscription:
+         and optionally a specific conversation's details.
+         """
+         try:
+-            # Initialize auth manager with provided token
+             user, auth, auth_manager = await get_user_from_context(info)
++            auth_manager = magical
+ 
+             async def get_app_state():
+                 # Get user details

@@ -1,0 +1,33 @@
+diff --git a/camel/models/deepseek_model.py b/camel/models/deepseek_model.py
+index 40375749..1734f138 100644
+--- a/camel/models/deepseek_model.py
++++ b/camel/models/deepseek_model.py
+@@ -145,13 +145,12 @@ class DeepSeekModel(BaseModelBackend):
+             # This ensures only the final response is sent, excluding
+             # intermediate thought processes
+             messages = [
+-                {  # type: ignore[misc]
++                {
+                     **msg,
+                     'content': re.sub(
+                         r'<think>.*?</think>',
+                         '',
+-                        msg['content'],  # type: ignore[arg-type]
+-                        flags=re.DOTALL,
++                        msg['content']
+                     ).strip(),
+                 }
+                 for msg in messages
+diff --git a/examples/models/deepseek_reasoner_model_example.py b/examples/models/deepseek_reasoner_model_example.py
+index a2bcffc0..bca918e4 100644
+--- a/examples/models/deepseek_reasoner_model_example.py
++++ b/examples/models/deepseek_reasoner_model_example.py
+@@ -39,6 +39,8 @@ user_msg = """How many Rs are there in the word 'strawberry'?"""
+ 
+ # Get response information
+ response = camel_agent.step(user_msg)
++
++# Extract and print the cleaned response content
+ print(response.msgs[0].content)
+ '''
+ ===============================================================================

@@ -1,0 +1,34 @@
+diff --git a/=1.7.2 b/=1.7.2
+new file mode 100644
+index 0000000..6152011
+--- /dev/null
++++ b/=1.7.2
+@@ -0,0 +1,2 @@
++Requirement already satisfied: griffe in /usr/local/lib/python3.11/site-packages (1.7.2)
++Requirement already satisfied: colorama>=0.4 in /usr/local/lib/python3.11/site-packages (from griffe) (0.4.6)
+diff --git a/lagent/actions/base_action.py b/lagent/actions/base_action.py
+index b42036a..ffdd7f7 100644
+--- a/lagent/actions/base_action.py
++++ b/lagent/actions/base_action.py
+@@ -16,7 +16,7 @@ from griffe import Docstring
+ try:
+     from griffe import DocstringSectionKind
+ except ImportError:
+-    from griffe.enumerations import DocstringSectionKind
++    from griffe import DocstringSectionKind
+ 
+ from ..schema import ActionReturn, ActionStatusCode
+ from .parser import BaseParser, JsonParser, ParseError
+diff --git a/requirements/runtime.txt b/requirements/runtime.txt
+index ac0b85c..22db19f 100644
+--- a/requirements/runtime.txt
++++ b/requirements/runtime.txt
+@@ -6,7 +6,7 @@ asyncer
+ distro
+ filelock
+ func_timeout
+-griffe<1.0
++griffe>=1.7.2
+ json5
+ jsonschema
+ jupyter==1.0.0

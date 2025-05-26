@@ -1,0 +1,39 @@
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..a5eb878
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1,32 @@
++from gpt_engineer.core.default.disk_memory import DiskMemory
++from gpt_engineer.core.default.disk_execution_env import DiskExecutionEnv
++from gpt_engineer.core.ai import AI
++from gpt_engineer.applications.cli.cli_agent import CliAgent
++from gpt_engineer.core.prompt import Prompt
++from gpt_engineer.core.files_dict import FilesDict
++from pathlib import Path
++
++# Create a test environment
++memory = DiskMemory(Path("test_memory"))
++execution_env = DiskExecutionEnv(Path("test_env"))
++ai = AI()
++
++# Create the agent
++agent = CliAgent.with_default_config(memory, execution_env, ai)
++
++# Create a test files_dict with a basic application.yml
++files_dict = FilesDict({
++    "src/main/resources/application.yml": """
++spring:
++  datasource:
++    url: jdbc:postgresql://localhost:5432/mydb
++    username: postgres
++    password: password
++    """
++})
++
++# Create a prompt to separate environments
++prompt = Prompt("""I want to seperate different environment, stage environment and local environment, current setting is for stage, so I need a new yaml config for local, and this local environment I want to use H2 DB. So yamle file will have two, and run.sh I also want two for different env""")
++
++# Try to improve the code
++files_dict = agent.improve(files_dict, prompt)
+\ No newline at end of file

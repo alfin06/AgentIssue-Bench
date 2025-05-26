@@ -1,0 +1,12 @@
+diff --git a/python/packages/autogen-core/pyproject.toml b/python/packages/autogen-core/pyproject.toml
+index 381f8a1..d44baed 100644
+--- a/python/packages/autogen-core/pyproject.toml
++++ b/python/packages/autogen-core/pyproject.toml
+@@ -21,6 +21,7 @@ dependencies = [
+     "protobuf~=5.29.3",
+     "opentelemetry-api>=1.27.0",
+     "jsonref~=1.1.0",
++    "grpcio>=1.60.0",  # Required for gRPC support
+ ]
+ 
+ 

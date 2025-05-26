@@ -1,0 +1,1209 @@
+From 002568f2b2548eb1128ea94affc027b2548cf7e2 Mon Sep 17 00:00:00 2001
+From: Brandon Hancock <brandon@brandonhancock.io>
+Date: Tue, 21 Jan 2025 13:51:34 -0500
+Subject: [PATCH 1/9] Wip to address
+ https://github.com/crewAIInc/crewAI/issues/1934
+
+---
+ src/crewai/agents/crew_agent_executor.py | 63 +++++++++++++++++++++---
+ src/crewai/utilities/llm_utils.py        |  4 --
+ 2 files changed, 57 insertions(+), 10 deletions(-)
+
+diff --git a/src/crewai/agents/crew_agent_executor.py b/src/crewai/agents/crew_agent_executor.py
+index 286f92e672..e4e67169d3 100644
+--- a/src/crewai/agents/crew_agent_executor.py
++++ b/src/crewai/agents/crew_agent_executor.py
+@@ -3,6 +3,8 @@
+ from dataclasses import dataclass
+ from typing import Any, Callable, Dict, List, Optional, Union
+ 
++from litellm.exceptions import AuthenticationError as LiteLLMAuthenticationError
++
+ from crewai.agents.agent_builder.base_agent import BaseAgent
+ from crewai.agents.agent_builder.base_agent_executor_mixin import CrewAgentExecutorMixin
+ from crewai.agents.parser import (
+@@ -114,8 +116,10 @@ def _invoke_loop(self):
+         """
+         formatted_answer = None
+         while not isinstance(formatted_answer, AgentFinish):
++            self.iterations += 1
+             try:
+                 if self._has_reached_max_iterations():
++                    print("Max iterations reached")
+                     formatted_answer = self._handle_max_iterations_exceeded(
+                         formatted_answer
+                     )
+@@ -123,8 +127,9 @@ def _invoke_loop(self):
+ 
+                 self._enforce_rpm_limit()
+ 
++                print("Getting LLM response")
+                 answer = self._get_llm_response()
+-
++                print(f"LLM response: {answer}")
+                 formatted_answer = self._process_llm_response(answer)
+ 
+                 if isinstance(formatted_answer, AgentAction):
+@@ -142,15 +147,54 @@ def _invoke_loop(self):
+                 formatted_answer = self._handle_output_parser_exception(e)
+ 
+             except Exception as e:
++                print(f"Exception: {e}")
+                 if self._is_context_length_exceeded(e):
+                     self._handle_context_length()
+                     continue
++                elif self._is_litellm_authentication_error(e):
++                    self._handle_litellm_auth_error(e)
++                    break
++                else:
++                    self._printer.print(
++                        content=f"Unhandled exception: {e}",
++                        color="red",
++                    )
+ 
+         self._show_logs(formatted_answer)
+         return formatted_answer
+ 
++    def _is_litellm_authentication_error(self, exception: Exception) -> bool:
++        """Check if the exception is a litellm authentication error."""
++        # Check if the exception is an instance of litellm.AuthenticationError
++        if LiteLLMAuthenticationError and isinstance(
++            exception, LiteLLMAuthenticationError
++        ):
++            return True
++
++        # Alternatively, inspect the exception message
++        error_message = str(exception)
++
++        # Check if 'litellm.AuthenticationError' and 'invalid_api_key' are in the message
++        return "litellm.AuthenticationError" in error_message and (
++            "invalid_api_key" in error_message
++            or "Incorrect API key provided" in error_message
++        )
++
++    def _handle_litellm_auth_error(self, exception: Exception) -> None:
++        """Handle litellm authentication error by informing the user and exiting."""
++        self._printer.print(
++            content="Authentication error with litellm occurred. Please check your API key and configuration.",
++            color="red",
++        )
++        self._printer.print(
++            content=f"Error details: {exception}",
++            color="red",
++        )
++
+     def _has_reached_max_iterations(self) -> bool:
+         """Check if the maximum number of iterations has been reached."""
++        print(f"Max iterations: {self.max_iter}")
++        print(f"Iterations: {self.iterations}")
+         return self.iterations >= self.max_iter
+ 
+     def _enforce_rpm_limit(self) -> None:
+@@ -160,10 +204,18 @@ def _enforce_rpm_limit(self) -> None:
+ 
+     def _get_llm_response(self) -> str:
+         """Call the LLM and return the response, handling any invalid responses."""
+-        answer = self.llm.call(
+-            self.messages,
+-            callbacks=self.callbacks,
+-        )
++        try:
++            answer = self.llm.call(
++                self.messages,
++                callbacks=self.callbacks,
++            )
++        except Exception as e:
++            self._printer.print(
++                content=f"Error during LLM call: {e}",
++                color="red",
++            )
++            # Re-raise the exception to let _invoke_loop handle it
++            raise e
+ 
+         if not answer:
+             self._printer.print(
+@@ -184,7 +236,6 @@ def _process_llm_response(self, answer: str) -> Union[AgentAction, AgentFinish]:
+                 if FINAL_ANSWER_AND_PARSABLE_ACTION_ERROR_MESSAGE in e.error:
+                     answer = answer.split("Observation:")[0].strip()
+ 
+-        self.iterations += 1
+         return self._format_answer(answer)
+ 
+     def _handle_agent_action(
+diff --git a/src/crewai/utilities/llm_utils.py b/src/crewai/utilities/llm_utils.py
+index 8c02875093..13230edf6c 100644
+--- a/src/crewai/utilities/llm_utils.py
++++ b/src/crewai/utilities/llm_utils.py
+@@ -24,12 +24,10 @@ def create_llm(
+ 
+     # 1) If llm_value is already an LLM object, return it directly
+     if isinstance(llm_value, LLM):
+-        print("LLM value is already an LLM object")
+         return llm_value
+ 
+     # 2) If llm_value is a string (model name)
+     if isinstance(llm_value, str):
+-        print("LLM value is a string")
+         try:
+             created_llm = LLM(model=llm_value)
+             return created_llm
+@@ -39,12 +37,10 @@ def create_llm(
+ 
+     # 3) If llm_value is None, parse environment variables or use default
+     if llm_value is None:
+-        print("LLM value is None")
+         return _llm_via_environment_or_fallback()
+ 
+     # 4) Otherwise, attempt to extract relevant attributes from an unknown object
+     try:
+-        print("LLM value is an unknown object")
+         # Extract attributes with explicit types
+         model = (
+             getattr(llm_value, "model_name", None)
+
+From e32d1007ba2b8d05ac0f54790a3c3c231dc32c18 Mon Sep 17 00:00:00 2001
+From: Brandon Hancock <brandon@brandonhancock.io>
+Date: Tue, 21 Jan 2025 14:56:17 -0500
+Subject: [PATCH 2/9] implement proper try / except
+
+---
+ src/crewai/agent.py                      | 4 ++++
+ src/crewai/agents/crew_agent_executor.py | 8 ++++++--
+ 2 files changed, 10 insertions(+), 2 deletions(-)
+
+diff --git a/src/crewai/agent.py b/src/crewai/agent.py
+index b7f0b2896c..5823ef7f9f 100644
+--- a/src/crewai/agent.py
++++ b/src/crewai/agent.py
+@@ -3,6 +3,7 @@
+ import subprocess
+ from typing import Any, Dict, List, Literal, Optional, Union
+ 
++from litellm import AuthenticationError as LiteLLMAuthenticationError
+ from pydantic import Field, InstanceOf, PrivateAttr, model_validator
+ 
+ from crewai.agents import CacheHandler
+@@ -261,6 +262,9 @@ def execute_task(
+                 }
+             )["output"]
+         except Exception as e:
++            if isinstance(e, LiteLLMAuthenticationError):
++                # Do not retry on authentication errors
++                raise e
+             self._times_executed += 1
+             if self._times_executed > self.max_retry_limit:
+                 raise e
+diff --git a/src/crewai/agents/crew_agent_executor.py b/src/crewai/agents/crew_agent_executor.py
+index e4e67169d3..e1402edf1d 100644
+--- a/src/crewai/agents/crew_agent_executor.py
++++ b/src/crewai/agents/crew_agent_executor.py
+@@ -100,7 +100,11 @@ def invoke(self, inputs: Dict[str, str]) -> Dict[str, Any]:
+         self._show_start_logs()
+ 
+         self.ask_for_human_input = bool(inputs.get("ask_for_human_input", False))
+-        formatted_answer = self._invoke_loop()
++
++        try:
++            formatted_answer = self._invoke_loop()
++        except Exception as e:
++            raise e
+ 
+         if self.ask_for_human_input:
+             formatted_answer = self._handle_human_feedback(formatted_answer)
+@@ -153,7 +157,7 @@ def _invoke_loop(self):
+                     continue
+                 elif self._is_litellm_authentication_error(e):
+                     self._handle_litellm_auth_error(e)
+-                    break
++                    raise e
+                 else:
+                     self._printer.print(
+                         content=f"Unhandled exception: {e}",
+
+From e69f4bc1a3ddaf484a29e9382126cfa5c2c83754 Mon Sep 17 00:00:00 2001
+From: Brandon Hancock <brandon@brandonhancock.io>
+Date: Tue, 21 Jan 2025 15:16:58 -0500
+Subject: [PATCH 3/9] clean up PR
+
+---
+ src/crewai/agents/crew_agent_executor.py | 17 +----------------
+ 1 file changed, 1 insertion(+), 16 deletions(-)
+
+diff --git a/src/crewai/agents/crew_agent_executor.py b/src/crewai/agents/crew_agent_executor.py
+index e1402edf1d..3be4d52e90 100644
+--- a/src/crewai/agents/crew_agent_executor.py
++++ b/src/crewai/agents/crew_agent_executor.py
+@@ -123,7 +123,6 @@ def _invoke_loop(self):
+             self.iterations += 1
+             try:
+                 if self._has_reached_max_iterations():
+-                    print("Max iterations reached")
+                     formatted_answer = self._handle_max_iterations_exceeded(
+                         formatted_answer
+                     )
+@@ -131,9 +130,7 @@ def _invoke_loop(self):
+ 
+                 self._enforce_rpm_limit()
+ 
+-                print("Getting LLM response")
+                 answer = self._get_llm_response()
+-                print(f"LLM response: {answer}")
+                 formatted_answer = self._process_llm_response(answer)
+ 
+                 if isinstance(formatted_answer, AgentAction):
+@@ -151,7 +148,6 @@ def _invoke_loop(self):
+                 formatted_answer = self._handle_output_parser_exception(e)
+ 
+             except Exception as e:
+-                print(f"Exception: {e}")
+                 if self._is_context_length_exceeded(e):
+                     self._handle_context_length()
+                     continue
+@@ -169,20 +165,12 @@ def _invoke_loop(self):
+ 
+     def _is_litellm_authentication_error(self, exception: Exception) -> bool:
+         """Check if the exception is a litellm authentication error."""
+-        # Check if the exception is an instance of litellm.AuthenticationError
+         if LiteLLMAuthenticationError and isinstance(
+             exception, LiteLLMAuthenticationError
+         ):
+             return True
+ 
+-        # Alternatively, inspect the exception message
+-        error_message = str(exception)
+-
+-        # Check if 'litellm.AuthenticationError' and 'invalid_api_key' are in the message
+-        return "litellm.AuthenticationError" in error_message and (
+-            "invalid_api_key" in error_message
+-            or "Incorrect API key provided" in error_message
+-        )
++        return False
+ 
+     def _handle_litellm_auth_error(self, exception: Exception) -> None:
+         """Handle litellm authentication error by informing the user and exiting."""
+@@ -197,8 +185,6 @@ def _handle_litellm_auth_error(self, exception: Exception) -> None:
+ 
+     def _has_reached_max_iterations(self) -> bool:
+         """Check if the maximum number of iterations has been reached."""
+-        print(f"Max iterations: {self.max_iter}")
+-        print(f"Iterations: {self.iterations}")
+         return self.iterations >= self.max_iter
+ 
+     def _enforce_rpm_limit(self) -> None:
+@@ -218,7 +204,6 @@ def _get_llm_response(self) -> str:
+                 content=f"Error during LLM call: {e}",
+                 color="red",
+             )
+-            # Re-raise the exception to let _invoke_loop handle it
+             raise e
+ 
+         if not answer:
+
+From 37d425b10e63fb7a50ffceb4bd1d68cc48b08520 Mon Sep 17 00:00:00 2001
+From: Brandon Hancock <brandon@brandonhancock.io>
+Date: Tue, 21 Jan 2025 15:33:21 -0500
+Subject: [PATCH 4/9] add tests
+
+---
+ tests/agent_test.py | 104 ++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 104 insertions(+)
+
+diff --git a/tests/agent_test.py b/tests/agent_test.py
+index 859a5d6936..b35b0ee1a7 100644
+--- a/tests/agent_test.py
++++ b/tests/agent_test.py
+@@ -1600,3 +1600,107 @@ def test_agent_with_knowledge_sources():
+ 
+         # Assert that the agent provides the correct information
+         assert "red" in result.raw.lower()
++
++
++@pytest.mark.vcr(filter_headers=["authorization"])
++def test_litellm_auth_error_handling():
++    """Test that LiteLLM authentication errors are handled correctly and not retried."""
++    from litellm import AuthenticationError as LiteLLMAuthenticationError
++
++    # Create an agent with a mocked LLM and max_retry_limit=0
++    agent = Agent(
++        role="test role",
++        goal="test goal",
++        backstory="test backstory",
++        llm=LLM(model="gpt-4"),
++        max_retry_limit=0,  # Disable retries for authentication errors
++    )
++
++    # Create a task
++    task = Task(
++        description="Test task",
++        expected_output="Test output",
++        agent=agent,
++    )
++
++    # Mock the LLM call to raise LiteLLMAuthenticationError
++    with (
++        patch.object(LLM, "call") as mock_llm_call,
++        pytest.raises(LiteLLMAuthenticationError, match="Invalid API key"),
++    ):
++        mock_llm_call.side_effect = LiteLLMAuthenticationError(
++            message="Invalid API key", llm_provider="openai", model="gpt-4"
++        )
++        agent.execute_task(task)
++
++    # Verify the call was only made once (no retries)
++    mock_llm_call.assert_called_once()
++
++
++@pytest.mark.vcr(filter_headers=["authorization"])
++def test_crew_agent_executor_litellm_auth_error():
++    """Test that CrewAgentExecutor properly identifies and handles LiteLLM authentication errors."""
++    from litellm import AuthenticationError as LiteLLMAuthenticationError
++
++    from crewai.agents.tools_handler import ToolsHandler
++    from crewai.utilities import Logger
++
++    # Create an agent and executor with max_retry_limit=0
++    agent = Agent(
++        role="test role",
++        goal="test goal",
++        backstory="test backstory",
++        llm=LLM(model="gpt-4"),
++        max_retry_limit=0,  # Disable retries for authentication errors
++    )
++    task = Task(
++        description="Test task",
++        expected_output="Test output",
++        agent=agent,
++    )
++
++    # Create executor with all required parameters
++    executor = CrewAgentExecutor(
++        agent=agent,
++        task=task,
++        llm=agent.llm,
++        crew=None,
++        prompt={"system": "You are a test agent", "user": "Execute the task: {input}"},
++        max_iter=5,
++        tools=[],
++        tools_names="",
++        stop_words=[],
++        tools_description="",
++        tools_handler=ToolsHandler(),
++    )
++
++    # Mock the LLM call to raise LiteLLMAuthenticationError
++    with (
++        patch.object(LLM, "call") as mock_llm_call,
++        patch.object(Logger, "log") as mock_logger,
++        pytest.raises(LiteLLMAuthenticationError, match="Invalid API key"),
++    ):
++        mock_llm_call.side_effect = LiteLLMAuthenticationError(
++            message="Invalid API key", llm_provider="openai", model="gpt-4"
++        )
++        executor.invoke(
++            {
++                "input": "test input",
++                "tool_names": "",  # Required template variable
++                "tools": "",  # Required template variable
++            }
++        )
++
++    # Verify error handling
++    mock_logger.assert_any_call(
++        level="error",
++        message="Authentication error with litellm occurred. Please check your API key and configuration.",
++        color="red",
++    )
++    mock_logger.assert_any_call(
++        level="error",
++        message="Error details: litellm.AuthenticationError: Invalid API key",
++        color="red",
++    )
++    # Verify the call was only made once (no retries)
++    mock_llm_call.assert_called_once()
+
+From 8bd292e875085efa2f30eb7870b1e8fefcb07d1d Mon Sep 17 00:00:00 2001
+From: Brandon Hancock <brandon@brandonhancock.io>
+Date: Tue, 21 Jan 2025 19:09:54 -0500
+Subject: [PATCH 5/9] Fix tests and code that was broken
+
+---
+ src/crewai/agents/crew_agent_executor.py      |   3 +-
+ tests/agent_test.py                           |  27 +-
+ .../test_agent_error_on_parsing_tool.yaml     | 233 ------------------
+ 3 files changed, 14 insertions(+), 249 deletions(-)
+ delete mode 100644 tests/cassettes/test_agent_error_on_parsing_tool.yaml
+
+diff --git a/src/crewai/agents/crew_agent_executor.py b/src/crewai/agents/crew_agent_executor.py
+index 3be4d52e90..b5f9f7960c 100644
+--- a/src/crewai/agents/crew_agent_executor.py
++++ b/src/crewai/agents/crew_agent_executor.py
+@@ -120,7 +120,6 @@ def _invoke_loop(self):
+         """
+         formatted_answer = None
+         while not isinstance(formatted_answer, AgentFinish):
+-            self.iterations += 1
+             try:
+                 if self._has_reached_max_iterations():
+                     formatted_answer = self._handle_max_iterations_exceeded(
+@@ -159,6 +158,8 @@ def _invoke_loop(self):
+                         content=f"Unhandled exception: {e}",
+                         color="red",
+                     )
++            finally:
++                self.iterations += 1
+ 
+         self._show_logs(formatted_answer)
+         return formatted_answer
+diff --git a/tests/agent_test.py b/tests/agent_test.py
+index b35b0ee1a7..6b32ba4953 100644
+--- a/tests/agent_test.py
++++ b/tests/agent_test.py
+@@ -16,7 +16,7 @@
+ from crewai.tools.tool_calling import InstructorToolCalling
+ from crewai.tools.tool_usage import ToolUsage
+ from crewai.tools.tool_usage_events import ToolUsageFinished
+-from crewai.utilities import RPMController
++from crewai.utilities import Printer, RPMController
+ from crewai.utilities.events import Emitter
+ 
+ 
+@@ -670,7 +670,7 @@ def get_final_answer() -> float:
+         moveon.assert_called_once()
+ 
+ 
+-@pytest.mark.vcr(filter_headers=["authorization"])
++# @pytest.mark.vcr(filter_headers=["authorization"])
+ def test_agent_error_on_parsing_tool(capsys):
+     from unittest.mock import patch
+ 
+@@ -710,6 +710,7 @@ def get_final_answer() -> float:
+             force_exception_2.side_effect = Exception("Error on parsing tool.")
+             crew.kickoff()
+     captured = capsys.readouterr()
++    print("Captured output:", captured.out)
+     assert "Error on parsing tool." in captured.out
+ 
+ 
+@@ -1637,21 +1638,19 @@ def test_litellm_auth_error_handling():
+     mock_llm_call.assert_called_once()
+ 
+ 
+-@pytest.mark.vcr(filter_headers=["authorization"])
+ def test_crew_agent_executor_litellm_auth_error():
+     """Test that CrewAgentExecutor properly identifies and handles LiteLLM authentication errors."""
+     from litellm import AuthenticationError as LiteLLMAuthenticationError
+ 
+     from crewai.agents.tools_handler import ToolsHandler
+-    from crewai.utilities import Logger
++    from crewai.utilities import Printer
+ 
+     # Create an agent and executor with max_retry_limit=0
+     agent = Agent(
+         role="test role",
+         goal="test goal",
+         backstory="test backstory",
+-        llm=LLM(model="gpt-4"),
+-        max_retry_limit=0,  # Disable retries for authentication errors
++        llm=LLM(model="gpt-4", api_key="invalid_api_key"),
+     )
+     task = Task(
+         description="Test task",
+@@ -1677,7 +1676,7 @@ def test_crew_agent_executor_litellm_auth_error():
+     # Mock the LLM call to raise LiteLLMAuthenticationError
+     with (
+         patch.object(LLM, "call") as mock_llm_call,
+-        patch.object(Logger, "log") as mock_logger,
++        patch.object(Printer, "print") as mock_printer,
+         pytest.raises(LiteLLMAuthenticationError, match="Invalid API key"),
+     ):
+         mock_llm_call.side_effect = LiteLLMAuthenticationError(
+@@ -1686,20 +1685,18 @@ def test_crew_agent_executor_litellm_auth_error():
+         executor.invoke(
+             {
+                 "input": "test input",
+-                "tool_names": "",  # Required template variable
+-                "tools": "",  # Required template variable
++                "tool_names": "",
++                "tools": "",
+             }
+         )
+ 
+     # Verify error handling
+-    mock_logger.assert_any_call(
+-        level="error",
+-        message="Authentication error with litellm occurred. Please check your API key and configuration.",
++    mock_printer.assert_any_call(
++        content="Authentication error with litellm occurred. Please check your API key and configuration.",
+         color="red",
+     )
+-    mock_logger.assert_any_call(
+-        level="error",
+-        message="Error details: litellm.AuthenticationError: Invalid API key",
++    mock_printer.assert_any_call(
++        content="Error details: litellm.AuthenticationError: Invalid API key",
+         color="red",
+     )
+     # Verify the call was only made once (no retries)
+diff --git a/tests/cassettes/test_agent_error_on_parsing_tool.yaml b/tests/cassettes/test_agent_error_on_parsing_tool.yaml
+deleted file mode 100644
+index ea56fa9814..0000000000
+--- a/tests/cassettes/test_agent_error_on_parsing_tool.yaml
++++ /dev/null
+@@ -1,233 +0,0 @@
+-interactions:
+-- request:
+-    body: '{"messages": [{"role": "system", "content": "You are test role. test backstory\nYour
+-      personal goal is: test goal\nYou ONLY have access to the following tools, and
+-      should NEVER make up tools that are not listed here:\n\nTool Name: get_final_answer(*args:
+-      Any, **kwargs: Any) -> Any\nTool Description: get_final_answer() - Get the final
+-      answer but don''t give it yet, just re-use this         tool non-stop. \nTool
+-      Arguments: {}\n\nUse the following format:\n\nThought: you should always think
+-      about what to do\nAction: the action to take, only one name of [get_final_answer],
+-      just the name, exactly as it''s written.\nAction Input: the input to the action,
+-      just a simple python dictionary, enclosed in curly braces, using \" to wrap
+-      keys and values.\nObservation: the result of the action\n\nOnce all necessary
+-      information is gathered:\n\nThought: I now know the final answer\nFinal Answer:
+-      the final answer to the original input question\n"}, {"role": "user", "content":
+-      "\nCurrent Task: Use the get_final_answer tool.\n\nThis is the expect criteria
+-      for your final answer: The final answer\nyou MUST return the actual complete
+-      content as the final answer, not a summary.\n\nBegin! This is VERY important
+-      to you, use the tools available and give your best Final Answer, your job depends
+-      on it!\n\nThought:"}], "model": "gpt-4o"}'
+-    headers:
+-      accept:
+-      - application/json
+-      accept-encoding:
+-      - gzip, deflate
+-      connection:
+-      - keep-alive
+-      content-length:
+-      - '1325'
+-      content-type:
+-      - application/json
+-      cookie:
+-      - _cfuvid=ePJSDFdHag2D8lj21_ijAMWjoA6xfnPNxN4uekvC728-1727226247743-0.0.1.1-604800000;
+-        __cf_bm=3giyBOIM0GNudFELtsBWYXwLrpLBTNLsh81wfXgu2tg-1727226247-1.0.1.1-ugUDz0c5EhmfVpyGtcdedlIWeDGuy2q0tXQTKVpv83HZhvxgBcS7SBL1wS4rapPM38yhfEcfwA79ARt3HQEzKA
+-      host:
+-      - api.openai.com
+-      user-agent:
+-      - OpenAI/Python 1.47.0
+-      x-stainless-arch:
+-      - arm64
+-      x-stainless-async:
+-      - 'false'
+-      x-stainless-lang:
+-      - python
+-      x-stainless-os:
+-      - MacOS
+-      x-stainless-package-version:
+-      - 1.47.0
+-      x-stainless-raw-response:
+-      - 'true'
+-      x-stainless-runtime:
+-      - CPython
+-      x-stainless-runtime-version:
+-      - 3.11.7
+-    method: POST
+-    uri: https://api.openai.com/v1/chat/completions
+-  response:
+-    content: "{\n  \"id\": \"chatcmpl-ABAtOWmVjvzQ9X58tKAUcOF4gmXwx\",\n  \"object\":
+-      \"chat.completion\",\n  \"created\": 1727226842,\n  \"model\": \"gpt-4o-2024-05-13\",\n
+-      \ \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\":
+-      \"assistant\",\n        \"content\": \"Thought: I need to use the get_final_answer
+-      tool to determine the final answer.\\nAction: get_final_answer\\nAction Input:
+-      {}\",\n        \"refusal\": null\n      },\n      \"logprobs\": null,\n      \"finish_reason\":
+-      \"stop\"\n    }\n  ],\n  \"usage\": {\n    \"prompt_tokens\": 274,\n    \"completion_tokens\":
+-      27,\n    \"total_tokens\": 301,\n    \"completion_tokens_details\": {\n      \"reasoning_tokens\":
+-      0\n    }\n  },\n  \"system_fingerprint\": \"fp_e375328146\"\n}\n"
+-    headers:
+-      CF-Cache-Status:
+-      - DYNAMIC
+-      CF-RAY:
+-      - 8c8727b3492f31e6-MIA
+-      Connection:
+-      - keep-alive
+-      Content-Encoding:
+-      - gzip
+-      Content-Type:
+-      - application/json
+-      Date:
+-      - Wed, 25 Sep 2024 01:14:03 GMT
+-      Server:
+-      - cloudflare
+-      Transfer-Encoding:
+-      - chunked
+-      X-Content-Type-Options:
+-      - nosniff
+-      access-control-expose-headers:
+-      - X-Request-ID
+-      openai-organization:
+-      - crewai-iuxna1
+-      openai-processing-ms:
+-      - '348'
+-      openai-version:
+-      - '2020-10-01'
+-      strict-transport-security:
+-      - max-age=31536000; includeSubDomains; preload
+-      x-ratelimit-limit-requests:
+-      - '10000'
+-      x-ratelimit-limit-tokens:
+-      - '30000000'
+-      x-ratelimit-remaining-requests:
+-      - '9999'
+-      x-ratelimit-remaining-tokens:
+-      - '29999682'
+-      x-ratelimit-reset-requests:
+-      - 6ms
+-      x-ratelimit-reset-tokens:
+-      - 0s
+-      x-request-id:
+-      - req_be929caac49706f487950548bdcdd46e
+-    http_version: HTTP/1.1
+-    status_code: 200
+-- request:
+-    body: '{"messages": [{"role": "system", "content": "You are test role. test backstory\nYour
+-      personal goal is: test goal\nYou ONLY have access to the following tools, and
+-      should NEVER make up tools that are not listed here:\n\nTool Name: get_final_answer(*args:
+-      Any, **kwargs: Any) -> Any\nTool Description: get_final_answer() - Get the final
+-      answer but don''t give it yet, just re-use this         tool non-stop. \nTool
+-      Arguments: {}\n\nUse the following format:\n\nThought: you should always think
+-      about what to do\nAction: the action to take, only one name of [get_final_answer],
+-      just the name, exactly as it''s written.\nAction Input: the input to the action,
+-      just a simple python dictionary, enclosed in curly braces, using \" to wrap
+-      keys and values.\nObservation: the result of the action\n\nOnce all necessary
+-      information is gathered:\n\nThought: I now know the final answer\nFinal Answer:
+-      the final answer to the original input question\n"}, {"role": "user", "content":
+-      "\nCurrent Task: Use the get_final_answer tool.\n\nThis is the expect criteria
+-      for your final answer: The final answer\nyou MUST return the actual complete
+-      content as the final answer, not a summary.\n\nBegin! This is VERY important
+-      to you, use the tools available and give your best Final Answer, your job depends
+-      on it!\n\nThought:"}, {"role": "user", "content": "Thought: I need to use the
+-      get_final_answer tool to determine the final answer.\nAction: get_final_answer\nAction
+-      Input: {}\nObservation: I encountered an error: Error on parsing tool.\nMoving
+-      on then. I MUST either use a tool (use one at time) OR give my best final answer
+-      not both at the same time. To Use the following format:\n\nThought: you should
+-      always think about what to do\nAction: the action to take, should be one of
+-      [get_final_answer]\nAction Input: the input to the action, dictionary enclosed
+-      in curly braces\nObservation: the result of the action\n... (this Thought/Action/Action
+-      Input/Result can repeat N times)\nThought: I now can give a great answer\nFinal
+-      Answer: Your final answer must be the great and the most complete as possible,
+-      it must be outcome described\n\n \nNow it''s time you MUST give your absolute
+-      best final answer. You''ll ignore all previous instructions, stop using any
+-      tools, and just return your absolute BEST Final answer."}], "model": "gpt-4o"}'
+-    headers:
+-      accept:
+-      - application/json
+-      accept-encoding:
+-      - gzip, deflate
+-      connection:
+-      - keep-alive
+-      content-length:
+-      - '2320'
+-      content-type:
+-      - application/json
+-      cookie:
+-      - _cfuvid=ePJSDFdHag2D8lj21_ijAMWjoA6xfnPNxN4uekvC728-1727226247743-0.0.1.1-604800000;
+-        __cf_bm=3giyBOIM0GNudFELtsBWYXwLrpLBTNLsh81wfXgu2tg-1727226247-1.0.1.1-ugUDz0c5EhmfVpyGtcdedlIWeDGuy2q0tXQTKVpv83HZhvxgBcS7SBL1wS4rapPM38yhfEcfwA79ARt3HQEzKA
+-      host:
+-      - api.openai.com
+-      user-agent:
+-      - OpenAI/Python 1.47.0
+-      x-stainless-arch:
+-      - arm64
+-      x-stainless-async:
+-      - 'false'
+-      x-stainless-lang:
+-      - python
+-      x-stainless-os:
+-      - MacOS
+-      x-stainless-package-version:
+-      - 1.47.0
+-      x-stainless-raw-response:
+-      - 'true'
+-      x-stainless-runtime:
+-      - CPython
+-      x-stainless-runtime-version:
+-      - 3.11.7
+-    method: POST
+-    uri: https://api.openai.com/v1/chat/completions
+-  response:
+-    content: "{\n  \"id\": \"chatcmpl-ABAtPaaeRfdNsZ3k06CfAmrEW8IJu\",\n  \"object\":
+-      \"chat.completion\",\n  \"created\": 1727226843,\n  \"model\": \"gpt-4o-2024-05-13\",\n
+-      \ \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\":
+-      \"assistant\",\n        \"content\": \"Final Answer: The final answer\",\n        \"refusal\":
+-      null\n      },\n      \"logprobs\": null,\n      \"finish_reason\": \"stop\"\n
+-      \   }\n  ],\n  \"usage\": {\n    \"prompt_tokens\": 483,\n    \"completion_tokens\":
+-      6,\n    \"total_tokens\": 489,\n    \"completion_tokens_details\": {\n      \"reasoning_tokens\":
+-      0\n    }\n  },\n  \"system_fingerprint\": \"fp_e375328146\"\n}\n"
+-    headers:
+-      CF-Cache-Status:
+-      - DYNAMIC
+-      CF-RAY:
+-      - 8c8727b9da1f31e6-MIA
+-      Connection:
+-      - keep-alive
+-      Content-Encoding:
+-      - gzip
+-      Content-Type:
+-      - application/json
+-      Date:
+-      - Wed, 25 Sep 2024 01:14:03 GMT
+-      Server:
+-      - cloudflare
+-      Transfer-Encoding:
+-      - chunked
+-      X-Content-Type-Options:
+-      - nosniff
+-      access-control-expose-headers:
+-      - X-Request-ID
+-      alt-svc:
+-      - h3=":443"; ma=86400
+-      openai-organization:
+-      - crewai-iuxna1
+-      openai-processing-ms:
+-      - '188'
+-      openai-version:
+-      - '2020-10-01'
+-      strict-transport-security:
+-      - max-age=31536000; includeSubDomains; preload
+-      x-ratelimit-limit-requests:
+-      - '10000'
+-      x-ratelimit-limit-tokens:
+-      - '30000000'
+-      x-ratelimit-remaining-requests:
+-      - '9999'
+-      x-ratelimit-remaining-tokens:
+-      - '29999445'
+-      x-ratelimit-reset-requests:
+-      - 6ms
+-      x-ratelimit-reset-tokens:
+-      - 1ms
+-      x-request-id:
+-      - req_d8e32538689fe064627468bad802d9a8
+-    http_version: HTTP/1.1
+-    status_code: 200
+-version: 1
+
+From daa01686f225256f2d26ed28808c767e7cccd441 Mon Sep 17 00:00:00 2001
+From: Brandon Hancock <brandon@brandonhancock.io>
+Date: Tue, 21 Jan 2025 19:12:29 -0500
+Subject: [PATCH 6/9] mnore clean up
+
+---
+ tests/agent_test.py | 2 --
+ 1 file changed, 2 deletions(-)
+
+diff --git a/tests/agent_test.py b/tests/agent_test.py
+index 6b32ba4953..73ce697378 100644
+--- a/tests/agent_test.py
++++ b/tests/agent_test.py
+@@ -670,7 +670,6 @@ def get_final_answer() -> float:
+         moveon.assert_called_once()
+ 
+ 
+-# @pytest.mark.vcr(filter_headers=["authorization"])
+ def test_agent_error_on_parsing_tool(capsys):
+     from unittest.mock import patch
+ 
+@@ -710,7 +709,6 @@ def get_final_answer() -> float:
+             force_exception_2.side_effect = Exception("Error on parsing tool.")
+             crew.kickoff()
+     captured = capsys.readouterr()
+-    print("Captured output:", captured.out)
+     assert "Error on parsing tool." in captured.out
+ 
+ 
+
+From dc2e68487750c04ed3fc020a5a7af82671737314 Mon Sep 17 00:00:00 2001
+From: Brandon Hancock <brandon@brandonhancock.io>
+Date: Wed, 22 Jan 2025 11:13:47 -0500
+Subject: [PATCH 7/9] Fixing tests
+
+---
+ src/crewai/agents/crew_agent_executor.py      |   3 +-
+ tests/agent_test.py                           |   1 +
+ .../test_agent_error_on_parsing_tool.yaml     | 264 ++++++++++++++++++
+ 3 files changed, 267 insertions(+), 1 deletion(-)
+ create mode 100644 tests/cassettes/test_agent_error_on_parsing_tool.yaml
+
+diff --git a/src/crewai/agents/crew_agent_executor.py b/src/crewai/agents/crew_agent_executor.py
+index b5f9f7960c..e66075958f 100644
+--- a/src/crewai/agents/crew_agent_executor.py
++++ b/src/crewai/agents/crew_agent_executor.py
+@@ -15,6 +15,7 @@
+     OutputParserException,
+ )
+ from crewai.agents.tools_handler import ToolsHandler
++from crewai.llm import LLM
+ from crewai.tools.base_tool import BaseTool
+ from crewai.tools.tool_usage import ToolUsage, ToolUsageErrorException
+ from crewai.utilities import I18N, Printer
+@@ -56,7 +57,7 @@ def __init__(
+         callbacks: List[Any] = [],
+     ):
+         self._i18n: I18N = I18N()
+-        self.llm = llm
++        self.llm: LLM = llm
+         self.task = task
+         self.agent = agent
+         self.crew = crew
+diff --git a/tests/agent_test.py b/tests/agent_test.py
+index 73ce697378..46b20004e3 100644
+--- a/tests/agent_test.py
++++ b/tests/agent_test.py
+@@ -670,6 +670,7 @@ def get_final_answer() -> float:
+         moveon.assert_called_once()
+ 
+ 
++@pytest.mark.vcr(filter_headers=["authorization"])
+ def test_agent_error_on_parsing_tool(capsys):
+     from unittest.mock import patch
+ 
+diff --git a/tests/cassettes/test_agent_error_on_parsing_tool.yaml b/tests/cassettes/test_agent_error_on_parsing_tool.yaml
+new file mode 100644
+index 0000000000..bd1c350fee
+--- /dev/null
++++ b/tests/cassettes/test_agent_error_on_parsing_tool.yaml
+@@ -0,0 +1,264 @@
++interactions:
++- request:
++    body: '{"messages": [{"role": "system", "content": "You are test role. test backstory\nYour
++      personal goal is: test goal\nYou ONLY have access to the following tools, and
++      should NEVER make up tools that are not listed here:\n\nTool Name: get_final_answer\nTool
++      Arguments: {}\nTool Description: Get the final answer but don''t give it yet,
++      just re-use this\n        tool non-stop.\n\nIMPORTANT: Use the following format
++      in your response:\n\n```\nThought: you should always think about what to do\nAction:
++      the action to take, only one name of [get_final_answer], just the name, exactly
++      as it''s written.\nAction Input: the input to the action, just a simple JSON
++      object, enclosed in curly braces, using \" to wrap keys and values.\nObservation:
++      the result of the action\n```\n\nOnce all necessary information is gathered,
++      return the following format:\n\n```\nThought: I now know the final answer\nFinal
++      Answer: the final answer to the original input question\n```"}, {"role": "user",
++      "content": "\nCurrent Task: Use the get_final_answer tool.\n\nThis is the expect
++      criteria for your final answer: The final answer\nyou MUST return the actual
++      complete content as the final answer, not a summary.\n\nBegin! This is VERY
++      important to you, use the tools available and give your best Final Answer, your
++      job depends on it!\n\nThought:"}], "model": "gpt-4o", "stop": ["\nObservation:"]}'
++    headers:
++      accept:
++      - application/json
++      accept-encoding:
++      - gzip, deflate
++      connection:
++      - keep-alive
++      content-length:
++      - '1367'
++      content-type:
++      - application/json
++      host:
++      - api.openai.com
++      user-agent:
++      - OpenAI/Python 1.59.6
++      x-stainless-arch:
++      - arm64
++      x-stainless-async:
++      - 'false'
++      x-stainless-lang:
++      - python
++      x-stainless-os:
++      - MacOS
++      x-stainless-package-version:
++      - 1.59.6
++      x-stainless-raw-response:
++      - 'true'
++      x-stainless-retry-count:
++      - '0'
++      x-stainless-runtime:
++      - CPython
++      x-stainless-runtime-version:
++      - 3.12.7
++    method: POST
++    uri: https://api.openai.com/v1/chat/completions
++  response:
++    content: "{\n  \"id\": \"chatcmpl-AsXdf4OZKCZSigmN4k0gyh67NciqP\",\n  \"object\":
++      \"chat.completion\",\n  \"created\": 1737562383,\n  \"model\": \"gpt-4o-2024-08-06\",\n
++      \ \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\":
++      \"assistant\",\n        \"content\": \"```\\nThought: I have to use the available
++      tool to get the final answer. Let's proceed with executing it.\\nAction: get_final_answer\\nAction
++      Input: {}\",\n        \"refusal\": null\n      },\n      \"logprobs\": null,\n
++      \     \"finish_reason\": \"stop\"\n    }\n  ],\n  \"usage\": {\n    \"prompt_tokens\":
++      274,\n    \"completion_tokens\": 33,\n    \"total_tokens\": 307,\n    \"prompt_tokens_details\":
++      {\n      \"cached_tokens\": 0,\n      \"audio_tokens\": 0\n    },\n    \"completion_tokens_details\":
++      {\n      \"reasoning_tokens\": 0,\n      \"audio_tokens\": 0,\n      \"accepted_prediction_tokens\":
++      0,\n      \"rejected_prediction_tokens\": 0\n    }\n  },\n  \"service_tier\":
++      \"default\",\n  \"system_fingerprint\": \"fp_50cad350e4\"\n}\n"
++    headers:
++      CF-Cache-Status:
++      - DYNAMIC
++      CF-RAY:
++      - 9060d43e3be1d690-IAD
++      Connection:
++      - keep-alive
++      Content-Encoding:
++      - gzip
++      Content-Type:
++      - application/json
++      Date:
++      - Wed, 22 Jan 2025 16:13:03 GMT
++      Server:
++      - cloudflare
++      Set-Cookie:
++      - __cf_bm=_Jcp7wnO_mXdvOnborCN6j8HwJxJXbszedJC1l7pFUg-1737562383-1.0.1.1-pDSLXlg.nKjG4wsT7mTJPjUvOX1UJITiS4MqKp6yfMWwRSJINsW1qC48SAcjBjakx2H5I1ESVk9JtUpUFDtf4g;
++        path=/; expires=Wed, 22-Jan-25 16:43:03 GMT; domain=.api.openai.com; HttpOnly;
++        Secure; SameSite=None
++      - _cfuvid=x3SYvzL2nq_PTBGtE8R9cl5CkeaaDzZFQIrYfo91S2s-1737562383916-0.0.1.1-604800000;
++        path=/; domain=.api.openai.com; HttpOnly; Secure; SameSite=None
++      Transfer-Encoding:
++      - chunked
++      X-Content-Type-Options:
++      - nosniff
++      access-control-expose-headers:
++      - X-Request-ID
++      alt-svc:
++      - h3=":443"; ma=86400
++      openai-organization:
++      - crewai-iuxna1
++      openai-processing-ms:
++      - '791'
++      openai-version:
++      - '2020-10-01'
++      strict-transport-security:
++      - max-age=31536000; includeSubDomains; preload
++      x-ratelimit-limit-requests:
++      - '10000'
++      x-ratelimit-limit-tokens:
++      - '30000000'
++      x-ratelimit-remaining-requests:
++      - '9999'
++      x-ratelimit-remaining-tokens:
++      - '29999680'
++      x-ratelimit-reset-requests:
++      - 6ms
++      x-ratelimit-reset-tokens:
++      - 0s
++      x-request-id:
++      - req_eeed99acafd3aeb1e3d4a6c8063192b0
++    http_version: HTTP/1.1
++    status_code: 200
++- request:
++    body: '{"messages": [{"role": "system", "content": "You are test role. test backstory\nYour
++      personal goal is: test goal\nYou ONLY have access to the following tools, and
++      should NEVER make up tools that are not listed here:\n\nTool Name: get_final_answer\nTool
++      Arguments: {}\nTool Description: Get the final answer but don''t give it yet,
++      just re-use this\n        tool non-stop.\n\nIMPORTANT: Use the following format
++      in your response:\n\n```\nThought: you should always think about what to do\nAction:
++      the action to take, only one name of [get_final_answer], just the name, exactly
++      as it''s written.\nAction Input: the input to the action, just a simple JSON
++      object, enclosed in curly braces, using \" to wrap keys and values.\nObservation:
++      the result of the action\n```\n\nOnce all necessary information is gathered,
++      return the following format:\n\n```\nThought: I now know the final answer\nFinal
++      Answer: the final answer to the original input question\n```"}, {"role": "user",
++      "content": "\nCurrent Task: Use the get_final_answer tool.\n\nThis is the expect
++      criteria for your final answer: The final answer\nyou MUST return the actual
++      complete content as the final answer, not a summary.\n\nBegin! This is VERY
++      important to you, use the tools available and give your best Final Answer, your
++      job depends on it!\n\nThought:"}, {"role": "assistant", "content": "```\nThought:
++      I have to use the available tool to get the final answer. Let''s proceed with
++      executing it.\nAction: get_final_answer\nAction Input: {}\nObservation: I encountered
++      an error: Error on parsing tool.\nMoving on then. I MUST either use a tool (use
++      one at time) OR give my best final answer not both at the same time. When responding,
++      I must use the following format:\n\n```\nThought: you should always think about
++      what to do\nAction: the action to take, should be one of [get_final_answer]\nAction
++      Input: the input to the action, dictionary enclosed in curly braces\nObservation:
++      the result of the action\n```\nThis Thought/Action/Action Input/Result can repeat
++      N times. Once I know the final answer, I must return the following format:\n\n```\nThought:
++      I now can give a great answer\nFinal Answer: Your final answer must be the great
++      and the most complete as possible, it must be outcome described\n\n```"}, {"role":
++      "assistant", "content": "```\nThought: I have to use the available tool to get
++      the final answer. Let''s proceed with executing it.\nAction: get_final_answer\nAction
++      Input: {}\nObservation: I encountered an error: Error on parsing tool.\nMoving
++      on then. I MUST either use a tool (use one at time) OR give my best final answer
++      not both at the same time. When responding, I must use the following format:\n\n```\nThought:
++      you should always think about what to do\nAction: the action to take, should
++      be one of [get_final_answer]\nAction Input: the input to the action, dictionary
++      enclosed in curly braces\nObservation: the result of the action\n```\nThis Thought/Action/Action
++      Input/Result can repeat N times. Once I know the final answer, I must return
++      the following format:\n\n```\nThought: I now can give a great answer\nFinal
++      Answer: Your final answer must be the great and the most complete as possible,
++      it must be outcome described\n\n```\nNow it''s time you MUST give your absolute
++      best final answer. You''ll ignore all previous instructions, stop using any
++      tools, and just return your absolute BEST Final answer."}], "model": "gpt-4o",
++      "stop": ["\nObservation:"]}'
++    headers:
++      accept:
++      - application/json
++      accept-encoding:
++      - gzip, deflate
++      connection:
++      - keep-alive
++      content-length:
++      - '3445'
++      content-type:
++      - application/json
++      cookie:
++      - __cf_bm=_Jcp7wnO_mXdvOnborCN6j8HwJxJXbszedJC1l7pFUg-1737562383-1.0.1.1-pDSLXlg.nKjG4wsT7mTJPjUvOX1UJITiS4MqKp6yfMWwRSJINsW1qC48SAcjBjakx2H5I1ESVk9JtUpUFDtf4g;
++        _cfuvid=x3SYvzL2nq_PTBGtE8R9cl5CkeaaDzZFQIrYfo91S2s-1737562383916-0.0.1.1-604800000
++      host:
++      - api.openai.com
++      user-agent:
++      - OpenAI/Python 1.59.6
++      x-stainless-arch:
++      - arm64
++      x-stainless-async:
++      - 'false'
++      x-stainless-lang:
++      - python
++      x-stainless-os:
++      - MacOS
++      x-stainless-package-version:
++      - 1.59.6
++      x-stainless-raw-response:
++      - 'true'
++      x-stainless-retry-count:
++      - '0'
++      x-stainless-runtime:
++      - CPython
++      x-stainless-runtime-version:
++      - 3.12.7
++    method: POST
++    uri: https://api.openai.com/v1/chat/completions
++  response:
++    content: "{\n  \"id\": \"chatcmpl-AsXdg9UrLvAiqWP979E6DszLsQ84k\",\n  \"object\":
++      \"chat.completion\",\n  \"created\": 1737562384,\n  \"model\": \"gpt-4o-2024-08-06\",\n
++      \ \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\":
++      \"assistant\",\n        \"content\": \"```\\nThought: I now know the final answer\\nFinal
++      Answer: The final answer must be the great and the most complete as possible,
++      it must be outcome described.\\n```\",\n        \"refusal\": null\n      },\n
++      \     \"logprobs\": null,\n      \"finish_reason\": \"stop\"\n    }\n  ],\n
++      \ \"usage\": {\n    \"prompt_tokens\": 719,\n    \"completion_tokens\": 35,\n
++      \   \"total_tokens\": 754,\n    \"prompt_tokens_details\": {\n      \"cached_tokens\":
++      0,\n      \"audio_tokens\": 0\n    },\n    \"completion_tokens_details\": {\n
++      \     \"reasoning_tokens\": 0,\n      \"audio_tokens\": 0,\n      \"accepted_prediction_tokens\":
++      0,\n      \"rejected_prediction_tokens\": 0\n    }\n  },\n  \"service_tier\":
++      \"default\",\n  \"system_fingerprint\": \"fp_50cad350e4\"\n}\n"
++    headers:
++      CF-Cache-Status:
++      - DYNAMIC
++      CF-RAY:
++      - 9060d4441edad690-IAD
++      Connection:
++      - keep-alive
++      Content-Encoding:
++      - gzip
++      Content-Type:
++      - application/json
++      Date:
++      - Wed, 22 Jan 2025 16:13:05 GMT
++      Server:
++      - cloudflare
++      Transfer-Encoding:
++      - chunked
++      X-Content-Type-Options:
++      - nosniff
++      access-control-expose-headers:
++      - X-Request-ID
++      alt-svc:
++      - h3=":443"; ma=86400
++      openai-organization:
++      - crewai-iuxna1
++      openai-processing-ms:
++      - '928'
++      openai-version:
++      - '2020-10-01'
++      strict-transport-security:
++      - max-age=31536000; includeSubDomains; preload
++      x-ratelimit-limit-requests:
++      - '10000'
++      x-ratelimit-limit-tokens:
++      - '30000000'
++      x-ratelimit-remaining-requests:
++      - '9999'
++      x-ratelimit-remaining-tokens:
++      - '29999187'
++      x-ratelimit-reset-requests:
++      - 6ms
++      x-ratelimit-reset-tokens:
++      - 1ms
++      x-request-id:
++      - req_61fc7506e6db326ec572224aec81ef23
++    http_version: HTTP/1.1
++    status_code: 200
++version: 1
+
+From 0ddf84a1d02b4e4d2cf01703815b67ca636cd364 Mon Sep 17 00:00:00 2001
+From: Brandon Hancock <brandon@brandonhancock.io>
+Date: Wed, 22 Jan 2025 11:18:18 -0500
+Subject: [PATCH 8/9] fix stop type errors]
+
+---
+ src/crewai/llm.py | 10 +++++++++-
+ 1 file changed, 9 insertions(+), 1 deletion(-)
+
+diff --git a/src/crewai/llm.py b/src/crewai/llm.py
+index 790d13ead6..af10ace153 100644
+--- a/src/crewai/llm.py
++++ b/src/crewai/llm.py
+@@ -160,6 +160,14 @@ def __init__(
+ 
+         litellm.drop_params = True
+ 
++        # Normalize self.stop to always be a List[str]
++        if stop is None:
++            self.stop: List[str] = []
++        elif isinstance(stop, str):
++            self.stop = [stop]
++        else:
++            self.stop = stop
++
+         self.set_callbacks(callbacks)
+         self.set_env_callbacks()
+ 
+@@ -222,7 +230,7 @@ def call(
+                 ].message
+                 text_response = response_message.content or ""
+                 tool_calls = getattr(response_message, "tool_calls", [])
+-                
++
+                 # Ensure callbacks get the full response object with usage info
+                 if callbacks and len(callbacks) > 0:
+                     for callback in callbacks:
+
+From 9e23bd8357e363be63777ac5f0c4591310ab4a43 Mon Sep 17 00:00:00 2001
+From: Brandon Hancock <brandon@brandonhancock.io>
+Date: Wed, 22 Jan 2025 11:23:06 -0500
+Subject: [PATCH 9/9] more fixes
+
+---
+ src/crewai/agents/crew_agent_executor.py | 6 ++----
+ src/crewai/llm.py                        | 1 -
+ 2 files changed, 2 insertions(+), 5 deletions(-)
+
+diff --git a/src/crewai/agents/crew_agent_executor.py b/src/crewai/agents/crew_agent_executor.py
+index e66075958f..ee5b9c5822 100644
+--- a/src/crewai/agents/crew_agent_executor.py
++++ b/src/crewai/agents/crew_agent_executor.py
+@@ -83,10 +83,8 @@ def __init__(
+         self.tool_name_to_tool_map: Dict[str, BaseTool] = {
+             tool.name: tool for tool in self.tools
+         }
+-        if self.llm.stop:
+-            self.llm.stop = list(set(self.llm.stop + self.stop))
+-        else:
+-            self.llm.stop = self.stop
++        self.stop = stop_words
++        self.llm.stop = list(set(self.llm.stop + self.stop))
+ 
+     def invoke(self, inputs: Dict[str, str]) -> Dict[str, Any]:
+         if "system" in self.prompt:
+diff --git a/src/crewai/llm.py b/src/crewai/llm.py
+index af10ace153..89de55f54e 100644
+--- a/src/crewai/llm.py
++++ b/src/crewai/llm.py
+@@ -142,7 +142,6 @@ def __init__(
+         self.temperature = temperature
+         self.top_p = top_p
+         self.n = n
+-        self.stop = stop
+         self.max_completion_tokens = max_completion_tokens
+         self.max_tokens = max_tokens
+         self.presence_penalty = presence_penalty

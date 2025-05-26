@@ -1,0 +1,24 @@
+diff --git a/src/crewai/utilities/crew_json_encoder.py b/src/crewai/utilities/crew_json_encoder.py
+index 70c1e927..e6f88832 100644
+--- a/src/crewai/utilities/crew_json_encoder.py
++++ b/src/crewai/utilities/crew_json_encoder.py
+@@ -6,15 +6,18 @@ from uuid import UUID
+ from pydantic import BaseModel
+ 
+ 
++from enum import Enum
++
+ class CrewJSONEncoder(json.JSONEncoder):
+     def default(self, obj):
+         if isinstance(obj, BaseModel):
+             return self._handle_pydantic_model(obj)
+         elif isinstance(obj, UUID) or isinstance(obj, Decimal):
+             return str(obj)
+-
+         elif isinstance(obj, datetime) or isinstance(obj, date):
+             return obj.isoformat()
++        elif isinstance(obj, Enum):
++            return obj.name
+ 
+         return super().default(obj)
+ 

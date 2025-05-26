@@ -1,0 +1,31 @@
+diff --git a/src/crewai/agent.py b/src/crewai/agent.py
+index 6402196..6f693e5 100644
+--- a/src/crewai/agent.py
++++ b/src/crewai/agent.py
+@@ -298,14 +298,19 @@ class Agent(BaseAgent):
+             backstory=self.backstory,
+         )
+ 
+-        stop_words = [self.i18n.slice("observation")]
+-
+-        if self.response_template:
+-            stop_words.append(
+-                self.response_template.split("{{ .Response }}")[1].strip()
+-            )
++        # Check if the model supports the 'stop' parameter
++        bind = {}
++        if self.llm.model_name not in ["o1-preview", "o1-mini"]:
++            stop_words = [self.i18n.slice("observation")]
++
++            if self.response_template:
++                stop_words.append(
++                    self.response_template.split("{{ .Response }}")[1].strip()
++                )
+ 
+-        bind = self.llm.bind(stop=stop_words)
++            bind = self.llm.bind(stop=stop_words)
++        else:
++            bind = self.llm.bind()
+ 
+         inner_agent = agent_args | execution_prompt | bind | CrewAgentParser(agent=self)
+         self.agent_executor = CrewAgentExecutor(

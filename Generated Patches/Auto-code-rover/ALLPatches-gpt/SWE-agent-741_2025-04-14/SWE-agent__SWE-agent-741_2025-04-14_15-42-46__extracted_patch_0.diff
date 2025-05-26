@@ -1,0 +1,15 @@
+diff --git a/sweagent/environment/swe_env.py b/sweagent/environment/swe_env.py
+index 21f2b1c4..fbc472a7 100644
+--- a/sweagent/environment/swe_env.py
++++ b/sweagent/environment/swe_env.py
+@@ -637,6 +637,10 @@ class SWEEnv(gym.Env):
+             "export PATH=$PATH:/root/commands",
+             error_msg="Failed to add commands directory to PATH",
+         )
++        self.communicate_with_handling(
++            "mkdir -p /root/utils && touch /root/utils/__init__.py",
++            error_msg="Failed to create utils directory and __init__.py",
++        )
+ 
+     def _communicate_experimental(
+         self,

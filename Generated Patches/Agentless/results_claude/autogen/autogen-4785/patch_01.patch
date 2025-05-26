@@ -1,0 +1,20 @@
+diff --git a/python/packages/autogen-ext/src/autogen_ext/models/openai/_openai_client.py b/python/packages/autogen-ext/src/autogen_ext/models/openai/_openai_client.py
+index 007ec6b..08810c0 100644
+--- a/python/packages/autogen-ext/src/autogen_ext/models/openai/_openai_client.py
++++ b/python/packages/autogen-ext/src/autogen_ext/models/openai/_openai_client.py
+@@ -360,7 +360,15 @@ class BaseOpenAIChatCompletionClient(ChatCompletionClient):
+     ):
+         self._client = client
+         if model_capabilities is None:
+-            self._model_capabilities = _model_info.get_capabilities(create_args["model"])
++            try:
++                self._model_capabilities = _model_info.get_capabilities(create_args["model"])
++            except KeyError:
++                # Default capabilities for unknown models
++                self._model_capabilities = {
++                    "function_calling": False,
++                    "json_output": False,
++                    "vision": False
++                }
+         else:
+             self._model_capabilities = model_capabilities

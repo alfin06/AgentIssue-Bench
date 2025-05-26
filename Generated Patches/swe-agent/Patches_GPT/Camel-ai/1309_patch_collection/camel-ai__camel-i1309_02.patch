@@ -1,0 +1,24 @@
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..297619b
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1,17 @@
++# reproduce_error.py
++from camel.models.openai_model import OpenAIModel
++from camel.types import ModelType
++
++def main():
++    try:
++        model = OpenAIModel(
++            model_type=ModelType.GPT_3_5_TURBO,
++            api_key="test_api_key",
++            url="https://api.openai.com/v1"
++        )
++        print("OpenAIModel initialized successfully.")
++    except TypeError as e:
++        print(f"Error: {e}")
++
++if __name__ == "__main__":
++    main()
+\ No newline at end of file

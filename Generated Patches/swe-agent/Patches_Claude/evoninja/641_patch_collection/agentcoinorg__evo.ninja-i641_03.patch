@@ -1,0 +1,14 @@
+diff --git a/apps/browser/app/page.tsx b/apps/browser/app/page.tsx
+index 05ee1cd..64d3810 100644
+--- a/apps/browser/app/page.tsx
++++ b/apps/browser/app/page.tsx
+@@ -149,6 +149,9 @@ function Dojo({ params }: { params: { id?: string } }) {
+   // current page's chatId matches before we start its execution
+   useEffect(() => {
+     if (newGoalSubmitted && chatId === newGoalSubmitted.chatId) {
++      // Reset workspace state before starting new goal
++      setWorkspace(undefined);
++      setWorkspaceFiles([]);
+       handleStart(newGoalSubmitted.goal);
+       setNewGoalSubmitted(undefined);
+     }

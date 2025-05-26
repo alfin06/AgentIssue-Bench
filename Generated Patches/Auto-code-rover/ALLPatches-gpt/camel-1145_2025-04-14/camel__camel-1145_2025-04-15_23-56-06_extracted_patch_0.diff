@@ -1,0 +1,72 @@
+diff --git a/camel/toolkits/ask_news_toolkit.py b/camel/toolkits/ask_news_toolkit.py
+index a1043085..cd24ac34 100644
+--- a/camel/toolkits/ask_news_toolkit.py
++++ b/camel/toolkits/ask_news_toolkit.py
+@@ -66,12 +66,17 @@ class AskNewsToolkit(BaseToolkit):
+         r"""Initialize the AskNewsToolkit with API clients.The API keys and
+         credentials are retrieved from environment variables.
+         """
+-        from asknews_sdk import AskNewsSDK
+-
+         client_id = os.environ.get("ASKNEWS_CLIENT_ID")
+         client_secret = os.environ.get("ASKNEWS_CLIENT_SECRET")
+-
+-        self.asknews_client = AskNewsSDK(client_id, client_secret)
++    
++        self.asknews_client = None
++        self.client_id = client_id
++        self.client_secret = client_secret
++        
++    def _initialize_client(self):
++        if self.asknews_client is None:
++            from asknews_sdk import AskNewsSDK
++            self.asknews_client = AskNewsSDK(self.client_id, self.client_secret)
+ 
+     def get_news(
+         self,
+@@ -97,6 +102,7 @@ class AskNewsToolkit(BaseToolkit):
+                 or both containing the news or story content, or error message
+                 if the process fails.
+         """
++        self._initialize_client()
+         try:
+             response = self.asknews_client.news.search_news(
+                 query=query,
+@@ -104,9 +110,9 @@ class AskNewsToolkit(BaseToolkit):
+                 return_type=return_type,
+                 method=method,
+             )
+-
++        
+             return _process_response(response, return_type)
+-
++        
+         except Exception as e:
+             return f"Got error: {e}"
+ 
+@@ -333,11 +339,14 @@ class AskNewsToolkit(BaseToolkit):
+     def get_tools(self) -> List[FunctionTool]:
+         r"""Returns a list of FunctionTool objects representing the functions
+           in the toolkit.
+-
++    
+         Returns:
+             List[FunctionTool]: A list of FunctionTool objects representing
+                 the functions in the toolkit.
+         """
++        if self.asknews_client is None:
++            self._initialize_client()
++    
+         return [
+             FunctionTool(self.get_news),
+             FunctionTool(self.get_stories),
+diff --git a/camel/toolkits/twitter_toolkit.py b/camel/toolkits/twitter_toolkit.py
+index bd63446e..e714b3d3 100644
+--- a/camel/toolkits/twitter_toolkit.py
++++ b/camel/toolkits/twitter_toolkit.py
+@@ -442,4 +442,5 @@ class TwitterToolkit(BaseToolkit):
+             List[FunctionTool]: A list of FunctionTool objects
+                 representing the functions in the toolkit.
+         """
++        from camel.toolkits.twitter_funcs import TWITTER_FUNCS
+         return TWITTER_FUNCS

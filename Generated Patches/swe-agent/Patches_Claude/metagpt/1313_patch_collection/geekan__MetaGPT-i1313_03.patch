@@ -1,0 +1,33 @@
+diff --git a/metagpt/ext/werewolf/roles/base_player.py b/metagpt/ext/werewolf/roles/base_player.py
+index a108718..93395d8 100644
+--- a/metagpt/ext/werewolf/roles/base_player.py
++++ b/metagpt/ext/werewolf/roles/base_player.py
+@@ -60,10 +60,12 @@ class BasePlayer(Role):
+             news = self.rc.msg_buffer.pop_all()
+         old_messages = [] if ignore_memory else self.rc.memory.get()
+         for m in news:
+-            if len(m.restricted_to) and self.profile not in m.restricted_to and self.name not in m.restricted_to:
+-                # if the msg is not send to the whole audience ("") nor this role (self.profile or self.name),
+-                # then this role should not be able to receive it and record it into its memory
+-                continue
++            # Handle both WwMessage and regular Message types
++            if hasattr(m, 'restricted_to'):
++                if len(m.restricted_to) and self.profile not in m.restricted_to and self.name not in m.restricted_to:
++                    # if the msg is not send to the whole audience ("") nor this role (self.profile or self.name),
++                    # then this role should not be able to receive it and record it into its memory
++                    continue
+             self.rc.memory.add(m)
+         self.rc.news = [
+             n for n in news if (n.cause_by in self.rc.watch or self.profile in n.send_to) and n not in old_messages
+@@ -79,8 +81,9 @@ class BasePlayer(Role):
+     async def _think(self):
+         news = self.rc.news[0]
+         assert news.cause_by == any_to_str(InstructSpeak)  # 消息为来自Moderator的指令时，才去做动作
+-        if not news.restricted_to:
+-            # 消息接收范围为全体角色的，做公开发言（发表投票观点也算发言）
++        # Handle both WwMessage and regular Message types
++        if not hasattr(news, 'restricted_to') or not news.restricted_to:
++            # For regular Message or WwMessage with empty restricted_to, do public speaking
+             self.rc.todo = Speak()
+         elif self.profile in news.restricted_to:
+             # FIXME: hard code to split, restricted为"Moderator"或"Moderator, 角色profile"

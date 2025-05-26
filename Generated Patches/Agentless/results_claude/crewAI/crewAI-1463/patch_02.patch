@@ -1,0 +1,22 @@
+diff --git a/src/crewai/flow/flow.py b/src/crewai/flow/flow.py
+index d29e54c..bbbb145 100644
+--- a/src/crewai/flow/flow.py
++++ b/src/crewai/flow/flow.py
+@@ -49,7 +49,16 @@ def listen(condition):
+             and "type" in condition
+             and "methods" in condition
+         ):
+-            func.__trigger_methods__ = condition["methods"]
++            func.__trigger_methods__ = []
++            for method in condition["methods"]:
++                if isinstance(method, str):
++                    func.__trigger_methods__.append(method)
++                elif callable(method) and hasattr(method, "__name__"):
++                    func.__trigger_methods__.append(method.__name__)
++                else:
++                    raise ValueError(
++                        "Method in condition must be a string or callable"
++                    )
+             func.__condition_type__ = condition["type"]
+         elif callable(condition) and hasattr(condition, "__name__"):
+             func.__trigger_methods__ = [condition.__name__]

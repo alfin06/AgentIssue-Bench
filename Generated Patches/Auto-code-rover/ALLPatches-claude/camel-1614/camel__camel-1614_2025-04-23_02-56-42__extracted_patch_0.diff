@@ -1,0 +1,13 @@
+diff --git a/camel/models/deepseek_model.py b/camel/models/deepseek_model.py
+index 40375749..9cb0ed86 100644
+--- a/camel/models/deepseek_model.py
++++ b/camel/models/deepseek_model.py
+@@ -174,7 +174,7 @@ class DeepSeekModel(BaseModelBackend):
+         ):
+             reasoning_content = response.choices[0].message.reasoning_content
+             combined_content = (
+-                f"<think>\n{reasoning_content}\n</think>\n"
++                f"{reasoning_content}\n"
+                 if reasoning_content
+                 else ""
+             ) + response.choices[0].message.content

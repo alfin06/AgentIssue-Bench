@@ -1,0 +1,38 @@
+diff --git a/agixt/Chain.py b/agixt/Chain.py
+index da2647e..2013b85 100644
+--- a/agixt/Chain.py
++++ b/agixt/Chain.py
+@@ -90,6 +90,12 @@ class Chain:
+ 
+             prompt.update(prompt_args)
+ 
++            # Ensure prompt includes all necessary fields
++            prompt.setdefault("chainName", None)
++            prompt.setdefault("promptCategory", None)
++            prompt.setdefault("commandName", None)
++            prompt.setdefault("promptName", None)
++
+             step_data = {
+                 "step": step.step_number,
+                 "agent_name": agent_name,
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..23ab0e7
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1,14 @@
++from agixt.Chain import Chain
++
++# Initialize the Chain class
++chain = Chain()
++
++# Define the query parameters
++chain_name = "Another Chain"
++
++# Attempt to retrieve chain data
++try:
++    chain_data = chain.get_chain(chain_name)
++    print("Chain Data:", chain_data)
++except Exception as e:
++    print("Error:", str(e))
+\ No newline at end of file

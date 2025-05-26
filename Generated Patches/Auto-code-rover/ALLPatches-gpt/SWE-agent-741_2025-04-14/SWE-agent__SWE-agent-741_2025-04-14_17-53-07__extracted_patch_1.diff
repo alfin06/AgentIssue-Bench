@@ -1,0 +1,42 @@
+diff --git a/sweagent/environment/swe_env.py b/sweagent/environment/swe_env.py
+index 21f2b1c4..58055468 100644
+--- a/sweagent/environment/swe_env.py
++++ b/sweagent/environment/swe_env.py
+@@ -217,7 +217,7 @@ class SWEEnv(gym.Env):
+ 
+     def _copy_repo(self) -> str:
+         """Clone/copy repository/codebase in container
+-
++    
+         Returns:
+             folder name of clone
+         """
+@@ -235,6 +235,15 @@ class SWEEnv(gym.Env):
+                 input=f"chown -R root:root {self._repo_name}",
+                 error_msg="Failed to change permissions on copied repository",
+             )
++            
++            # Ensure utils directory is copied if it exists
++            utils_dir = Path(self.record["repo"]).removeprefix("local://") / "utils"
++            if utils_dir.exists() and utils_dir.is_dir():
++                copy_anything_to_container(
++                    self.container_obj,
++                    str(utils_dir),
++                    f"/{self._repo_name}/utils",
++                )
+             return self._repo_name
+         assert self.record["repo_type"] == "github"
+         token_prefix = ""
+@@ -920,6 +929,12 @@ class SWEEnv(gym.Env):
+             assert len(install_configs) == 1
+             self.run_shell_script(Path(install_configs["shell_script_path"]), location="host")
+             return
++        
++        # Ensure the utils directory has an __init__.py
++        utils_init_path = Path("utils/__init__.py")
++        if not utils_init_path.exists():
++            utils_init_path.parent.mkdir(parents=True, exist_ok=True)
++            utils_init_path.touch()
+         assert self.record is not None  # mypy
+         # Create environment if does not exist yet
+         env_name = f"{self._repo_name}__{self.record['version']}"

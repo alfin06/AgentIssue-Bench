@@ -1,0 +1,39 @@
+From a401d1e2f5d86e9e6734b061894de2d2913a6490 Mon Sep 17 00:00:00 2001
+From: Kilian Lieret <kilian.lieret@posteo.de>
+Date: Fri, 10 May 2024 14:31:52 -0400
+Subject: [PATCH] Web: Fix script_path input
+
+Closes #333
+
+[skip ci]
+---
+ sweagent/api/server.py                                   | 2 ++
+ sweagent/frontend/src/components/controls/LRunControl.js | 2 +-
+ 2 files changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/sweagent/api/server.py b/sweagent/api/server.py
+index 0ee2ec209..d8df67786 100644
+--- a/sweagent/api/server.py
++++ b/sweagent/api/server.py
+@@ -133,6 +133,8 @@ def run():
+         environment_setup = str(write_env_yaml(environment))
+     elif environment["config_type"] == "script_path":
+         environment_setup = environment["script_path"]
++    if not environment_setup.strip():
++        environment_setup = None
+     test_run = request.args["test_run"].lower() == "true"
+     if test_run:
+         model_name = "instant_empty_submit"
+diff --git a/sweagent/frontend/src/components/controls/LRunControl.js b/sweagent/frontend/src/components/controls/LRunControl.js
+index d7e66e31c..e283c3b5b 100644
+--- a/sweagent/frontend/src/components/controls/LRunControl.js
++++ b/sweagent/frontend/src/components/controls/LRunControl.js
+@@ -112,7 +112,7 @@ function LRunControl({
+                 setEnvConfig({ ...envConfig, script_path: e.target.value })
+               }
+               placeholder="/path/to/setup.sh"
+-              value=""
++              defaultValue=""
+             />
+           </div>
+           <div className="alert alert-info" role="alert">

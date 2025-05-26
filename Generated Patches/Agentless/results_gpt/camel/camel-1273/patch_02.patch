@@ -1,0 +1,36 @@
+diff --git a/camel/utils/commons.py b/camel/utils/commons.py
+index ab4cdb4..22a970a 100644
+--- a/camel/utils/commons.py
++++ b/camel/utils/commons.py
+@@ -275,13 +275,24 @@ def api_keys_required(*required_keys: str) -> Callable[[F], F]:
+     def decorator(func: F) -> F:
+         @wraps(func)
+         def wrapper(*args: Any, **kwargs: Any) -> Any:
+-            missing_environment_keys = [
+-                k for k in required_keys if k not in os.environ
+-            ]
+-            if (
+-                not (args and getattr(args[0], '_api_key', None))
+-                and missing_environment_keys
+-            ):
++            # Gather all API keys from environment variables, args, and kwargs
++            api_keys = {key: os.environ.get(key) for key in required_keys}
++
++            # Check if any required keys are missing from environment variables and kwargs
++            for key in required_keys:
++                if key not in os.environ:
++                    if key in kwargs:
++                        api_keys[key] = kwargs[key]
++                    elif args and hasattr(args[0], '_api_key'):
++                        api_keys[key] = getattr(args[0], '_api_key', None)
++
++            # Identify missing keys
++            missing_keys = [k for k, v in api_keys.items() if v is None]
++
++            if missing_keys:
++                raise ValueError(
++                    f"Missing API keys: {', '.join(missing_keys)}"
++                )
+                 raise ValueError(
+                     f"Missing API keys: {', '.join(missing_environment_keys)}"
+                 )

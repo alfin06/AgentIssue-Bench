@@ -1,0 +1,41 @@
+diff --git a/reproduce_issue.py b/reproduce_issue.py
+new file mode 100644
+index 0000000..829275e
+--- /dev/null
++++ b/reproduce_issue.py
+@@ -0,0 +1,34 @@
++import time
++from selenium import webdriver
++from selenium.webdriver.common.by import By
++from selenium.webdriver.common.keys import Keys
++
++# Initialize WebDriver
++driver = webdriver.Chrome()
++
++try:
++    # Step 1: Navigate to the application
++    driver.get("http://localhost:3000")  # Replace with the actual URL of the application
++
++    # Step 2: Select an existing chat
++    existing_chat = driver.find_element(By.CSS_SELECTOR, "[data-testid='existing-chat']")
++    existing_chat.click()
++
++    # Step 3: Navigate to the root
++    root_button = driver.find_element(By.CSS_SELECTOR, "[data-testid='navigate-root']")
++    root_button.click()
++
++    # Step 4: Click an example prompt
++    example_prompt = driver.find_element(By.CSS_SELECTOR, "[data-testid='example-prompt']")
++    example_prompt.click()
++
++    # Step 5: Verify workspace files
++    workspace_files = driver.find_elements(By.CSS_SELECTOR, "[data-testid='workspace-file']")
++    if not workspace_files:
++        print("Issue: Workspace files are not applied correctly.")
++    else:
++        print("Workspace files applied correctly.")
++
++finally:
++    # Close the WebDriver
++    driver.quit()
+\ No newline at end of file

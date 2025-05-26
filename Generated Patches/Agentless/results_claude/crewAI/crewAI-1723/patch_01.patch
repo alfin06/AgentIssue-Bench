@@ -1,0 +1,19 @@
+diff --git a/src/crewai/memory/short_term/short_term_memory.py b/src/crewai/memory/short_term/short_term_memory.py
+index 38c0d86..8fe3c26 100644
+--- a/src/crewai/memory/short_term/short_term_memory.py
++++ b/src/crewai/memory/short_term/short_term_memory.py
+@@ -61,8 +61,13 @@ class ShortTermMemory(Memory):
+ 
+     def reset(self) -> None:
+         try:
++            # First clear any existing connections/handles
++            if hasattr(self.storage, 'app'):
++                self.storage.app.reset()
++            
++            # Then perform the reset
+             self.storage.reset()
+         except Exception as e:
+             raise Exception(
+                 f"An error occurred while resetting the short-term memory: {e}"
+-            )
++            )

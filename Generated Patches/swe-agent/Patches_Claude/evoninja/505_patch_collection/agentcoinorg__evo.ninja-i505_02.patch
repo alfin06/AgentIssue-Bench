@@ -1,0 +1,134 @@
+diff --git a/test_embedding.js b/test_embedding.js
+new file mode 100644
+index 0000000..bc55a4a
+--- /dev/null
++++ b/test_embedding.js
+@@ -0,0 +1,80 @@
++// Mock the required functionality to test the chunking logic
++const splitArray = (input, maxLength, maxTokens, countTokens) => {
++  const result = [];
++  let currentSubArray = [];
++  let currentTokens = 0;
++
++  for (let str of input) {
++    const strTokens = countTokens(str);
++
++    // Check if adding this string would exceed maxLength or maxTokens
++    if (currentSubArray.length + 1 > maxLength || currentTokens + strTokens > maxTokens) {
++      // Start a new sub-array
++      result.push(currentSubArray);
++      currentSubArray = [str];
++      currentTokens = strTokens;
++    } else {
++      // Add to the current sub-array
++      currentSubArray.push(str);
++      currentTokens += strTokens;
++    }
++  }
++
++  // Add the last sub-array if it's not empty
++  if (currentSubArray.length > 0) {
++    result.push(currentSubArray);
++  }
++
++  return result;
++};
++
++// Test function to split a long string into chunks
++function chunkString(str, maxTokens) {
++  // Simple tokenizer that treats each character as a token
++  const countTokens = (s) => s.length;
++  
++  // Split the string into words first
++  const words = str.split(' ');
++  
++  // Initialize result array and current chunk
++  const result = [];
++  let currentChunk = '';
++  
++  for (const word of words) {
++    // If adding this word would exceed maxTokens, start a new chunk
++    if ((currentChunk + ' ' + word).trim().length > maxTokens) {
++      if (currentChunk) {
++        result.push(currentChunk.trim());
++      }
++      // If the word itself is longer than maxTokens, we need to split it
++      if (word.length > maxTokens) {
++        for (let i = 0; i < word.length; i += maxTokens) {
++          result.push(word.slice(i, i + maxTokens));
++        }
++        currentChunk = '';
++      } else {
++        currentChunk = word;
++      }
++    } else {
++      currentChunk = currentChunk ? currentChunk + ' ' + word : word;
++    }
++  }
++  
++  // Add the last chunk if not empty
++  if (currentChunk) {
++    result.push(currentChunk.trim());
++  }
++  
++  return result;
++}
++
++// Test the chunking logic
++const longInput = 'This is a very long string that should be chunked into smaller pieces because it exceeds the maximum token limit';
++console.log('Original input:', longInput);
++console.log('Length:', longInput.length);
++
++const chunks = chunkString(longInput, 10);
++console.log('\nChunked into pieces of max 10 tokens:');
++chunks.forEach((chunk, i) => {
++  console.log(`Chunk ${i + 1} (${chunk.length} tokens):`, chunk);
++});
+\ No newline at end of file
+diff --git a/test_embedding.ts b/test_embedding.ts
+new file mode 100644
+index 0000000..1a78629
+--- /dev/null
++++ b/test_embedding.ts
+@@ -0,0 +1,40 @@
++import { OpenAIEmbeddingAPI, DEFAULT_ADA_CONFIG } from './packages/agents/src/agent-core/embeddings/OpenAIEmbeddingApi';
++import { ILogger } from '@evo-ninja/agent-utils';
++import { Tokenizer } from './packages/agents/src/agent-core/llm';
++
++// Mock logger
++const logger: ILogger = {
++  debug: async (msg: string) => console.log('DEBUG:', msg),
++  info: async (msg: string) => console.log('INFO:', msg),
++  warning: async (msg: string) => console.log('WARN:', msg),
++  error: async (msg: string) => console.log('ERROR:', msg),
++};
++
++// Mock tokenizer that counts characters as tokens for testing
++const tokenizer: Tokenizer = {
++  encode: (text: string) => Array.from(text), // Each character is a token
++  decode: (tokens: string[]) => tokens.join(''),
++};
++
++async function main() {
++  const api = new OpenAIEmbeddingAPI(
++    'dummy-key',
++    logger,
++    tokenizer,
++    undefined,
++    {
++      ...DEFAULT_ADA_CONFIG,
++      maxTokensPerInput: 10 // Small limit for testing
++    }
++  );
++
++  // Test with a string longer than maxTokensPerInput
++  const longInput = 'This is a very long string that should be chunked into smaller pieces';
++  try {
++    await api.createEmbeddings(longInput);
++  } catch (error) {
++    console.error('Error:', error.message);
++  }
++}
++
++main();
+\ No newline at end of file

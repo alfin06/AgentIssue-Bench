@@ -1,0 +1,13 @@
+diff --git a/chatdev/chat_chain.py b/chatdev/chat_chain.py
+index 3ace26d..3ebfd21 100644
+--- a/chatdev/chat_chain.py
++++ b/chatdev/chat_chain.py
+@@ -60,7 +60,7 @@ class ChatChain:
+         # init chatchain config and recruitments
+         self.chain = self.config["chain"]
+         self.recruitments = self.config["recruitments"]
+-        self.web_spider = self.config["web_spider"]
++        self.web_spider = self.config.get("web_spider", None)
+ 
+         # init default max chat turn
+         self.chat_turn_limit_default = 10

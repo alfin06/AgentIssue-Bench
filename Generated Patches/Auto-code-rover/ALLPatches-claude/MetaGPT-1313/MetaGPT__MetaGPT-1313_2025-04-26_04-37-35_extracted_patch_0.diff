@@ -1,0 +1,23 @@
+diff --git a/metagpt/schema.py b/metagpt/schema.py
+index 071518d6..11cbc24c 100644
+--- a/metagpt/schema.py
++++ b/metagpt/schema.py
+@@ -195,6 +195,7 @@ class Message(BaseModel):
+     cause_by: str = Field(default="", validate_default=True)
+     sent_from: str = Field(default="", validate_default=True)
+     send_to: set[str] = Field(default={MESSAGE_ROUTE_TO_ALL}, validate_default=True)
++    restricted_to: set[str] = Field(default_factory=set, validate_default=True)
+ 
+     @field_validator("id", mode="before")
+     @classmethod
+@@ -236,6 +237,10 @@ class Message(BaseModel):
+     @field_serializer("send_to", mode="plain")
+     def ser_send_to(self, send_to: set) -> list:
+         return list(send_to)
++        
++    @field_serializer("restricted_to", mode="plain")
++    def ser_restricted_to(self, restricted_to: set) -> list:
++        return list(restricted_to)
+ 
+     @field_serializer("instruct_content", mode="plain")
+     def ser_instruct_content(self, ic: BaseModel) -> Union[dict, None]:

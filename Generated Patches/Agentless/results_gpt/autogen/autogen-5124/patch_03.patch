@@ -1,0 +1,15 @@
+diff --git a/python/packages/autogen-ext/src/autogen_ext/runtimes/grpc/_worker_runtime_host.py b/python/packages/autogen-ext/src/autogen_ext/runtimes/grpc/_worker_runtime_host.py
+index b0738d2..77b8a57 100644
+--- a/python/packages/autogen-ext/src/autogen_ext/runtimes/grpc/_worker_runtime_host.py
++++ b/python/packages/autogen-ext/src/autogen_ext/runtimes/grpc/_worker_runtime_host.py
+@@ -34,6 +34,10 @@ class GrpcWorkerAgentRuntimeHost:
+         """Start the server in a background task."""
+         if self._serve_task is not None:
+             raise RuntimeError("Host runtime is already started.")
++        loop = asyncio.get_event_loop()
++        if not loop.is_running():
++            asyncio.set_event_loop(asyncio.new_event_loop())
++            loop = asyncio.get_event_loop()
+         self._serve_task = asyncio.create_task(self._serve())
+ 
+     async def stop(self, grace: int = 5) -> None:

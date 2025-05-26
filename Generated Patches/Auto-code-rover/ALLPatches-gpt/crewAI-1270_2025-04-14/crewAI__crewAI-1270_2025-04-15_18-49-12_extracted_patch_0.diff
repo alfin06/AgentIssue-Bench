@@ -1,0 +1,57 @@
+diff --git a/src/crewai/agents/agent_builder/base_agent.py b/src/crewai/agents/agent_builder/base_agent.py
+index 8cfcf6eb..7c12c878 100644
+--- a/src/crewai/agents/agent_builder/base_agent.py
++++ b/src/crewai/agents/agent_builder/base_agent.py
+@@ -176,7 +176,7 @@ class BaseAgent(ABC, BaseModel):
+     @property
+     def key(self):
+         source = [self.role, self.goal, self.backstory]
+-        return md5("|".join(source).encode(), usedforsecurity=False).hexdigest()
++        return md5("|".join(source).encode(errors='ignore'), usedforsecurity=False).hexdigest()
+ 
+     @abstractmethod
+     def execute_task(
+diff --git a/src/crewai/crew.py b/src/crewai/crew.py
+index fff2c3a8..007ec597 100644
+--- a/src/crewai/crew.py
++++ b/src/crewai/crew.py
+@@ -361,7 +361,7 @@ class Crew(BaseModel):
+         source = [agent.key for agent in self.agents] + [
+             task.key for task in self.tasks
+         ]
+-        return md5("|".join(source).encode(), usedforsecurity=False).hexdigest()
++        return md5("|".join(source).encode(errors='ignore'), usedforsecurity=False).hexdigest()
+ 
+     def _setup_from_config(self):
+         assert self.config is not None, "Config should not be None."
+diff --git a/src/crewai/task.py b/src/crewai/task.py
+index 9762391f..6104c104 100644
+--- a/src/crewai/task.py
++++ b/src/crewai/task.py
+@@ -195,8 +195,8 @@ class Task(BaseModel):
+         description = self._original_description or self.description
+         expected_output = self._original_expected_output or self.expected_output
+         source = [description, expected_output]
+-
+-        return md5("|".join(source).encode(), usedforsecurity=False).hexdigest()
++    
++        return md5("|".join(source).encode(errors='ignore'), usedforsecurity=False).hexdigest()
+ 
+     def execute_async(
+         self,
+diff --git a/src/crewai/utilities/token_counter_callback.py b/src/crewai/utilities/token_counter_callback.py
+index dc0cef71..c0795dd9 100644
+--- a/src/crewai/utilities/token_counter_callback.py
++++ b/src/crewai/utilities/token_counter_callback.py
+@@ -25,9 +25,9 @@ class TokenCalcHandler(BaseCallbackHandler):
+     ) -> None:
+         if self.token_cost_process is None:
+             return
+-
++    
+         for prompt in prompts:
+-            self.token_cost_process.sum_prompt_tokens(len(self.encoding.encode(prompt)))
++            self.token_cost_process.sum_prompt_tokens(len(self.encoding.encode(prompt, errors='ignore')))
+ 
+     async def on_llm_new_token(self, token: str, **kwargs) -> None:
+         self.token_cost_process.sum_completion_tokens(1)

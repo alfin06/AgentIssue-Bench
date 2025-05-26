@@ -1,0 +1,13 @@
+diff --git a/autogen/agentchat/conversable_agent.py b/autogen/agentchat/conversable_agent.py
+index 509360e..e429ed8 100644
+--- a/autogen/agentchat/conversable_agent.py
++++ b/autogen/agentchat/conversable_agent.py
+@@ -702,7 +702,7 @@ class ConversableAgent(Agent):
+                 if message.get("role") != "tool":
+                     all_messages.append({key: message[key] for key in message if key != "tool_responses"})
+             else:
+-                all_messages.append(message)
++                all_messages.append({key: message[key] for key in message if key != "tool_responses"})
+ 
+         # TODO: #1143 handle token limit exceeded error
+         response = client.create(

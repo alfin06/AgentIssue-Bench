@@ -1,0 +1,40 @@
+diff --git a/src/crewai/utilities/file_handler.py b/src/crewai/utilities/file_handler.py
+index 1125cae4..c93c4cf8 100644
+--- a/src/crewai/utilities/file_handler.py
++++ b/src/crewai/utilities/file_handler.py
+@@ -17,8 +17,13 @@ class FileHandler:
+     def log(self, **kwargs):
+         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+         message = f"{now}: ".join([f"{key}={value}" for key, value in kwargs.items()])
+-        with open(self._path, "a", encoding="utf-8") as file:
+-            file.write(message + "\n")
++        try:
++            with open(self._path, "a", encoding="utf-8") as file:
++                file.write(message + "\n")
++        except UnicodeEncodeError:
++            # Handle encoding errors by logging an error message
++            with open(self._path, "a", encoding="utf-8", errors="replace") as file:
++                file.write("Encoding Error: " + message + "\n")
+ 
+ 
+ class PickleHandler:
+@@ -49,7 +54,10 @@ class PickleHandler:
+         - data (object): The data to be saved.
+         """
+         with open(self.file_path, "wb") as file:
+-            pickle.dump(data, file)
++            try:
++                pickle.dump(data, file)
++            except pickle.PicklingError:
++                raise RuntimeError("Error saving data to file. Data could not be pickled.")
+ 
+     def load(self) -> dict:
+         """
+@@ -66,5 +74,5 @@ class PickleHandler:
+                 return pickle.load(file)
+             except EOFError:
+                 return {}  # Return an empty dictionary if the file is empty or corrupted
+-            except Exception:
+-                raise  # Raise any other exceptions that occur during loading
++            except pickle.UnpicklingError:
++                raise RuntimeError("Error loading data from file. Data could not be unpickled.")

@@ -1,0 +1,13 @@
+diff --git a/autogen/agentchat/conversable_agent.py b/autogen/agentchat/conversable_agent.py
+index 5009d598a..9995e819d 100644
+--- a/autogen/agentchat/conversable_agent.py
++++ b/autogen/agentchat/conversable_agent.py
+@@ -913,7 +913,7 @@ class ConversableAgent(Agent):
+                 "role": "tool",
+                 "tool_responses": tool_returns,
+                 "content": "\n\n".join(
+-                    [self._str_for_tool_response(tool_return["content"]) for tool_return in tool_returns]
++                    [self._str_for_tool_response(tool_return) for tool_return in tool_returns]
+                 ),
+             }
+ 

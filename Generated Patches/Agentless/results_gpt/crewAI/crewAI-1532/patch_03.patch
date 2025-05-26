@@ -1,0 +1,18 @@
+diff --git a/src/crewai/main.py b/src/crewai/main.py
+index 6b1dca2..e1e1918 100644
+--- a/src/crewai/main.py
++++ b/src/crewai/main.py
+@@ -1,3 +1,4 @@
++
+ #!/usr/bin/env python
+ # src/my_project/main.py
+ import sys
+@@ -5,7 +6,7 @@ from crew import crewaiCrew
+ from dotenv import load_dotenv
+ import os 
+ 
+-os.environ["OTEL_SDK_DISABLED "]="true"
++os.environ["OTEL_SDK_DISABLED"]="true"
+ load_dotenv()
+ 
+ def run():

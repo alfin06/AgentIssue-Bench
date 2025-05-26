@@ -1,0 +1,54 @@
+From 2fedc5d7f817252c11a45a3ee4f1a7f148c49d38 Mon Sep 17 00:00:00 2001
+From: Shahar Yair <shya95@gmail.com>
+Date: Thu, 12 Dec 2024 20:07:07 +0200
+Subject: [PATCH 1/2] bugfix: CrewJSONEncoder now accepts enums
+
+---
+ src/crewai/utilities/crew_json_encoder.py | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/src/crewai/utilities/crew_json_encoder.py b/src/crewai/utilities/crew_json_encoder.py
+index 70c1e9274e..4d88466b18 100644
+--- a/src/crewai/utilities/crew_json_encoder.py
++++ b/src/crewai/utilities/crew_json_encoder.py
+@@ -2,6 +2,7 @@
+ from datetime import date, datetime
+ from decimal import Decimal
+ from uuid import UUID
++from enum import Enum
+ 
+ from pydantic import BaseModel
+ 
+@@ -10,7 +11,7 @@ class CrewJSONEncoder(json.JSONEncoder):
+     def default(self, obj):
+         if isinstance(obj, BaseModel):
+             return self._handle_pydantic_model(obj)
+-        elif isinstance(obj, UUID) or isinstance(obj, Decimal):
++        elif isinstance(obj, UUID) or isinstance(obj, Decimal) or isinstance(obj, Enum):
+             return str(obj)
+ 
+         elif isinstance(obj, datetime) or isinstance(obj, date):
+
+From 8b84e7e7a6d5c2ac753491f91c523a961b9ca31c Mon Sep 17 00:00:00 2001
+From: Shahar Yair <shya95@gmail.com>
+Date: Thu, 12 Dec 2024 20:19:00 +0200
+Subject: [PATCH 2/2] sort imports
+
+---
+ src/crewai/utilities/crew_json_encoder.py | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/crewai/utilities/crew_json_encoder.py b/src/crewai/utilities/crew_json_encoder.py
+index 4d88466b18..298c9681a8 100644
+--- a/src/crewai/utilities/crew_json_encoder.py
++++ b/src/crewai/utilities/crew_json_encoder.py
+@@ -1,8 +1,8 @@
+ import json
+ from datetime import date, datetime
+ from decimal import Decimal
+-from uuid import UUID
+ from enum import Enum
++from uuid import UUID
+ 
+ from pydantic import BaseModel
+ 

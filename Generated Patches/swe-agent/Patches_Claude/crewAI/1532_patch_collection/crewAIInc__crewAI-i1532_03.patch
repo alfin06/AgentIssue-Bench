@@ -1,0 +1,31 @@
+diff --git a/reproduce.py b/reproduce.py
+new file mode 100644
+index 0000000..2831d49
+--- /dev/null
++++ b/reproduce.py
+@@ -0,0 +1,24 @@
++import os
++from crewai import Agent, Task, Crew
++
++# Set telemetry disabled with space (as in PR)
++os.environ["OTEL_SDK_DISABLED "] = "true"
++
++# Create a simple agent and task
++agent = Agent(
++    name="test",
++    goal="test",
++    backstory="test",
++    allow_delegation=False
++)
++
++task = Task(
++    description="test",
++    agent=agent
++)
++
++# Create crew which will trigger telemetry
++crew = Crew(
++    agents=[agent],
++    tasks=[task]
++)
+\ No newline at end of file

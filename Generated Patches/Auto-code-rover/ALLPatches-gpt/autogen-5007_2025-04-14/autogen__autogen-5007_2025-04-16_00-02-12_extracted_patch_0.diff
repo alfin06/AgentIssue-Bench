@@ -1,0 +1,18 @@
+diff --git a/python/templates/new-package/hooks/post_gen_project.py b/python/templates/new-package/hooks/post_gen_project.py
+index 6fc5d446f..34fb264c6 100644
+--- a/python/templates/new-package/hooks/post_gen_project.py
++++ b/python/templates/new-package/hooks/post_gen_project.py
+@@ -20,5 +20,13 @@
+ 
+ config["tool"]["uv"]["sources"]["{{ cookiecutter.package_name }}"] = {"workspace": True}
+ 
++# Add tiktoken to dependencies if it's not already present
++if "dependencies" not in config["project"]:
++    config["project"]["dependencies"] = []
++
++dependencies = config["project"]["dependencies"]
++if "tiktoken" not in dependencies:
++    dependencies.append("tiktoken")
++
+ with workspace_def_path.open("wb") as f:
+     tomli_w.dump(config, f)

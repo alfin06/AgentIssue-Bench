@@ -1,0 +1,49 @@
+From b20bc353628509f52810a2de901d87797be90e72 Mon Sep 17 00:00:00 2001
+From: Josh XT <josh@devxt.com>
+Date: Sat, 18 Jan 2025 19:34:45 -0500
+Subject: [PATCH] Fix 1371
+
+---
+ agixt/endpoints/GQL.py | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/agixt/endpoints/GQL.py b/agixt/endpoints/GQL.py
+index d16a61f5be60..3216bbf4a786 100644
+--- a/agixt/endpoints/GQL.py
++++ b/agixt/endpoints/GQL.py
+@@ -1851,7 +1851,7 @@ async def notifications(
+     @strawberry.field
+     async def providers(self, info) -> Providers:
+         """Get comprehensive provider details"""
+-        user = await get_user_from_context(info)
++        user, auth, magical = await get_user_from_context(info)
+         provider_details = get_providers_with_details()
+         providers = [
+             convert_provider_details({"name": name, **details})
+@@ -2143,7 +2143,7 @@ async def extension_settings(self, info) -> List[ExtensionSetting]:
+     @strawberry.field
+     async def command_args(self, info, command_name: str) -> CommandArgs:
+         """Get arguments for a specific command"""
+-        user, _ = await get_user_from_context(info)
++        user, auth, magical = await get_user_from_context(info)
+ 
+         extensions = Extensions()
+         raw_args = extensions.get_command_args(command_name=command_name)
+@@ -2280,7 +2280,7 @@ async def chains(self, info) -> List[DetailedChain]:
+     @strawberry.field
+     async def chain(self, info, chain_name: str) -> ChainConfig:
+         """Get details of a specific chain"""
+-        user, _ = await get_user_from_context(info)
++        user, auth, magical = await get_user_from_context(info)
+ 
+         chain_manager = Chain(user=user)
+         chain_data = chain_manager.get_chain(chain_name=chain_name)
+@@ -2316,7 +2316,7 @@ async def chain_args(self, info, chain_name: str) -> List[str]:
+     @strawberry.field
+     async def chain_dependencies(self, info, chain_name: str) -> List[ChainDependency]:
+         """Get dependencies between chain steps"""
+-        user, _ = await get_user_from_context(info)
++        user, auth, magical = await get_user_from_context(info)
+ 
+         chain_manager = Chain(user=user)
+         deps = chain_manager.get_chain_step_dependencies(chain_name=chain_name)

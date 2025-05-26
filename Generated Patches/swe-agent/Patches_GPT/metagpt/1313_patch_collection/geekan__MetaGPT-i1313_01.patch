@@ -1,0 +1,7 @@
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..9e3791b
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1 @@
++from metagpt.ext.werewolf.roles.base_player import BasePlayer\nfrom metagpt.ext.werewolf.schema import WwMessage\n\n# Simulate the error\nplayer = BasePlayer(name='TestPlayer', profile='TestProfile')\nmessage = WwMessage(content='TestContent', role='TestRole', sent_from='TestSender', cause_by='TestCause')\ntry:\n    print(message.restricted_to)\nexcept AttributeError as e:\n    print(f'Error: {e}')

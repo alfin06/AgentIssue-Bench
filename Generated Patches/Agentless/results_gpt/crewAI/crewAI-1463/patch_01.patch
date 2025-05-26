@@ -1,0 +1,18 @@
+diff --git a/src/crewai/flow/flow.py b/src/crewai/flow/flow.py
+index d29e54c..a5e9edf 100644
+--- a/src/crewai/flow/flow.py
++++ b/src/crewai/flow/flow.py
+@@ -248,7 +248,12 @@ class Flow(Generic[T], metaclass=FlowMeta):
+                 if listener not in self._pending_and_listeners:
+                     self._pending_and_listeners[listener] = set()
+                 self._pending_and_listeners[listener].add(trigger_method)
+-                if set(methods) == self._pending_and_listeners[listener]:
++                # Check if all conditions are met, considering both function references and string references
++                if all(
++                    method in self._pending_and_listeners[listener]
++                    or method.__name__ in self._pending_and_listeners[listener]
++                    for method in methods
++                ):
+                     listener_tasks.append(
+                         self._execute_single_listener(listener, result)
+                     )

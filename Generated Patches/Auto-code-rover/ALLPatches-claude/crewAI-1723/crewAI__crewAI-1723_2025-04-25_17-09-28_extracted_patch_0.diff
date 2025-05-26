@@ -1,0 +1,59 @@
+diff --git a/src/crewai/memory/storage/mem0_storage.py b/src/crewai/memory/storage/mem0_storage.py
+index 34aab971..b6d2919c 100644
+--- a/src/crewai/memory/storage/mem0_storage.py
++++ b/src/crewai/memory/storage/mem0_storage.py
+@@ -102,3 +102,20 @@ class Mem0Storage(Storage):
+         agents = [self._sanitize_role(agent.role) for agent in agents]
+         agents = "_".join(agents)
+         return agents
++
++    def reset(self) -> None:
++        """Reset memory storage based on memory type."""
++        try:
++            user_id = self._get_user_id()
++            agent_name = self._get_agent_name()
++            
++            if self.memory_type == "user" and user_id:
++                self.memory.delete(user_id=user_id)
++            elif self.memory_type == "short_term" and agent_name:
++                self.memory.delete(agent_id=agent_name, metadata={"type": "short_term"})
++            elif self.memory_type == "long_term" and agent_name:
++                self.memory.delete(agent_id=agent_name, metadata={"type": "long_term"})
++            elif self.memory_type == "entities":
++                self.memory.delete(metadata={"type": "entity"})
++        except Exception as e:
++            raise Exception(f"Failed to reset {self.memory_type} memory: {str(e)}")
+diff --git a/src/crewai/memory/storage/rag_storage.py b/src/crewai/memory/storage/rag_storage.py
+index bf40aee9..a2f5d661 100644
+--- a/src/crewai/memory/storage/rag_storage.py
++++ b/src/crewai/memory/storage/rag_storage.py
+@@ -149,13 +149,27 @@ class RAGStorage(BaseRAGStorage):
+         )
+ 
+     def reset(self) -> None:
++        """Reset memory storage with proper cleanup and reinitialization."""
+         try:
+-            shutil.rmtree(f"{db_storage_path()}/{self.type}")
+             if self.app:
++                # First delete collection to ensure clean state
++                try:
++                    self.app.delete_collection(name=self.type)
++                except Exception:
++                    pass
++                # Reset the app state
+                 self.app.reset()
++            
++            # Clean up storage directory
++            storage_path = f"{db_storage_path()}/{self.type}"
++            if os.path.exists(storage_path):
++                shutil.rmtree(storage_path)
++            
++            # Reinitialize the app and collection
++            self._initialize_app()
+         except Exception as e:
+             if "attempt to write a readonly database" in str(e):
+-                # Ignore this specific error
++                # Ignore this specific error as it's handled by reinit
+                 pass
+             else:
+                 raise Exception(

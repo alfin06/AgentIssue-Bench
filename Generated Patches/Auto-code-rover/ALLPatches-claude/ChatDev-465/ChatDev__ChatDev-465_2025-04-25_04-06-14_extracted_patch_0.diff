@@ -1,0 +1,35 @@
+diff --git a/camel/messages/base.py b/camel/messages/base.py
+index 8129fea..e97e1ad 100644
+--- a/camel/messages/base.py
++++ b/camel/messages/base.py
+@@ -304,10 +304,17 @@ class BaseMessage:
+         Returns:
+             dict: The converted dictionary.
+         """
+-        return {
++        result = {
+             "role_name": self.role_name,
+             "role_type": self.role_type.name,
+             **(self.meta_dict or {}),
+             "role": self.role,
+             "content": self.content,
+         }
++        # Include additional fields from child classes
++        for attr in ['refusal', 'audio', 'function_call', 'tool_calls']:
++            if hasattr(self, attr):
++                value = getattr(self, attr)
++                if value is not None:
++                    result[attr] = value
++        return result
+diff --git a/camel/messages/chat_messages.py b/camel/messages/chat_messages.py
+index c694d26..eae7173 100644
+--- a/camel/messages/chat_messages.py
++++ b/camel/messages/chat_messages.py
+@@ -60,6 +60,7 @@ class ChatMessage(BaseMessage):
+             role="user",
+             content=self.content,
+             refusal=self.refusal,
++            audio=self.audio,
+         )
+ 
+ 

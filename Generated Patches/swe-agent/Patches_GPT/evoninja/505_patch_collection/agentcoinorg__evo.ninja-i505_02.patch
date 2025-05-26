@@ -1,0 +1,40 @@
+diff --git a/reproduce_issue.py b/reproduce_issue.py
+new file mode 100644
+index 0000000..5d735b0
+--- /dev/null
++++ b/reproduce_issue.py
+@@ -0,0 +1,33 @@
++from apps.browser.lib.api.ProxyEmbeddingApi import ProxyEmbeddingApi
++from evo_ninja.agents import Tokenizer
++
++# Mock Tokenizer
++class MockTokenizer:
++    def encode(self, text):
++        return [1] * len(text)  # Simulate token count as the length of the text
++
++# Mock function to simulate cap reached
++def mock_set_cap_reached():
++    print("Cap reached")
++
++# Test input
++large_input = "x" * 5000  # Input exceeding maxTokensPerInput
++inputs = [large_input, "short input"]
++
++# ProxyEmbeddingApi instance
++proxy_api = ProxyEmbeddingApi(
++    tokenizer=MockTokenizer(),
++    _setCapReached=mock_set_cap_reached,
++    modelConfig={
++        "model": "text-embedding-ada-002",
++        "maxTokensPerInput": 1000,
++        "maxInputsPerRequest": 2,
++    }
++)
++
++try:
++    # Attempt to create embeddings
++    result = proxy_api.createEmbeddings(inputs)
++    print("Embeddings created successfully:", result)
++except Exception as e:
++    print("Error:", e)
+\ No newline at end of file

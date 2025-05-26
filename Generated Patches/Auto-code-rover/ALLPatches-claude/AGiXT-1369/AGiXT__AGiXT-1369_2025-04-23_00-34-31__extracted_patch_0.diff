@@ -1,0 +1,22 @@
+diff --git a/agixt/endpoints/Chain.py b/agixt/endpoints/Chain.py
+index f282687a..68060d6d 100644
+--- a/agixt/endpoints/Chain.py
++++ b/agixt/endpoints/Chain.py
+@@ -43,6 +43,8 @@ async def get_chains(user=Depends(verify_api_key), authorization: str = Header(N
+     description="Retrieves detailed information about a specific chain, including all steps and configurations.",
+ )
+ async def get_chain(chain_name: str, user=Depends(verify_api_key)):
++    if not chain_name or chain_name.isspace():
++        raise HTTPException(status_code=400, detail="Chain name cannot be empty.")
+     chain_data = Chain(user=user).get_chain(chain_name=chain_name)
+     if isinstance(chain_data["id"], UUID):  # Add this check and conversion
+         chain_data["id"] = str(chain_data["id"])
+@@ -170,6 +172,8 @@ async def add_chain(
+     user=Depends(verify_api_key),
+     authorization: str = Header(None),
+ ) -> ResponseMessage:
++    if not chain_name.chain_name or chain_name.chain_name.isspace():
++        raise HTTPException(status_code=400, detail="Chain name cannot be empty.")
+     if is_admin(email=user, api_key=authorization) != True:
+         raise HTTPException(status_code=403, detail="Access Denied")
+     Chain(user=user).add_chain(chain_name=chain_name.chain_name)

@@ -1,0 +1,79 @@
+From 86132edbc4ed34635640f474dfd6dabe84329729 Mon Sep 17 00:00:00 2001
+From: Cesar <cesarbrazon10@gmail.com>
+Date: Wed, 20 Dec 2023 12:22:35 +0100
+Subject: [PATCH] chore: use llm from context in predict next step
+
+---
+ apps/browser/lib/api/ProxyLlmApi.ts            | 4 ++--
+ packages/agents/src/agent-core/llm/LlmApi.ts   | 2 +-
+ packages/agents/src/agent-debug/DebugLlmApi.ts | 4 ++--
+ packages/agents/src/agents/Evo/index.ts        | 2 +-
+ 4 files changed, 6 insertions(+), 6 deletions(-)
+
+diff --git a/apps/browser/lib/api/ProxyLlmApi.ts b/apps/browser/lib/api/ProxyLlmApi.ts
+index fd66487c..78d39a60 100644
+--- a/apps/browser/lib/api/ProxyLlmApi.ts
++++ b/apps/browser/lib/api/ProxyLlmApi.ts
+@@ -1,4 +1,4 @@
+-import { ChatLogs, LlmApi, LlmOptions } from "@evo-ninja/agents";
++import { ChatLogs, LlmApi, LlmModel, LlmOptions } from "@evo-ninja/agents";
+ import { ChatCompletionMessage, ChatCompletionTool } from "openai/resources";
+ import { ERROR_SUBSIDY_MAX } from "./errors";
+ 
+@@ -9,7 +9,7 @@ export class ProxyLlmApi implements LlmApi {
+   private _goalId: string | undefined = undefined;
+ 
+   constructor(
+-    private _defaultModel: string,
++    private _defaultModel: LlmModel,
+     private _defaultMaxTokens: number,
+     private _defaultMaxResponseTokens: number,
+     private _setCapReached: () => void
+diff --git a/packages/agents/src/agent-core/llm/LlmApi.ts b/packages/agents/src/agent-core/llm/LlmApi.ts
+index de9dce5d..2056aeef 100644
+--- a/packages/agents/src/agent-core/llm/LlmApi.ts
++++ b/packages/agents/src/agent-core/llm/LlmApi.ts
+@@ -27,7 +27,7 @@ export interface LlmOptions {
+ export interface LlmApi {
+   getMaxContextTokens(): number;
+   getMaxResponseTokens(): number;
+-  getModel(): string;
++  getModel(): LlmModel;
+   getResponse(
+     chatLog: ChatLogs,
+     functionDefinitions?: FunctionDefinition[],
+diff --git a/packages/agents/src/agent-debug/DebugLlmApi.ts b/packages/agents/src/agent-debug/DebugLlmApi.ts
+index a356d991..879eedb6 100644
+--- a/packages/agents/src/agent-debug/DebugLlmApi.ts
++++ b/packages/agents/src/agent-debug/DebugLlmApi.ts
+@@ -2,7 +2,7 @@ import { ChatCompletionMessage } from "openai/resources";
+ import { DebugLog } from "./DebugLog";
+ import { Timer } from "./Timer";
+ 
+-import { LlmApi, LlmOptions, ChatLogs, ChatMessage } from "@/agent-core";
++import { LlmApi, LlmOptions, ChatLogs, LlmModel } from "@/agent-core";
+ 
+ export class DebugLlmApi implements LlmApi {
+   constructor(
+@@ -18,7 +18,7 @@ export class DebugLlmApi implements LlmApi {
+     return this.llm.getMaxResponseTokens();
+   }
+ 
+-  getModel(): string {
++  getModel(): LlmModel {
+     return this.llm.getModel();
+   }
+ 
+diff --git a/packages/agents/src/agents/Evo/index.ts b/packages/agents/src/agents/Evo/index.ts
+index 098369a6..553c0894 100644
+--- a/packages/agents/src/agents/Evo/index.ts
++++ b/packages/agents/src/agents/Evo/index.ts
+@@ -175,7 +175,7 @@ export class Evo extends Agent<GoalRunArgs> {
+               : ""
+           }`),
+       {
+-        model: "gpt-3.5-turbo-16k",
++        model: this.context.llm.getModel(),
+       }
+     );
+   }

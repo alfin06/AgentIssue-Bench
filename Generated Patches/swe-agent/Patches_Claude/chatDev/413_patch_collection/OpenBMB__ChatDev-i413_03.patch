@@ -1,0 +1,94 @@
+diff --git a/camel/agents/chat_agent.py b/camel/agents/chat_agent.py
+index c824a15..b2f3555 100644
+--- a/camel/agents/chat_agent.py
++++ b/camel/agents/chat_agent.py
+@@ -240,11 +240,20 @@ class ChatAgent(BaseAgent):
+             if openai_new_api:
+                 if not isinstance(response, ChatCompletion):
+                     raise RuntimeError("OpenAI returned unexpected struct")
+-                output_messages = [
+-                    ChatMessage(role_name=self.role_name, role_type=self.role_type,
+-                                meta_dict=dict(), **dict(choice.message))
+-                    for choice in response.choices
+-                ]
++                output_messages = []
++                for choice in response.choices:
++                    msg_dict = dict(choice.message)
++                    # Only pass known fields to ChatMessage
++                    msg = ChatMessage(
++                        role_name=self.role_name,
++                        role_type=self.role_type,
++                        meta_dict=dict(),
++                        role=msg_dict.get('role', ''),
++                        content=msg_dict.get('content', ''),
++                        function_call=msg_dict.get('function_call'),
++                        tool_calls=msg_dict.get('tool_calls')
++                    )
++                    output_messages.append(msg)
+                 info = self.get_info(
+                     response.id,
+                     response.usage,
+@@ -254,11 +263,20 @@ class ChatAgent(BaseAgent):
+             else:
+                 if not isinstance(response, dict):
+                     raise RuntimeError("OpenAI returned unexpected struct")
+-                output_messages = [
+-                    ChatMessage(role_name=self.role_name, role_type=self.role_type,
+-                                meta_dict=dict(), **dict(choice["message"]))
+-                    for choice in response["choices"]
+-                ]
++                output_messages = []
++                for choice in response["choices"]:
++                    msg_dict = dict(choice["message"])
++                    # Only pass known fields to ChatMessage
++                    msg = ChatMessage(
++                        role_name=self.role_name,
++                        role_type=self.role_type,
++                        meta_dict=dict(),
++                        role=msg_dict.get('role', ''),
++                        content=msg_dict.get('content', ''),
++                        function_call=msg_dict.get('function_call'),
++                        tool_calls=msg_dict.get('tool_calls')
++                    )
++                    output_messages.append(msg)
+                 info = self.get_info(
+                     response["id"],
+                     response["usage"],
+diff --git a/test_chat_agent.py b/test_chat_agent.py
+new file mode 100644
+index 0000000..f4f66d6
+--- /dev/null
++++ b/test_chat_agent.py
+@@ -0,0 +1,31 @@
++from camel.agents.chat_agent import ChatAgent
++from camel.messages import SystemMessage
++from camel.typing import RoleType
++
++def test_chat_agent():
++    # Create a test system message
++    system_message = SystemMessage(
++        role_name="Test Assistant",
++        role_type=RoleType.ASSISTANT,
++        content="You are a helpful test assistant."
++    )
++    
++    # Create chat agent
++    agent = ChatAgent(system_message=system_message)
++    
++    # Create a test input message
++    from camel.messages import ChatMessage
++    input_message = ChatMessage(
++        role_name="Test User",
++        role_type=RoleType.USER,
++        meta_dict={},
++        role="user",
++        content="Hello, how are you?"
++    )
++    
++    # Test the step method
++    response = agent.step(input_message)
++    print("Response:", response.msgs[0].content)
++
++if __name__ == "__main__":
++    test_chat_agent()
+\ No newline at end of file

@@ -1,0 +1,14 @@
+diff --git a/src/crewai/llm.py b/src/crewai/llm.py
+index 347d20d..3ecc279 100644
+--- a/src/crewai/llm.py
++++ b/src/crewai/llm.py
+@@ -275,7 +275,8 @@ class LLM:
+                     str(e)
+                 )._is_context_limit_error(str(e)):
+                     logging.error(f"LiteLLM call failed: {str(e)}")
+-                raise
++                logging.error(f"Error during LLM call: {str(e)}")
++                return "LLM call failed due to an error: " + str(e)
+ 
+     def supports_function_calling(self) -> bool:
+         try:

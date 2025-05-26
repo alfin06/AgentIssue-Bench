@@ -1,0 +1,25 @@
+diff --git a/autogen/coding/func_with_reqs.py b/autogen/coding/func_with_reqs.py
+index 6f1995738..321cadde2 100644
+--- a/autogen/coding/func_with_reqs.py
++++ b/autogen/coding/func_with_reqs.py
+@@ -45,16 +45,11 @@ def _import_to_str(im: Import) -> str:
+         return f"import {im}"
+     elif isinstance(im, Alias):
+         return f"import {im.name} as {im.alias}"
++    elif isinstance(im, ImportFromModule):
++        imports_str = ", ".join(im.imports)
++        return f"from {im.module} import {imports_str}"
+     else:
+-
+-        def to_str(i: Union[str, Alias]) -> str:
+-            if isinstance(i, str):
+-                return i
+-            else:
+-                return f"{i.name} as {i.alias}"
+-
+-        imports = ", ".join(map(to_str, im.imports))
+-        return f"from {im.module} import {imports}"
++        raise TypeError(f"Unsupported import type: {type(im)}")
+ 
+ 
+ class _StringLoader(SourceLoader):

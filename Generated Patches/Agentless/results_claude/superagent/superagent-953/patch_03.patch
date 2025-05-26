@@ -1,0 +1,12 @@
+diff --git a/libs/superagent/app/main.py b/libs/superagent/app/main.py
+index 231eedf..d904b23 100644
+--- a/libs/superagent/app/main.py
++++ b/libs/superagent/app/main.py
+@@ -36,7 +36,7 @@ app = FastAPI(
+     title="Superagent",
+     docs_url="/",
+     description="🥷 Run AI-agents with an API",
+-    version="0.2.27",
++    version="0.2.28",
+     servers=[{"url": config("SUPERAGENT_API_URL")}],
+ )

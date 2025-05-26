@@ -1,0 +1,42 @@
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..aaa688e
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1,35 @@
++from gpt_engineer.core.default.steps import salvage_correct_hunks
++from gpt_engineer.core.files_dict import FilesDict
++from gpt_engineer.core.base_memory import BaseMemory
++from gpt_engineer.core.chat_to_files import parse_diffs
++
++# Simulate the files_dict without the required file
++files_dict = FilesDict({
++    "existing_file.py": "print('Hello, World!')"
++})
++
++# Simulate AI response with a diff referencing a missing file
++ai_response = """
++--- src/main/resources/application-stage.yml
+++++ src/main/resources/application-stage.yml
++@@ -0,0 +1,3 @@
+++key: value
+++another_key: another_value
++"""
++
++diffs = parse_diffs(ai_response)
++
++# Simulate memory
++class MockMemory(BaseMemory):
++    def log(self, *args, **kwargs):
++        pass
++
++memory = MockMemory()
++
++# Attempt to salvage correct hunks
++try:
++    updated_files_dict, errors = salvage_correct_hunks([], files_dict, memory)
++    print("Updated Files:", updated_files_dict)
++    print("Errors:", errors)
++except KeyError as e:
++    print("Encountered KeyError:", e)
+\ No newline at end of file

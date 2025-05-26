@@ -1,0 +1,37 @@
+diff --git a/gpt_researcher/agent.py b/gpt_researcher/agent.py
+index 46799cc..065eb54 100644
+--- a/gpt_researcher/agent.py
++++ b/gpt_researcher/agent.py
+@@ -101,10 +101,13 @@ class GPTResearcher:
+         return self.context
+ 
+     async def write_report(self, existing_headers: list = [], relevant_written_contents: list = [], ext_context=None) -> str:
++        context = ext_context or self.context
++        language = os.getenv("LANGUAGE", "english")
+         return await self.report_generator.write_report(
+             existing_headers,
+             relevant_written_contents,
+-            ext_context or self.context
++            context,
++            language=language
+         )
+ 
+     async def write_report_conclusion(self, report_body: str) -> str:
+diff --git a/gpt_researcher/prompts.py b/gpt_researcher/prompts.py
+index 0af1fde..8383f82 100644
+--- a/gpt_researcher/prompts.py
++++ b/gpt_researcher/prompts.py
+@@ -293,6 +293,7 @@ def generate_subtopic_report_prompt(
+     max_subsections=5,
+     total_words=800,
+     tone: Tone = Tone.Objective,
++    language: str = "english",
+ ) -> str:
+     return f"""
+ Context:
+@@ -454,4 +455,4 @@ def get_prompt_by_report_type(report_type):
+             UserWarning,
+         )
+         prompt_by_type = report_type_mapping.get(default_report_type)
+-    return prompt_by_type
++    return prompt_by_type

@@ -1,0 +1,22 @@
+diff --git a/camel/agents/chat_agent.py b/camel/agents/chat_agent.py
+index c824a15..5bc7d13 100644
+--- a/camel/agents/chat_agent.py
++++ b/camel/agents/chat_agent.py
+@@ -242,7 +242,7 @@ class ChatAgent(BaseAgent):
+                     raise RuntimeError("OpenAI returned unexpected struct")
+                 output_messages = [
+                     ChatMessage(role_name=self.role_name, role_type=self.role_type,
+-                                meta_dict=dict(), **dict(choice.message))
++                                meta_dict=dict(), **{k: v for k, v in choice.message.items() if k in ChatMessage.__annotations__})
+                     for choice in response.choices
+                 ]
+                 info = self.get_info(
+@@ -256,7 +256,7 @@ class ChatAgent(BaseAgent):
+                     raise RuntimeError("OpenAI returned unexpected struct")
+                 output_messages = [
+                     ChatMessage(role_name=self.role_name, role_type=self.role_type,
+-                                meta_dict=dict(), **dict(choice["message"]))
++                                meta_dict=dict(), **{k: v for k, v in choice["message"].items() if k in ChatMessage.__annotations__})
+                     for choice in response["choices"]
+                 ]
+                 info = self.get_info(

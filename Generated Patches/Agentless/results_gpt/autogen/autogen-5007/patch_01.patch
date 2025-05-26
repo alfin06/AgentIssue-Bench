@@ -1,0 +1,12 @@
+diff --git a/python/packages/autogen-studio/autogenstudio/database/component_factory.py b/python/packages/autogen-studio/autogenstudio/database/component_factory.py
+index cff6635..7cc546c 100644
+--- a/python/packages/autogen-studio/autogenstudio/database/component_factory.py
++++ b/python/packages/autogen-studio/autogenstudio/database/component_factory.py
+@@ -23,6 +23,7 @@ from autogen_ext.agents.file_surfer import FileSurfer
+ from autogen_ext.agents.magentic_one import MagenticOneCoderAgent
+ from autogen_ext.agents.web_surfer import MultimodalWebSurfer
+ from autogen_ext.models.openai import AzureOpenAIChatCompletionClient, OpenAIChatCompletionClient
++import tiktoken
+ 
+ from ..datamodel.types import (
+     AgentConfig,

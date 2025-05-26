@@ -1,0 +1,227 @@
+From e04a69deb986cb41827b57c23d8cc4a9867b8cbc Mon Sep 17 00:00:00 2001
+From: Josh XT <josh@devxt.com>
+Date: Sat, 19 Oct 2024 07:27:33 -0400
+Subject: [PATCH] fix enabling chains as commands
+
+---
+ agixt/Agent.py      | 85 +++++++++++++++++++--------------------------
+ agixt/Extensions.py | 38 ++------------------
+ 2 files changed, 38 insertions(+), 85 deletions(-)
+
+diff --git a/agixt/Agent.py b/agixt/Agent.py
+index fcab9d5b8182..639949535677 100644
+--- a/agixt/Agent.py
++++ b/agixt/Agent.py
+@@ -341,23 +341,16 @@ def get_agent_config(self):
+             )
+             agent_commands = (
+                 session.query(AgentCommand)
+-                .join(Command)
+-                .filter(
+-                    AgentCommand.agent_id == agent.id,
+-                    AgentCommand.state == True,
+-                )
++                .filter(AgentCommand.agent_id == agent.id)
+                 .all()
+             )
++            # Process all commands, including chains
+             for command in all_commands:
+-                config["commands"].update(
+-                    {
+-                        command.name: command.name
+-                        in [ac.command.name for ac in agent_commands]
+-                    }
++                config["commands"][command.name] = any(
++                    ac.command_id == command.id and ac.state for ac in agent_commands
+                 )
+             for setting in agent_settings:
+                 config["settings"][setting.name] = setting.value
+-            session.commit()
+             session.close()
+             user_settings = self.get_registration_requirement_settings()
+             for key, value in user_settings.items():
+@@ -451,7 +444,7 @@ def update_agent_config(self, new_config, config_key):
+         if not agent:
+             if self.user == DEFAULT_USER:
+                 return f"Agent {self.agent_name} not found."
+-            # Check if it is a global agent.
++            # Check if it is a global agent and copy it if necessary
+             global_user = session.query(User).filter(User.email == DEFAULT_USER).first()
+             global_agent = (
+                 session.query(AgentModel)
+@@ -461,7 +454,6 @@ def update_agent_config(self, new_config, config_key):
+                 )
+                 .first()
+             )
+-            # if it is a global agent, copy it to the user's agents.
+             if global_agent:
+                 agent = AgentModel(
+                     name=self.agent_name,
+@@ -470,53 +462,46 @@ def update_agent_config(self, new_config, config_key):
+                 )
+                 session.add(agent)
+                 session.commit()
+-                agent_settings = (
+-                    session.query(AgentSettingModel)
+-                    .filter_by(agent_id=global_agent.id)
+-                    .all()
+-                )
+-                for setting in agent_settings:
+-                    agent_setting = AgentSettingModel(
++                # Copy settings and commands from global agent
++                for setting in global_agent.settings:
++                    new_setting = AgentSettingModel(
+                         agent_id=agent.id,
+                         name=setting.name,
+                         value=setting.value,
+                     )
+-                    session.add(agent_setting)
+-                session.commit()
+-                agent_commands = (
+-                    session.query(AgentCommand)
+-                    .filter_by(agent_id=global_agent.id)
+-                    .all()
+-                )
+-                for agent_command in agent_commands:
+-                    agent_command = AgentCommand(
++                    session.add(new_setting)
++                for command in global_agent.agent_commands:
++                    new_command = AgentCommand(
+                         agent_id=agent.id,
+-                        command_id=agent_command.command_id,
+-                        state=agent_command.state,
++                        command_id=command.command_id,
++                        state=command.state,
+                     )
+-                    session.add(agent_command)
++                    session.add(new_command)
+                 session.commit()
+-                session.close()
+-                return f"Agent {self.agent_name} configuration updated successfully."
++
+         if config_key == "commands":
+             for command_name, enabled in new_config.items():
+                 command = session.query(Command).filter_by(name=command_name).first()
+-                if command:
+-                    agent_command = (
+-                        session.query(AgentCommand)
+-                        .filter_by(agent_id=agent.id, command_id=command.id)
+-                        .first()
++                if not command:
++                    # If the command doesn't exist, create it (this handles chain commands)
++                    command = Command(name=command_name)
++                    session.add(command)
++                    session.commit()
++
++                agent_command = (
++                    session.query(AgentCommand)
++                    .filter_by(agent_id=agent.id, command_id=command.id)
++                    .first()
++                )
++                if agent_command:
++                    agent_command.state = enabled
++                else:
++                    agent_command = AgentCommand(
++                        agent_id=agent.id, command_id=command.id, state=enabled
+                     )
+-                    if agent_command:
+-                        agent_command.state = enabled
+-                    else:
+-                        agent_command = AgentCommand(
+-                            agent_id=agent.id, command_id=command.id, state=enabled
+-                        )
+-                        session.add(agent_command)
++                    session.add(agent_command)
+         else:
+             for setting_name, setting_value in new_config.items():
+-                logging.info(f"Setting {setting_name} to {setting_value}.")
+                 agent_setting = (
+                     session.query(AgentSettingModel)
+                     .filter_by(agent_id=agent.id, name=setting_name)
+@@ -529,17 +514,19 @@ def update_agent_config(self, new_config, config_key):
+                         agent_id=agent.id, name=setting_name, value=str(setting_value)
+                     )
+                     session.add(agent_setting)
++
+         try:
+             session.commit()
+-            session.close()
+             logging.info(f"Agent {self.agent_name} configuration updated successfully.")
+         except Exception as e:
+             session.rollback()
+-            session.close()
+             logging.error(f"Error updating agent configuration: {str(e)}")
+             raise HTTPException(
+                 status_code=500, detail=f"Error updating agent configuration: {str(e)}"
+             )
++        finally:
++            session.close()
++
+         return f"Agent {self.agent_name} configuration updated."
+ 
+     def get_browsed_links(self, conversation_id=None):
+diff --git a/agixt/Extensions.py b/agixt/Extensions.py
+index 55f6a54dae28..1c04519397cd 100644
+--- a/agixt/Extensions.py
++++ b/agixt/Extensions.py
+@@ -277,6 +277,7 @@ def load_commands(self):
+                             )
+                         )
+ 
++        # Add chains as commands
+         if hasattr(self, "chains_with_args") and self.chains_with_args:
+             for chain in self.chains_with_args:
+                 chain_name = chain["chain_name"]
+@@ -284,7 +285,7 @@ def load_commands(self):
+                     (
+                         chain_name,
+                         self.execute_chain,
+-                        "run_chain",
++                        "execute_chain",
+                         {
+                             "chain_name": chain_name,
+                             "user_input": "",
+@@ -292,43 +293,8 @@ def load_commands(self):
+                         },
+                     )
+                 )
+-                if chain_name not in self.agent_config["commands"]:
+-                    self.agent_config["commands"][chain_name] = "false"
+         return commands
+ 
+-    def get_extension_settings(self):
+-        settings = {}
+-        command_files = glob.glob("extensions/*.py")
+-        for command_file in command_files:
+-            module_name = os.path.splitext(os.path.basename(command_file))[0]
+-            if module_name in DISABLED_EXTENSIONS:
+-                continue
+-            module = importlib.import_module(f"extensions.{module_name}")
+-            if issubclass(getattr(module, module_name), Extensions):
+-                command_class = getattr(module, module_name)()
+-                params = self.get_command_params(command_class.__init__)
+-                # Remove self and kwargs from params
+-                if "self" in params:
+-                    del params["self"]
+-                if "kwargs" in params:
+-                    del params["kwargs"]
+-                if params != {}:
+-                    settings[module_name] = params
+-
+-        # Use self.chains_with_args instead of iterating over self.chains
+-        if self.chains_with_args:
+-            settings["AGiXT Chains"] = {}
+-            for chain in self.chains_with_args:
+-                chain_name = chain["chain_name"]
+-                chain_args = chain["args"]
+-                if chain_args:
+-                    settings["AGiXT Chains"][chain_name] = {
+-                        "user_input": "",
+-                        **{arg: "" for arg in chain_args},
+-                    }
+-
+-        return settings
+-
+     def find_command(self, command_name: str):
+         for name, module, function_name, params in self.commands:
+             if module.__name__ in DISABLED_EXTENSIONS:

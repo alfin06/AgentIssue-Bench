@@ -1,0 +1,85 @@
+diff --git a/packages/agents/src/agents/Evo/index.ts b/packages/agents/src/agents/Evo/index.ts
+index 6aa689a..b528e56 100644
+--- a/packages/agents/src/agents/Evo/index.ts
++++ b/packages/agents/src/agents/Evo/index.ts
+@@ -148,6 +148,24 @@ export class Evo extends Agent<GoalRunArgs> {
+     // TODO: remove this once we properly track function definition tokens
+     const fuzz = 500;
+     const maxChatTokens = maxContextTokens - maxResponseTokens - fuzz;
++    if (prediction === "SUCCESS" || prediction.includes('"SUCCESS"') || prediction.includes("goal has been achieved")) {
++      const followUpGoal = await this.context.chat.askUser("The goal has been achieved. Would you like to set a follow-up goal? If yes, please specify the goal.");
++      if (followUpGoal) {
++        this.reset();
++        this.goal = followUpGoal;
++        await this.context.chat.persistent([{ role: "user", content: followUpGoal }]);
++        return await this.beforeLlmResponse();
++      }
++      return {
++        logs: chat.chatLogs,
++        agentFunctions: [],
++        allFunctions: [],
++        finalOutput: {
++          type: "success",
++          title: "SUCCESS",
++        },
++      };
++    }
+ 
+     return await this._cChat.contextualize(predictionVector, {
+       persistent: maxChatTokens * 0.25,
+diff --git a/reproduce_continuous_mode.py b/reproduce_continuous_mode.py
+new file mode 100644
+index 0000000..2ca8a2d
+--- /dev/null
++++ b/reproduce_continuous_mode.py
+@@ -0,0 +1,50 @@
++from packages.agents.src.agents.Evo.index import Evo
++import sys
++import os
++sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
++
++# Simulate the Evo agent
++class MockContext:
++    def __init__(self):
++        self.chat = MockChat()
++        self.variables = {'saveThreshold': 1000}
++        self.llm = MockLLM()
++        self.logger = MockLogger()
++
++class MockChat:
++    def persistent(self, messages):
++        print("Persistent messages:", messages)
++
++    def askUser(self, prompt):
++        print(prompt)
++        return input("Enter follow-up goal (or leave blank to finish): ")
++
++class MockLLM:
++    def getMaxContextTokens(self):
++        return 8000
++
++    def getMaxResponseTokens(self):
++        return 1000
++
++    def getModel(self):
++        return "mock-model"
++
++class MockLogger:
++    def notice(self, message):
++        print("NOTICE:", message)
++
++    def info(self, message):
++        print("INFO:", message)
++
++# Initialize mock context
++context = MockContext()
++
++# Create Evo agent instance
++evo_agent = Evo(context)
++
++# Initialize the agent with a goal
++evo_agent.initRun({'goal': 'Achieve the first goal'})
++
++# Simulate the agent achieving the goal
++response = evo_agent.beforeLlmResponse()
++print("Response:", response)

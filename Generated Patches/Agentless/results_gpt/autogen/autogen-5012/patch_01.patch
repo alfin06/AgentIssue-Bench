@@ -1,0 +1,43 @@
+diff --git a/python/packages/autogen-agentchat/src/autogen_agentchat/teams/_group_chat/_base_group_chat.py b/python/packages/autogen-agentchat/src/autogen_agentchat/teams/_group_chat/_base_group_chat.py
+index bcc105c..80e1413 100644
+--- a/python/packages/autogen-agentchat/src/autogen_agentchat/teams/_group_chat/_base_group_chat.py
++++ b/python/packages/autogen-agentchat/src/autogen_agentchat/teams/_group_chat/_base_group_chat.py
+@@ -207,11 +207,11 @@ class BaseGroupChat(Team, ABC):
+                 team = RoundRobinGroupChat([agent1, agent2], termination_condition=termination)
+ 
+                 result = await team.run(task="Count from 1 to 10, respond one at a time.")
+-                print(result)
++                print(await result)
+ 
+                 # Run the team again without a task to continue the previous task.
+                 result = await team.run()
+-                print(result)
++                print(await result)
+ 
+ 
+             asyncio.run(main())
+@@ -541,4 +541,4 @@ class BaseGroupChat(Team, ABC):
+             await self._runtime.load_state(team_state.agent_states)
+         finally:
+             # Indicate that the team is no longer running.
+-            self._is_running = False
++            self._is_running = False
+diff --git a/python/packages/autogen-core/src/autogen_core/_single_threaded_agent_runtime.py b/python/packages/autogen-core/src/autogen_core/_single_threaded_agent_runtime.py
+index 285f665..c07985f 100644
+--- a/python/packages/autogen-core/src/autogen_core/_single_threaded_agent_runtime.py
++++ b/python/packages/autogen-core/src/autogen_core/_single_threaded_agent_runtime.py
+@@ -154,7 +154,7 @@ class SingleThreadedAgentRuntime(AgentRuntime):
+         tracer_provider: TracerProvider | None = None,
+     ) -> None:
+         self._tracer_helper = TraceHelper(tracer_provider, MessageRuntimeTracingConfig("SingleThreadedAgentRuntime"))
+-        self._message_queue: Queue[PublishMessageEnvelope | SendMessageEnvelope | ResponseMessageEnvelope] = Queue()
++        self._message_queue: asyncio.Queue[PublishMessageEnvelope | SendMessageEnvelope | ResponseMessageEnvelope] = asyncio.Queue()
+         # (namespace, type) -> List[AgentId]
+         self._agent_factories: Dict[
+             str, Callable[[], Agent | Awaitable[Agent]] | Callable[[AgentRuntime, AgentId], Agent | Awaitable[Agent]]
+@@ -766,4 +766,4 @@ class SingleThreadedAgentRuntime(AgentRuntime):
+                 message, type_name=type_name, data_content_type=JSON_DATA_CONTENT_TYPE
+             ).decode("utf-8")
+         except ValueError:
+-            return "Message could not be serialized"
++            return "Message could not be serialized"

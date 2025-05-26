@@ -1,0 +1,40 @@
+diff --git a/camel/models/openai_compatible_model.py b/camel/models/openai_compatible_model.py
+index cb7df1f6..912cad26 100644
+--- a/camel/models/openai_compatible_model.py
++++ b/camel/models/openai_compatible_model.py
+@@ -54,6 +54,7 @@ class OpenAICompatibleModel(BaseModelBackend):
+         api_key: Optional[str] = None,
+         url: Optional[str] = None,
+         token_counter: Optional[BaseTokenCounter] = None,
++        proxies: Optional[Dict[str, str]] = None,
+     ) -> None:
+         self.api_key = api_key or os.environ.get("OPENAI_COMPATIBILIY_API_KEY")
+         self.url = url or os.environ.get("OPENAI_COMPATIBILIY_API_BASE_URL")
+@@ -65,6 +66,7 @@ class OpenAICompatibleModel(BaseModelBackend):
+             max_retries=3,
+             api_key=self._api_key,
+             base_url=self._url,
++            proxies=proxies,
+         )
+ 
+     def run(
+diff --git a/camel/models/openai_model.py b/camel/models/openai_model.py
+index 8e8f8b1f..cfaa4ac0 100644
+--- a/camel/models/openai_model.py
++++ b/camel/models/openai_model.py
+@@ -59,6 +59,7 @@ class OpenAIModel(BaseModelBackend):
+         api_key: Optional[str] = None,
+         url: Optional[str] = None,
+         token_counter: Optional[BaseTokenCounter] = None,
++        proxies: Optional[Dict[str, str]] = None,
+     ) -> None:
+         if model_config_dict is None:
+             model_config_dict = ChatGPTConfig().as_dict()
+@@ -72,6 +73,7 @@ class OpenAIModel(BaseModelBackend):
+             max_retries=3,
+             base_url=self._url,
+             api_key=self._api_key,
++            proxies=proxies,
+         )
+ 
+     @property

@@ -1,0 +1,52 @@
+diff --git a/packages/agents/src/agents/utils/Agent.ts b/packages/agents/src/agents/utils/Agent.ts
+index 2ad269f..0eacea6 100644
+--- a/packages/agents/src/agents/utils/Agent.ts
++++ b/packages/agents/src/agents/utils/Agent.ts
+@@ -146,7 +146,11 @@ export class Agent<TRunArgs = GoalRunArgs> implements RunnableAgent<TRunArgs> {
+   }
+ 
+   protected async createEmbeddingVector(text: string): Promise<number[]> {
+-    return (await this.context.embedding.createEmbeddings(text))[0].embedding;
++    const chunks = TextChunker.fixedCharacterLength(text, { chunkLength: 1000, overlap: 100 });
++    const embeddings = await Promise.all(
++      chunks.map(chunk => this.context.embedding.createEmbeddings(chunk))
++    );
++    return embeddings.flatMap(embedding => embedding[0].embedding);
+   }
+ 
+   protected async beforeLlmResponse(): Promise<{
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..9eff883
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1,28 @@
++from packages.agents.src.agents.utils.Agent import Agent
++from packages.agents.src.agents.utils.AgentConfig import AgentConfig
++from packages.agents.src.agent_core import AgentContext
++
++# Mock context and config for testing
++class MockEmbedding:
++    def createEmbeddings(self, text):
++        if len(text) > 1000:  # Simulate a limit for the proxy API
++            raise ValueError("Input text too large for embedding API")
++        return [{"embedding": [0.1, 0.2, 0.3]}] * len(text.split())
++
++class MockContext:
++    def __init__(self):
++        self.embedding = MockEmbedding()
++
++# Create a mock agent
++mock_context = MockContext()
++mock_config = AgentConfig()
++agent = Agent(config=mock_config, context=mock_context)
++
++# Test input that exceeds the limit
++large_text = "word " * 1001  # Create a text with 1001 words
++
++try:
++    embedding = agent.createEmbeddingVector(large_text)
++    print("Embedding created successfully:", embedding)
++except ValueError as e:
++    print("Error:", e)
+\ No newline at end of file

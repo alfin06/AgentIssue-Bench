@@ -1,0 +1,44 @@
+diff --git a/libs/ui/Dockerfile b/libs/ui/Dockerfile
+index b5a9c34..9170919 100644
+--- a/libs/ui/Dockerfile
++++ b/libs/ui/Dockerfile
+@@ -31,7 +31,11 @@ RUN apt-get update && apt-get install -y \
+     libvips-dev \
+     libfftw3-dev \
+     build-essential \
+-    python3
++    python3 \
++    curl
++
++# Install Supabase CLI
++RUN curl -fsSL https://cli.supabase.com/install.sh | sh
+ 
+ # Set working directory
+ WORKDIR /app
+@@ -50,7 +54,10 @@ RUN npm run build
+ FROM node:18-buster AS runner
+ 
+ # Install bash and netcat in the runner stage
+-RUN apt-get update && apt-get install -y bash netcat-openbsd libvips-dev libfftw3-dev build-essential python3
++RUN apt-get update && apt-get install -y bash netcat-openbsd libvips-dev libfftw3-dev build-essential python3 curl
++
++# Install Supabase CLI
++RUN curl -fsSL https://cli.supabase.com/install.sh | sh
+ 
+ # Set environment variables
+ ENV NODE_ENV production
+diff --git a/test_supabase.sh b/test_supabase.sh
+new file mode 100755
+index 0000000..a0a6db3
+--- /dev/null
++++ b/test_supabase.sh
+@@ -0,0 +1,8 @@
++#!/bin/bash
++
++# Build the Docker image
++cd libs/ui
++docker build -t superagent-ui:test .
++
++# Run the container with the required environment variables
++docker run -e SUPABASE_DB_URL="postgresql://postgres:postgres@localhost:5432/postgres" --name test-superagent-ui superagent-ui:test /bin/bash -c "supabase --version && npm run supabase:docker:push"
+\ No newline at end of file

@@ -1,0 +1,88 @@
+diff --git a/apps/cli/src/cli.ts b/apps/cli/src/cli.ts
+index 9af65fb..5b58bb2 100644
+--- a/apps/cli/src/cli.ts
++++ b/apps/cli/src/cli.ts
+@@ -5,10 +5,12 @@ import { program } from "commander";
+ 
+ export async function cli(): Promise<void> {
+   program
+-    .option("-s, --session <name>")
+-    .option("-t, --timeout <seconds>")
+-    .option("-r, --root <path>")
+-    .option("-d, --debug")
++    .option("-s, --session <n>", "Session name for storing execution data")
++    .option("-t, --timeout <seconds>", "Timeout in seconds for each goal")
++    .option("-r, --root <path>", "Root directory path")
++    .option("-d, --debug", "Enable debug mode")
++    .option("-c, --continuous", "Enable continuous mode to chain multiple goals")
++    .option("-p, --preserve-context", "Preserve context between goals in continuous mode")
+     .parse();
+ 
+   const options = program.opts();
+@@ -58,6 +60,7 @@ export async function cli(): Promise<void> {
+           await logError(response.value.error ?? "Unknown error");
+         } else {
+           await logMessage(response.value.value);
++          await app.logger.info("\n✨ Goal completed successfully! ✨\n");
+         }
+         break;
+       }
+@@ -75,20 +78,38 @@ export async function cli(): Promise<void> {
+   let goalCounter = 0;
+ 
+   await app.evo.init();
++  
++  const isContinuousMode = options.continuous || program.args.length === 0;
++  
+   while (true) {
+     if (!goal) {
+-      goal = await app.logger.prompt("Enter your goal");
++      goal = await app.logger.prompt(
++        goalCounter === 0 
++          ? "Enter your goal"
++          : "Enter your next goal (or type 'exit' to quit)"
++      );
+     } else if (goalCounter === 0) {
+       await app.fileLogger.info("# User\n **Enter your goal:** " + goal);
+     } else {
+-      goal = await app.logger.prompt("Enter another goal");
+-      app.evo.reset();
++      goal = await app.logger.prompt(
++        "Enter your next goal (or type 'exit' to quit)"
++      );
+     }
+ 
+     if (!goal || goal.toLocaleLowerCase() === "exit") break;
+ 
+     ++goalCounter;
+     await handleGoal(goal);
++
++    // Reset context between goals unless preserve-context is enabled
++    if (!options.preserveContext) {
++      app.evo.reset();
++    }
++
++    // Exit after first goal unless continuous mode is enabled
++    if (!isContinuousMode) break;
++
++    goal = undefined;
+   }
+ 
+   return Promise.resolve();
+@@ -101,4 +122,4 @@ cli()
+   .catch((err) => {
+     console.error(err);
+     process.abort();
+-  });
++  });
+\ No newline at end of file
+diff --git a/test_continuous.js b/test_continuous.js
+new file mode 100644
+index 0000000..dbe15bc
+--- /dev/null
++++ b/test_continuous.js
+@@ -0,0 +1,3 @@
++// A simple script to test continuous mode
++console.log("Hello! I'm a test script.");
++console.log("I'll be used to test Evo's continuous mode.");
+\ No newline at end of file

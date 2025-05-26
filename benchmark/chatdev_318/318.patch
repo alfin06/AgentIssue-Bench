@@ -1,0 +1,61 @@
+From ec536d54b77aac7bcef85158833675ed9aa02b3e Mon Sep 17 00:00:00 2001
+From: yu_shaonian <3543554892@qq.com>
+Date: Mon, 1 Jan 2024 10:02:05 +0800
+Subject: [PATCH] update config file
+
+---
+ CompanyConfig/Art/ChatChainConfig.json         | 1 +
+ CompanyConfig/Human/ChatChainConfig.json       | 1 +
+ CompanyConfig/Human/PhaseConfig.json           | 1 +
+ CompanyConfig/Incremental/ChatChainConfig.json | 1 +
+ 4 files changed, 4 insertions(+)
+
+diff --git a/CompanyConfig/Art/ChatChainConfig.json b/CompanyConfig/Art/ChatChainConfig.json
+index 28a44894b..bd79741e9 100644
+--- a/CompanyConfig/Art/ChatChainConfig.json
++++ b/CompanyConfig/Art/ChatChainConfig.json
+@@ -116,6 +116,7 @@
+   "gui_design": "True",
+   "git_management": "False",
+   "self_improve": "False",
++  "web_spider": "False",
+   "incremental_develop": "False",
+   "background_prompt": "ChatDev is a software company powered by multiple intelligent agents, such as chief executive officer, chief human resources officer, chief product officer, chief technology officer, etc, with a multi-agent organizational structure and the mission of 'changing the digital world through programming'."
+ }
+\ No newline at end of file
+diff --git a/CompanyConfig/Human/ChatChainConfig.json b/CompanyConfig/Human/ChatChainConfig.json
+index 986bf6e95..1273717c8 100644
+--- a/CompanyConfig/Human/ChatChainConfig.json
++++ b/CompanyConfig/Human/ChatChainConfig.json
+@@ -110,6 +110,7 @@
+   "gui_design": "True",
+   "git_management": "False",
+   "self_improve": "False",
++  "web_spider": "False",
+   "incremental_develop": "False",
+   "background_prompt": "ChatDev is a software company powered by multiple intelligent agents, such as chief executive officer, chief human resources officer, chief product officer, chief technology officer, etc, with a multi-agent organizational structure and the mission of 'changing the digital world through programming'."
+ }
+diff --git a/CompanyConfig/Human/PhaseConfig.json b/CompanyConfig/Human/PhaseConfig.json
+index c2bfc4a5a..c8817e03c 100644
+--- a/CompanyConfig/Human/PhaseConfig.json
++++ b/CompanyConfig/Human/PhaseConfig.json
+@@ -36,6 +36,7 @@
+     "phase_prompt": [
+       "According to the new user's task and our software designs listed below: ",
+       "Task: \"{task}\".",
++      "Task description: \"{description}\".",
+       "Modality: \"{modality}\".",
+       "Programming Language: \"{language}\"",
+       "Ideas:\"{ideas}\"",
+diff --git a/CompanyConfig/Incremental/ChatChainConfig.json b/CompanyConfig/Incremental/ChatChainConfig.json
+index de3634662..fed854212 100644
+--- a/CompanyConfig/Incremental/ChatChainConfig.json
++++ b/CompanyConfig/Incremental/ChatChainConfig.json
+@@ -91,6 +91,7 @@
+   "gui_design": "True",
+   "git_management": "False",
+   "self_improve": "False",
++  "web_spider": "False",
+   "incremental_develop": "True",
+   "background_prompt": "ChatDev is a software company powered by multiple intelligent agents, such as chief executive officer, chief human resources officer, chief product officer, chief technology officer, etc, with a multi-agent organizational structure and the mission of 'changing the digital world through programming'."
+ }

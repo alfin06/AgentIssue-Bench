@@ -1,0 +1,24 @@
+diff --git a/src/crewai/flow/flow.py b/src/crewai/flow/flow.py
+index d29e54c..da196c3 100644
+--- a/src/crewai/flow/flow.py
++++ b/src/crewai/flow/flow.py
+@@ -113,11 +113,17 @@ class FlowMeta(type):
+             if hasattr(attr_value, "__is_start_method__"):
+                 start_methods.append(attr_name)
+                 if hasattr(attr_value, "__trigger_methods__"):
+-                    methods = attr_value.__trigger_methods__
++                    methods = [
++                        method.__name__ if callable(method) else method
++                        for method in attr_value.__trigger_methods__
++                    ]
+                     condition_type = getattr(attr_value, "__condition_type__", "OR")
+                     listeners[attr_name] = (condition_type, methods)
+             elif hasattr(attr_value, "__trigger_methods__"):
+-                methods = attr_value.__trigger_methods__
++                methods = [
++                    method.__name__ if callable(method) else method
++                    for method in attr_value.__trigger_methods__
++                ]
+                 condition_type = getattr(attr_value, "__condition_type__", "OR")
+                 listeners[attr_name] = (condition_type, methods)
+             elif hasattr(attr_value, "__is_router__"):

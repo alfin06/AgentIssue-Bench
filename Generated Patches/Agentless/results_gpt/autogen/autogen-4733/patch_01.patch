@@ -1,0 +1,49 @@
+diff --git a/python/packages/autogen-core/src/autogen_core/code_executor/_func_with_reqs.py b/python/packages/autogen-core/src/autogen_core/code_executor/_func_with_reqs.py
+index d9819ba..cb52b02 100644
+--- a/python/packages/autogen-core/src/autogen_core/code_executor/_func_with_reqs.py
++++ b/python/packages/autogen-core/src/autogen_core/code_executor/_func_with_reqs.py
+@@ -34,11 +34,19 @@ class Alias:
+     alias: str
+ 
+ 
+-@dataclass
++@dataclass(eq=True, frozen=True)
+ class ImportFromModule:
+     module: str
+     imports: List[Union[str, Alias]]
+ 
++    def __hash__(self):
++        return hash((self.module, tuple(self.imports)))
++
++    def __eq__(self, other):
++        if isinstance(other, ImportFromModule):
++            return self.module == other.module and self.imports == other.imports
++        return False
++
+ 
+ Import = Union[str, ImportFromModule, Alias]
+ 
+diff --git a/python/packages/autogen-core/src/autogen_core/components/code_executor/_func_with_reqs.py b/python/packages/autogen-core/src/autogen_core/components/code_executor/_func_with_reqs.py
+index b23d81b..b38c0e9 100644
+--- a/python/packages/autogen-core/src/autogen_core/components/code_executor/_func_with_reqs.py
++++ b/python/packages/autogen-core/src/autogen_core/components/code_executor/_func_with_reqs.py
+@@ -36,11 +36,19 @@ class Alias:
+ 
+ 
+ @deprecated("Moved to autogen_core.code_executor.ImportFromModule. This alias will be removed in 0.4.0.")
+-@dataclass
++@dataclass(eq=True, frozen=True)
+ class ImportFromModule:
+     module: str
+     imports: List[Union[str, Alias]]  # type: ignore
+ 
++    def __hash__(self):
++        return hash((self.module, tuple(self.imports)))
++
++    def __eq__(self, other):
++        if isinstance(other, ImportFromModule):
++            return self.module == other.module and self.imports == other.imports
++        return False
++
+ 
+ Import = Union[str, ImportFromModule, Alias]  # type: ignore

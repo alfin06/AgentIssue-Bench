@@ -1,0 +1,27 @@
+diff --git a/lagent/llms/huggingface.py b/lagent/llms/huggingface.py
+index 272a8b4..fb71c57 100644
+--- a/lagent/llms/huggingface.py
++++ b/lagent/llms/huggingface.py
+@@ -173,10 +173,7 @@ class HFTransformer(BaseModel):
+             generation_config.update(**kwargs)
+             model_kwargs = generation_config.to_dict()
+             model_kwargs['attention_mask'] = attention_mask
+-            _, eos_token_id = (  # noqa: F841  # pylint: disable=W0612
+-                generation_config.bos_token_id,
+-                generation_config.eos_token_id,
+-            )
++            eos_token_id = generation_config.eos_token_id if generation_config.eos_token_id is not None else []
+             if eos_token_id is None:
+                 if self.gcfg.eos_token_id is not None:
+                     eos_token_id = self.gcfg.eos_token_id
+@@ -186,8 +183,8 @@ class HFTransformer(BaseModel):
+                 eos_token_id = [eos_token_id]
+             if self.additional_eos_token_id is not None:
+                 eos_token_id.extend(self.additional_eos_token_id)
+-            eos_token_id_tensor = torch.tensor(eos_token_id).to(
+-                input_ids.device) if eos_token_id is not None else None
++            eos_token_id_tensor = torch.tensor(eos_token_id).to(input_ids.device) if eos_token_id else None
++            generation_config._eos_token_tensor = eos_token_id_tensor  # Manually set the attribute if necessary
+             generation_config.max_length = (
+                 generation_config.max_new_tokens + input_ids_seq_length)
+             # Set generation parameters if not already defined

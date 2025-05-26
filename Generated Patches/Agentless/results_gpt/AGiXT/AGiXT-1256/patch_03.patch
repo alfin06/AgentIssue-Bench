@@ -1,0 +1,61 @@
+diff --git a/agixt/Agent.py b/agixt/Agent.py
+index 8b81be9..f692238 100644
+--- a/agixt/Agent.py
++++ b/agixt/Agent.py
+@@ -81,9 +81,14 @@ def add_agent(agent_name, provider_settings=None, commands=None, user=DEFAULT_US
+         for command_name, enabled in commands.items():
+             command = session.query(Command).filter_by(name=command_name).first()
+             if command:
+-                agent_command = AgentCommand(
+-                    agent_id=agent.id, command_id=command.id, state=enabled
+-                )
++                if enabled:
++                    agent_command = AgentCommand(
++                        agent_id=agent.id, command_id=command.id, state=True
++                    )
++                else:
++                    agent_command = AgentCommand(
++                        agent_id=agent.id, command_id=command.id, state=False
++                    )
+                 session.add(agent_command)
+     session.commit()
+     session.close()
+@@ -499,20 +504,17 @@ class Agent:
+                 session.close()
+                 return f"Agent {self.agent_name} configuration updated successfully."
+         if config_key == "commands":
+-            for command_name, enabled in new_config.items():
++            commands = new_config.get('commands', {})
++            for command_name, enabled in commands.items():
+                 command = session.query(Command).filter_by(name=command_name).first()
+                 if command:
+-                    agent_command = (
+-                        session.query(AgentCommand)
+-                        .filter_by(agent_id=agent.id, command_id=command.id)
+-                        .first()
+-                    )
++                    agent_command = session.query(AgentCommand).filter_by(
++                        agent_id=agent.id, command_id=command.id).first()
+                     if agent_command:
+                         agent_command.state = enabled
+                     else:
+                         agent_command = AgentCommand(
+-                            agent_id=agent.id, command_id=command.id, state=enabled
+-                        )
++                            agent_id=agent.id, command_id=command.id, state=enabled)
+                         session.add(agent_command)
+         else:
+             for setting_name, setting_value in new_config.items():
+diff --git a/agixt/DB.py b/agixt/DB.py
+index 8116c41..d66b103 100644
+--- a/agixt/DB.py
++++ b/agixt/DB.py
+@@ -279,7 +279,7 @@ class AgentCommand(Base):
+         nullable=False,
+     )
+     state = Column(Boolean, nullable=False)
+-    command = relationship("Command")  # Add this line to define the relationship
++    command = relationship("Command", backref="agent_commands")  # Correct relationship definition
+ 
+ 
+ class Conversation(Base):

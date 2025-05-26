@@ -1,0 +1,35 @@
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..e3f539e
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1,28 @@
++import sys
++from pathlib import Path
++from gpt_engineer.core.default.steps import handle_improve_mode
++from gpt_engineer.core.files_dict import FilesDict
++from gpt_engineer.core.prompt import Prompt
++from gpt_engineer.core.default.disk_memory import DiskMemory
++from gpt_engineer.core.default.simple_agent import SimpleAgent
++
++# Simulate the environment
++memory_path = Path("/tmp/memory")
++memory = DiskMemory(memory_path)
++agent = SimpleAgent(memory)
++
++# Create a mock files_dict without the required YAML file
++files_dict = FilesDict({
++    "src/main/resources/application-local.yml": "local config content",
++})
++
++# Create a mock prompt
++prompt = Prompt("Improve the project to include stage and local environment YAML files.")
++
++# Call the function to reproduce the error
++try:
++    handle_improve_mode(prompt, agent, memory, files_dict)
++except KeyError as e:
++    print(f"Caught KeyError: {e}")
++except Exception as e:
++    print(f"Caught Exception: {e}")
+\ No newline at end of file

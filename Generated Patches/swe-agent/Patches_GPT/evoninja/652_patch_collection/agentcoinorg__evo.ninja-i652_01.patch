@@ -1,0 +1,36 @@
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..2475aae
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1,29 @@
++from playwright.sync_api import sync_playwright
++
++def test_example_prompt():
++    with sync_playwright() as p:
++        browser = p.chromium.launch(headless=False)
++        context = browser.new_context()
++        page = context.new_page()
++
++        # Step 1: Navigate to the application
++        page.goto("http://localhost:3000")
++
++        # Step 2: Select an existing chat
++        page.click("text=Existing Chat")
++
++        # Step 3: Navigate to the root
++        page.click("text=Root")
++
++        # Step 4: Click an example prompt
++        page.click("text=Example Prompt")
++
++        # Verify if workspace files are applied
++        workspace_files = page.evaluate("() => window.workspaceFiles")
++        print("Workspace Files:", workspace_files)
++
++        # Close the browser
++        browser.close()
++
++if __name__ == "__main__":
++    test_example_prompt()
+\ No newline at end of file

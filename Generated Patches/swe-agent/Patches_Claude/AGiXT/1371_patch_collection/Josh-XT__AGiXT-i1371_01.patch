@@ -1,0 +1,41 @@
+diff --git a/agixt/Chain.py b/agixt/Chain.py
+index da2647e..76a7315 100644
+--- a/agixt/Chain.py
++++ b/agixt/Chain.py
+@@ -77,16 +77,17 @@ class Chain:
+                 )
+ 
+             # Retrieve argument data for the step
++            # Query only the necessary columns to avoid unpacking issues
+             arguments = (
+-                session.query(Argument, ChainStepArgument)
++                session.query(Argument.name, ChainStepArgument.value)
+                 .join(ChainStepArgument, ChainStepArgument.argument_id == Argument.id)
+                 .filter(ChainStepArgument.chain_step_id == step.id)
+                 .all()
+             )
+ 
+             prompt_args = {}
+-            for argument, chain_step_argument in arguments:
+-                prompt_args[argument.name] = chain_step_argument.value
++            for arg_name, arg_value in arguments:
++                prompt_args[arg_name] = arg_value
+ 
+             prompt.update(prompt_args)
+ 
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..a80af06
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1,9 @@
++from agixt.Chain import Chain
++
++def test_get_chain():
++    chain = Chain(user="test_user")
++    chain_data = chain.get_chain(chain_name="Another Chain")
++    print("Chain data:", chain_data)
++
++if __name__ == "__main__":
++    test_get_chain()
+\ No newline at end of file

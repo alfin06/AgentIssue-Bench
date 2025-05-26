@@ -1,0 +1,13 @@
+diff --git a/agixt/Websearch.py b/agixt/Websearch.py
+index f6dbe52..8b475cf 100644
+--- a/agixt/Websearch.py
++++ b/agixt/Websearch.py
+@@ -233,7 +233,7 @@ class Websearch:
+                     logging.info(f"Browsing link: {link}")
+                     self.browsed_links.append(link)
+                     text_content, link_list = await self.get_web_content(url=link)
+-                    if int(search_depth) > 0:
++                    if search_depth > 0:
+                         if link_list is not None and len(link_list) > 0:
+                             i = 0
+                             for sublink in link_list:

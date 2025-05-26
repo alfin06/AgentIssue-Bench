@@ -1,0 +1,23 @@
+diff --git a/src/reproduce_error.py b/src/reproduce_error.py
+new file mode 100644
+index 0000000..69c88a7
+--- /dev/null
++++ b/src/reproduce_error.py
+@@ -0,0 +1,16 @@
++from crewai.memory.storage.rag_storage import RAGStorage
++from crewai.utilities.paths import db_storage_path
++import os
++
++# Create a test instance of RAGStorage
++rag_storage = RAGStorage(type="short_term", allow_reset=True)
++
++# Ensure the directory exists for testing
++os.makedirs(f"{db_storage_path()}/short_term", exist_ok=True)
++
++try:
++    # Call the reset method to reproduce the error
++    rag_storage.reset()
++    print("Reset successful.")
++except Exception as e:
++    print(f"Error during reset: {e}")
+\ No newline at end of file

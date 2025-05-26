@@ -1,0 +1,79 @@
+diff --git a/apps/cli/src/cli.ts b/apps/cli/src/cli.ts
+index 9af65fb..4a0d935 100644
+--- a/apps/cli/src/cli.ts
++++ b/apps/cli/src/cli.ts
+@@ -5,10 +5,12 @@ import { program } from "commander";
+ 
+ export async function cli(): Promise<void> {
+   program
+-    .option("-s, --session <name>")
+-    .option("-t, --timeout <seconds>")
+-    .option("-r, --root <path>")
+-    .option("-d, --debug")
++    .option("-s, --session <n>", "Session name for storing logs and workspace files")
++    .option("-t, --timeout <seconds>", "Timeout in seconds for each goal")
++    .option("-r, --root <path>", "Root directory path")
++    .option("-d, --debug", "Enable debug mode")
++    .option("-c, --continuous", "Enable continuous mode to chain multiple goals")
++    .option("--preserve-context", "Preserve context between goals in continuous mode")
+     .parse();
+ 
+   const options = program.opts();
+@@ -77,18 +79,36 @@ export async function cli(): Promise<void> {
+   await app.evo.init();
+   while (true) {
+     if (!goal) {
+-      goal = await app.logger.prompt("Enter your goal");
++      goal = await app.logger.prompt(goalCounter === 0 ? "Enter your goal" : "Enter your next goal (or 'exit' to quit)");
+     } else if (goalCounter === 0) {
+       await app.fileLogger.info("# User\n **Enter your goal:** " + goal);
+     } else {
+-      goal = await app.logger.prompt("Enter another goal");
+-      app.evo.reset();
++      goal = await app.logger.prompt("Enter another goal (or 'exit' to quit)");
+     }
+ 
+     if (!goal || goal.toLocaleLowerCase() === "exit") break;
+ 
+     ++goalCounter;
+     await handleGoal(goal);
++
++    // If not in continuous mode and we've handled the first goal, exit
++    if (!options.continuous && goalCounter > 0) {
++      break;
++    }
++
++    // Reset context between goals unless preserve-context is enabled
++    if (!options.preserveContext) {
++      app.evo.reset();
++    }
++
++    // Clear the goal for the next iteration
++    goal = undefined;
++
++    // Add a visual separator between goals
++    if (options.continuous) {
++      await app.logger.info("\n----------------------------------------\n");
++      await app.logger.info("Goal completed! Ready for the next goal.\n");
++    }
+   }
+ 
+   return Promise.resolve();
+@@ -101,4 +121,4 @@ cli()
+   .catch((err) => {
+     console.error(err);
+     process.abort();
+-  });
++  });
+\ No newline at end of file
+diff --git a/test_continuous.ts b/test_continuous.ts
+new file mode 100644
+index 0000000..561b85e
+--- /dev/null
++++ b/test_continuous.ts
+@@ -0,0 +1,4 @@
++import { cli } from "./apps/cli/src/cli";
++
++// This is just a placeholder - the actual CLI will be run from the command line
++cli().catch(console.error);
+\ No newline at end of file

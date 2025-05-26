@@ -1,0 +1,12 @@
+diff --git a/metagpt/schema.py b/metagpt/schema.py
+index 071518d6..4016e336 100644
+--- a/metagpt/schema.py
++++ b/metagpt/schema.py
+@@ -195,6 +195,7 @@ class Message(BaseModel):
+     cause_by: str = Field(default="", validate_default=True)
+     sent_from: str = Field(default="", validate_default=True)
+     send_to: set[str] = Field(default={MESSAGE_ROUTE_TO_ALL}, validate_default=True)
++    restricted_to: Optional[set[str]] = Field(default=None, validate_default=True)
+ 
+     @field_validator("id", mode="before")
+     @classmethod

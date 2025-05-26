@@ -1,0 +1,29 @@
+diff --git a/agixt/extensions/voice_chat.py b/agixt/extensions/voice_chat.py
+new file mode 100644
+index 0000000..3a40abd
+--- /dev/null
++++ b/agixt/extensions/voice_chat.py
+@@ -0,0 +1,6 @@
++class VoiceChat:
++    def __init__(self, **kwargs):
++        if kwargs["USE_STREAMLABS_TTS"].lower() == "true":
++            print("Using Streamlabs TTS")
++        else:
++            print("Not using Streamlabs TTS")
+\ No newline at end of file
+diff --git a/test_voice_chat.py b/test_voice_chat.py
+new file mode 100644
+index 0000000..a4b7484
+--- /dev/null
++++ b/test_voice_chat.py
+@@ -0,0 +1,9 @@
++from agixt.extensions.voice_chat import VoiceChat
++
++# Test with string value - should work
++print("Testing with string value:")
++vc = VoiceChat(USE_STREAMLABS_TTS="true")
++
++# Test with boolean value - should fail
++print("\nTesting with boolean value:")
++vc = VoiceChat(USE_STREAMLABS_TTS=True)
+\ No newline at end of file

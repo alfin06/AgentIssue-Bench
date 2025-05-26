@@ -1,0 +1,44 @@
+diff --git a/libs/ui/Dockerfile b/libs/ui/Dockerfile
+index b5a9c34..04ba1fe 100644
+--- a/libs/ui/Dockerfile
++++ b/libs/ui/Dockerfile
+@@ -31,7 +31,13 @@ RUN apt-get update && apt-get install -y \
+     libvips-dev \
+     libfftw3-dev \
+     build-essential \
+-    python3
++    python3 \
++    curl
++
++# Install Supabase CLI
++RUN curl -L https://github.com/supabase/cli/releases/download/v1.127.0/supabase_1.127.0_linux_amd64.deb -o supabase.deb \
++    && dpkg -i supabase.deb \
++    && rm supabase.deb
+ 
+ # Set working directory
+ WORKDIR /app
+@@ -50,7 +56,10 @@ RUN npm run build
+ FROM node:18-buster AS runner
+ 
+ # Install bash and netcat in the runner stage
+-RUN apt-get update && apt-get install -y bash netcat-openbsd libvips-dev libfftw3-dev build-essential python3
++RUN apt-get update && apt-get install -y bash netcat-openbsd libvips-dev libfftw3-dev build-essential python3 curl \
++    && curl -L https://github.com/supabase/cli/releases/download/v1.127.0/supabase_1.127.0_linux_amd64.deb -o supabase.deb \
++    && dpkg -i supabase.deb \
++    && rm supabase.deb
+ 
+ # Set environment variables
+ ENV NODE_ENV production
+diff --git a/libs/ui/package.json b/libs/ui/package.json
+index e5769d0..797f4b9 100644
+--- a/libs/ui/package.json
++++ b/libs/ui/package.json
+@@ -18,7 +18,7 @@
+     "supabase:cloud:login": "npx supabase login",
+     "supabase:cloud:link": "npx supabase link",
+     "supabase:cloud:push": "npx supabase db push",
+-    "supabase:docker:push": "npx supabase db push --db-url ${SUPABASE_DB_URL}",
++    "supabase:docker:push": "supabase db push --db-url ${SUPABASE_DB_URL}",
+     "stripe:listen": "stripe listen --forward-to http://localhost:3000/api/stripe/webhook"
+   },
+   "dependencies": {

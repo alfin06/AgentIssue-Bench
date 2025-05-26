@@ -1,0 +1,25 @@
+diff --git a/src/crewai/memory/storage/mem0_storage.py b/src/crewai/memory/storage/mem0_storage.py
+index 34aab971..6349a8a0 100644
+--- a/src/crewai/memory/storage/mem0_storage.py
++++ b/src/crewai/memory/storage/mem0_storage.py
+@@ -102,3 +102,20 @@ class Mem0Storage(Storage):
+         agents = [self._sanitize_role(agent.role) for agent in agents]
+         agents = "_".join(agents)
+         return agents
++
++    def reset(self) -> None:
++        """
++        Reset/clear the memory based on memory type
++        """
++        if self.memory_type == "user":
++            user_id = self._get_user_id()
++            if user_id:
++                self.memory.clear(user_id=user_id)
++        elif self.memory_type == "short_term":
++            agent_name = self._get_agent_name()
++            self.memory.clear(agent_id=agent_name, metadata={"type": "short_term"})
++        elif self.memory_type == "long_term":
++            agent_name = self._get_agent_name()
++            self.memory.clear(agent_id=agent_name, metadata={"type": "long_term"})
++        elif self.memory_type == "entities":
++            self.memory.clear(metadata={"type": "entity"})

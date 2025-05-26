@@ -1,0 +1,22 @@
+diff --git a/src/crewai/project/crew_base.py b/src/crewai/project/crew_base.py
+index cf045ec..05726c1 100644
+--- a/src/crewai/project/crew_base.py
++++ b/src/crewai/project/crew_base.py
+@@ -34,8 +34,16 @@ def CrewBase(cls):
+ 
+         @staticmethod
+         def load_yaml(config_path: Path):
++            import chardet
++            
+             try:
+-                with open(config_path, "r") as file:
++                with open(config_path, "rb") as file:
++                    raw_data = file.read()
++                    detected_encoding = chardet.detect(raw_data)['encoding']
++                    if detected_encoding is None:
++                        detected_encoding = 'utf-8'  # default to utf-8 if detection fails
++                
++                with open(config_path, "r", encoding=detected_encoding) as file:
+                     return yaml.safe_load(file)
+             except FileNotFoundError:
+                 print(f"File not found: {config_path}")

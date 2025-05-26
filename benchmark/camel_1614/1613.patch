@@ -1,0 +1,324 @@
+From 5c6baa40d2d8d4fb8afe8c562a7692b56031fbb9 Mon Sep 17 00:00:00 2001
+From: Wendong <w3ndong.fan@gmail.com>
+Date: Sat, 15 Feb 2025 22:01:21 +0800
+Subject: [PATCH 1/2] fix: Remove <think> content before in model request
+
+---
+ camel/models/base_model.py     | 55 ++++++++++++++++++++-
+ camel/models/deepseek_model.py | 18 -------
+ test/models/test_base_model.py | 89 ++++++++++++++++++++++++++++++++++
+ 3 files changed, 143 insertions(+), 19 deletions(-)
+ create mode 100644 test/models/test_base_model.py
+
+diff --git a/camel/models/base_model.py b/camel/models/base_model.py
+index 37e9d40616..44ae647202 100644
+--- a/camel/models/base_model.py
++++ b/camel/models/base_model.py
+@@ -11,6 +11,8 @@
+ # See the License for the specific language governing permissions and
+ # limitations under the License.
+ # ========= Copyright 2023-2024 @ CAMEL-AI.org. All Rights Reserved. =========
++import abc
++import re
+ from abc import ABC, abstractmethod
+ from typing import Any, Dict, List, Optional, Union
+ 
+@@ -27,7 +29,30 @@
+ from camel.utils import BaseTokenCounter
+ 
+ 
+-class BaseModelBackend(ABC):
++class ModelBackendMeta(abc.ABCMeta):
++    r"""Metaclass that automatically preprocesses messages in run method.
++
++    Automatically wraps the run method of any class inheriting from
++    BaseModelBackend to preprocess messages (remove <think> tags) before they
++    are sent to the model.
++    """
++
++    def __new__(mcs, name, bases, namespace):
++        r"""Wraps run method with preprocessing if it exists in the class."""
++        if 'run' in namespace:
++            original_run = namespace['run']
++
++            def wrapped_run(
++                self, messages: List[OpenAIMessage], *args, **kwargs
++            ):
++                messages = self.preprocess_messages(messages)
++                return original_run(self, messages, *args, **kwargs)
++
++            namespace['run'] = wrapped_run
++        return super().__new__(mcs, name, bases, namespace)
++
++
++class BaseModelBackend(ABC, metaclass=ModelBackendMeta):
+     r"""Base class for different model backends.
+     It may be OpenAI API, a local LLM, a stub for unit tests, etc.
+ 
+@@ -73,6 +98,34 @@ def token_counter(self) -> BaseTokenCounter:
+         """
+         pass
+ 
++    def preprocess_messages(
++        self, messages: List[OpenAIMessage]
++    ) -> List[OpenAIMessage]:
++        r"""Preprocess messages before sending to model API.
++        Removes thinking content and other model-specific preprocessing.
++
++        Args:
++            messages (List[OpenAIMessage]): Original messages
++
++        Returns:
++            List[OpenAIMessage]: Preprocessed messages
++        """
++        # Remove thinking content from messages before sending to API
++        # This ensures only the final response is sent, excluding
++        # intermediate thought processes
++        return [
++            {  # type: ignore[misc]
++                **msg,
++                'content': re.sub(
++                    r'<think>.*?</think>',
++                    '',
++                    msg['content'],  # type: ignore[arg-type]
++                    flags=re.DOTALL,
++                ).strip(),
++            }
++            for msg in messages
++        ]
++
+     @abstractmethod
+     def run(
+         self,
+diff --git a/camel/models/deepseek_model.py b/camel/models/deepseek_model.py
+index 40375749f1..56b6947422 100644
+--- a/camel/models/deepseek_model.py
++++ b/camel/models/deepseek_model.py
+@@ -118,8 +118,6 @@ def run(
+         if self.model_type in [
+             ModelType.DEEPSEEK_REASONER,
+         ]:
+-            import re
+-
+             logger.warning(
+                 "You are using a DeepSeek Reasoner model, "
+                 "which has certain limitations, reference: "
+@@ -141,22 +139,6 @@ def run(
+                 if key in self.model_config_dict:
+                     del self.model_config_dict[key]
+ 
+-            # Remove thinking content from messages before sending to API
+-            # This ensures only the final response is sent, excluding
+-            # intermediate thought processes
+-            messages = [
+-                {  # type: ignore[misc]
+-                    **msg,
+-                    'content': re.sub(
+-                        r'<think>.*?</think>',
+-                        '',
+-                        msg['content'],  # type: ignore[arg-type]
+-                        flags=re.DOTALL,
+-                    ).strip(),
+-                }
+-                for msg in messages
+-            ]
+-
+         response = self._client.chat.completions.create(
+             messages=messages,
+             model=self.model_type,
+diff --git a/test/models/test_base_model.py b/test/models/test_base_model.py
+new file mode 100644
+index 0000000000..f84b7b1e1e
+--- /dev/null
++++ b/test/models/test_base_model.py
+@@ -0,0 +1,89 @@
++# ========= Copyright 2023-2024 @ CAMEL-AI.org. All Rights Reserved. =========
++# Licensed under the Apache License, Version 2.0 (the "License");
++# you may not use this file except in compliance with the License.
++# You may obtain a copy of the License at
++#
++#     http://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing, software
++# distributed under the License is distributed on an "AS IS" BASIS,
++# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++# See the License for the specific language governing permissions and
++# limitations under the License.
++# ========= Copyright 2023-2024 @ CAMEL-AI.org. All Rights Reserved. =========
++
++
++from camel.models import BaseModelBackend
++from camel.types import ModelType
++
++
++class TestBaseModelBackend:
++    r"""Unit tests for the BaseModelBackend class."""
++
++    def test_preprocess_messages(self):
++        r"""Test message preprocessing removes thinking content correctly."""
++
++        class DummyModel(BaseModelBackend):
++            @property
++            def token_counter(self):
++                pass
++
++            def run(self, messages):
++                pass
++
++            def check_model_config(self):
++                pass
++
++        model = DummyModel(ModelType.GPT_4O_MINI)
++
++        # Test basic thinking removal
++        messages = [
++            {
++                'role': 'user',
++                'content': 'Hello <think>thinking about response</think> '
++                'world',
++            },
++            {
++                'role': 'assistant',
++                'content': '<think>Let me think...\nThinking more...</'
++                'think>Response',
++            },
++        ]
++
++        processed = model.preprocess_messages(messages)
++        assert len(processed) == 2
++        assert processed[0]['content'] == 'Hello  world'
++        assert processed[1]['content'] == 'Response'
++
++        # Test message without thinking tags
++        messages = [{'role': 'user', 'content': 'plain message'}]
++        processed = model.preprocess_messages(messages)
++        assert processed[0]['content'] == 'plain message'
++
++    def test_metaclass_preprocessing(self):
++        r"""Test that metaclass automatically preprocesses messages in run
++        method."""
++        processed_messages = None
++
++        class TestModel(BaseModelBackend):
++            @property
++            def token_counter(self):
++                pass
++
++            def run(self, messages):
++                nonlocal processed_messages
++                processed_messages = messages
++                return None
++
++            def check_model_config(self):
++                pass
++
++        model = TestModel(ModelType.GPT_4O_MINI)
++        messages = [
++            {'role': 'user', 'content': 'Hello <think>hi</think> world'}
++        ]
++
++        # Call run method and verify messages were preprocessed
++        model.run(messages)
++        assert processed_messages is not None
++        assert processed_messages[0]['content'] == 'Hello  world'
+
+From e8908db1f89b4cfe15c5cc249c9fa4ad319f4e89 Mon Sep 17 00:00:00 2001
+From: Wendong <w3ndong.fan@gmail.com>
+Date: Sat, 15 Feb 2025 22:16:28 +0800
+Subject: [PATCH 2/2] release new version
+
+---
+ .github/ISSUE_TEMPLATE/bug_report.yml | 2 +-
+ camel/__init__.py                     | 2 +-
+ docs/conf.py                          | 2 +-
+ docs/get_started/installation.md      | 2 +-
+ docs/key_modules/loaders.md           | 4 ++--
+ pyproject.toml                        | 2 +-
+ 6 files changed, 7 insertions(+), 7 deletions(-)
+
+diff --git a/.github/ISSUE_TEMPLATE/bug_report.yml b/.github/ISSUE_TEMPLATE/bug_report.yml
+index 75924e6890..227c4e9748 100644
+--- a/.github/ISSUE_TEMPLATE/bug_report.yml
++++ b/.github/ISSUE_TEMPLATE/bug_report.yml
+@@ -26,7 +26,7 @@ body:
+     attributes:
+       label: What version of camel are you using?
+       description: Run command `python3 -c 'print(__import__("camel").__version__)'` in your shell and paste the output here.
+-      placeholder: E.g., 0.2.21
++      placeholder: E.g., 0.2.22
+     validations:
+       required: true
+ 
+diff --git a/camel/__init__.py b/camel/__init__.py
+index 77b1760a77..8cb8df7f02 100644
+--- a/camel/__init__.py
++++ b/camel/__init__.py
+@@ -14,7 +14,7 @@
+ 
+ from camel.logger import disable_logging, enable_logging, set_log_level
+ 
+-__version__ = '0.2.21'
++__version__ = '0.2.22'
+ 
+ __all__ = [
+     '__version__',
+diff --git a/docs/conf.py b/docs/conf.py
+index f767aa6e36..fdf039a8f4 100644
+--- a/docs/conf.py
++++ b/docs/conf.py
+@@ -27,7 +27,7 @@
+ project = 'CAMEL'
+ copyright = '2024, CAMEL-AI.org'
+ author = 'CAMEL-AI.org'
+-release = '0.2.21'
++release = '0.2.22'
+ 
+ html_favicon = (
+     'https://raw.githubusercontent.com/camel-ai/camel/master/misc/favicon.png'
+diff --git a/docs/get_started/installation.md b/docs/get_started/installation.md
+index a978ca460a..c85311ec36 100644
+--- a/docs/get_started/installation.md
++++ b/docs/get_started/installation.md
+@@ -60,7 +60,7 @@ conda create --name camel python=3.10
+ conda activate camel
+ 
+ # Clone github repo
+-git clone -b v0.2.21 https://github.com/camel-ai/camel.git
++git clone -b v0.2.22 https://github.com/camel-ai/camel.git
+ 
+ # Change directory into project directory
+ cd camel
+diff --git a/docs/key_modules/loaders.md b/docs/key_modules/loaders.md
+index 0a74d9614a..371a70c7d6 100644
+--- a/docs/key_modules/loaders.md
++++ b/docs/key_modules/loaders.md
+@@ -340,14 +340,14 @@ response = jina_reader.read_content("https://docs.camel-ai.org/")
+ print(response)
+ ```
+ ```markdown
+->>>Welcome to CAMEL’s documentation! — CAMEL 0.2.21 documentation
++>>>Welcome to CAMEL’s documentation! — CAMEL 0.2.22 documentation
+ ===============
+ 
+ [Skip to main content](https://docs.camel-ai.org/#main-content)
+ 
+ Back to top Ctrl+K
+ 
+- [![Image 1](https://raw.githubusercontent.com/camel-ai/camel/master/misc/logo_light.png) ![Image 2](https://raw.githubusercontent.com/camel-ai/camel/master/misc/logo_light.png)CAMEL 0.2.21](https://docs.camel-ai.org/#)
++ [![Image 1](https://raw.githubusercontent.com/camel-ai/camel/master/misc/logo_light.png) ![Image 2](https://raw.githubusercontent.com/camel-ai/camel/master/misc/logo_light.png)CAMEL 0.2.22](https://docs.camel-ai.org/#)
+ 
+ Search Ctrl+K
+ 
+diff --git a/pyproject.toml b/pyproject.toml
+index 5d6d679fe9..7f42d885da 100644
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
+ 
+ [tool.poetry]
+ name = "camel-ai"
+-version = "0.2.21"
++version = "0.2.22"
+ authors = ["CAMEL-AI.org"]
+ description = "Communicative Agents for AI Society Study"
+ readme = "README.md"

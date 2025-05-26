@@ -1,0 +1,21 @@
+diff --git a/gpt_engineer/core/chat_to_files.py b/gpt_engineer/core/chat_to_files.py
+index 7459bf3..604602d 100644
+--- a/gpt_engineer/core/chat_to_files.py
++++ b/gpt_engineer/core/chat_to_files.py
+@@ -138,13 +138,14 @@ def parse_diffs(diff_string: str) -> dict:
+ 
+     diffs = {}
+     try:
+-        for block in diff_block_pattern.finditer(diff_string, timeout=1):
++        for block in diff_block_pattern.finditer(diff_string, timeout=30):
+             diff_block = block.group()
+ 
+             # Parse individual diff blocks and update the diffs dictionary
+             diffs.update(parse_diff_block(diff_block))
+     except TimeoutError:
+-        print("gpt-engineer timed out while parsing git diff")
++        print("gpt-engineer timed out while parsing git diff - diff may be too large or complex")
++        print("Returning partial results that were successfully parsed")
+ 
+     if not diffs:
+         print(

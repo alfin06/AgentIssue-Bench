@@ -1,0 +1,34 @@
+diff --git a/python/packages/autogen-core/src/autogen_core/components/code_executor/_func_with_reqs.py b/python/packages/autogen-core/src/autogen_core/components/code_executor/_func_with_reqs.py
+index 98c39518e..6cf8e33ea 100644
+--- a/python/packages/autogen-core/src/autogen_core/components/code_executor/_func_with_reqs.py
++++ b/python/packages/autogen-core/src/autogen_core/components/code_executor/_func_with_reqs.py
+@@ -34,6 +34,14 @@ class Alias:
+     name: str
+     alias: str
+ 
++    def __eq__(self, other):
++        if not isinstance(other, Alias):
++            return NotImplemented
++        return self.name == other.name and self.alias == other.alias
++
++    def __hash__(self):
++        return hash((self.name, self.alias))
++
+ 
+ @deprecated("Moved to autogen_core.code_executor.ImportFromModule. This alias will be removed in 0.4.0.")
+ @dataclass
+@@ -41,6 +49,14 @@ class ImportFromModule:
+     module: str
+     imports: List[Union[str, Alias]]  # type: ignore
+ 
++    def __eq__(self, other):
++        if not isinstance(other, ImportFromModule):
++            return NotImplemented
++        return self.module == other.module and self.imports == other.imports
++
++    def __hash__(self):
++        return hash((self.module, tuple(self.imports)))
++
+ 
+ Import = Union[str, ImportFromModule, Alias]  # type: ignore
+ 

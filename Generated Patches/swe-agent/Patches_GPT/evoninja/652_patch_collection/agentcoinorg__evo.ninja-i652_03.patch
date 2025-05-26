@@ -1,0 +1,43 @@
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..23c7574
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1,37 @@
++# This script simulates the steps to reproduce the error described in the PR.
++
++# Import necessary modules
++import time
++
++# Simulate selecting an existing chat with a goal
++def select_existing_chat():
++    print("Selecting existing chat with a goal...")
++    time.sleep(1)  # Simulate delay
++
++# Simulate navigating to the root
++def navigate_to_root():
++    print("Navigating to the root...")
++    time.sleep(1)  # Simulate delay
++
++# Simulate clicking an example prompt
++def click_example_prompt():
++    print("Clicking an example prompt...")
++    time.sleep(1)  # Simulate delay
++
++# Simulate checking if workspace files are properly applied
++def check_workspace_files():
++    print("Checking if workspace files are properly applied...")
++    time.sleep(1)  # Simulate delay
++    # Here we would check the actual state of the workspace files
++    # For now, we'll just print a message indicating the check
++    print("Workspace files are not properly applied!")
++
++# Main function to run the simulation
++def main():
++    select_existing_chat()
++    navigate_to_root()
++    click_example_prompt()
++    check_workspace_files()
++
++if __name__ == "__main__":
++    main()

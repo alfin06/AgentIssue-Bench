@@ -1,0 +1,17 @@
+diff --git a/lagent/llms/huggingface.py b/lagent/llms/huggingface.py
+index ce4982f..da6348d 100644
+--- a/lagent/llms/huggingface.py
++++ b/lagent/llms/huggingface.py
+@@ -89,7 +89,12 @@ class HFTransformer(BaseModel):
+                 self.tokenizer.pad_token = self.tokenizer.eos_token
+             else:
+                 from transformers.generation import GenerationConfig
++                import torch
+                 self.gcfg = GenerationConfig.from_pretrained(path)
++                # Set eos_token_tensor to avoid attribute error
++                eos_token_id = self.tokenizer.eos_token_id if self.tokenizer.eos_token_id is not None else self.gcfg.eos_token_id
++                if eos_token_id is not None:
++                    self.gcfg._eos_token_tensor = torch.tensor([eos_token_id])
+ 
+                 if self.gcfg.pad_token_id is not None:
+                     logger.warning(

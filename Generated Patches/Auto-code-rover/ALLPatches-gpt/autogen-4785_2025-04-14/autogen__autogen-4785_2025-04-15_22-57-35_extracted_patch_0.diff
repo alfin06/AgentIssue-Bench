@@ -1,0 +1,16 @@
+diff --git a/python/packages/autogen-ext/src/autogen_ext/models/openai/_model_info.py b/python/packages/autogen-ext/src/autogen_ext/models/openai/_model_info.py
+index 43ca65ac7..eb395bd10 100644
+--- a/python/packages/autogen-ext/src/autogen_ext/models/openai/_model_info.py
++++ b/python/packages/autogen-ext/src/autogen_ext/models/openai/_model_info.py
+@@ -128,7 +128,10 @@ def resolve_model(model: str) -> str:
+ 
+ def get_capabilities(model: str) -> ModelCapabilities:
+     resolved_model = resolve_model(model)
+-    return _MODEL_CAPABILITIES[resolved_model]
++    if resolved_model in _MODEL_CAPABILITIES:
++        return _MODEL_CAPABILITIES[resolved_model]
++    else:
++        raise KeyError(f"Model capabilities for '{resolved_model}' not found in _MODEL_CAPABILITIES")
+ 
+ 
+ def get_token_limit(model: str) -> int:

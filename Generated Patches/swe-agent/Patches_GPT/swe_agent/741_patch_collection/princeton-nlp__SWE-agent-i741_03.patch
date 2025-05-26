@@ -1,0 +1,15 @@
+diff --git a/setup.py b/setup.py
+new file mode 100644
+index 0000000..5c14359
+--- /dev/null
++++ b/setup.py
+@@ -0,0 +1,8 @@
++from setuptools import setup, find_packages
++
++setup(
++    name='sweagent',
++    version='0.1',
++    packages=find_packages(),
++    include_package_data=True,
++)
+\ No newline at end of file

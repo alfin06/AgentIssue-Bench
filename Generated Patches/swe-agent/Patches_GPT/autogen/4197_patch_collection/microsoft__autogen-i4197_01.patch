@@ -1,0 +1,85 @@
+diff --git a/python/counter.py b/python/counter.py
+new file mode 100644
+index 0000000..f0522f1
+--- /dev/null
++++ b/python/counter.py
+@@ -0,0 +1,57 @@
++from typing import AsyncGenerator, List, Sequence
++
++from autogen_agentchat.agents import BaseChatAgent
++from autogen_agentchat.base import Response
++from autogen_agentchat.messages import AgentMessage, ChatMessage, TextMessage
++import asyncio
++from autogen_core import CancellationToken
++
++
++class CountDownAgent(BaseChatAgent):
++    def __init__(self, name: str, count: int = 3):
++        super().__init__(name, "A simple agent that counts down.")
++        self._count = count
++
++    @property
++    def produced_message_types(self) -> List[type[ChatMessage]]:
++        return [TextMessage]
++
++    async def on_messages(self, messages: Sequence[ChatMessage], cancellation_token: CancellationToken) -> Response:
++        # Calls the on_messages_stream.
++        response: Response | None = None
++        async for message in self.on_messages_stream(messages, cancellation_token):
++            if isinstance(message, Response):
++                response = message
++        assert response is not None
++        return response
++
++    async def on_messages_stream(
++        self, messages: Sequence[ChatMessage], cancellation_token: CancellationToken
++    ) -> AsyncGenerator[AgentMessage | Response, None]:
++        inner_messages: List[AgentMessage] = []
++        for i in range(self._count, 0, -1):
++            msg = TextMessage(content=f"{i}...", source=self.name)
++            inner_messages.append(msg)
++            yield msg
++        # The response is returned at the end of the stream.
++        # It contains the final message and all the inner messages.
++        yield Response(chat_message=TextMessage(content="Done!", source=self.name), inner_messages=inner_messages)
++
++    async def on_reset(self, cancellation_token: CancellationToken) -> None:
++        pass
++
++
++async def run_countdown_agent() -> None:
++    # Create a countdown agent.
++    countdown_agent = CountDownAgent("countdown")
++
++    # Run the agent with a given task and stream the response.
++    async for message in countdown_agent.on_messages_stream([], CancellationToken()):
++        if isinstance(message, Response):
++            print(message.chat_message.content)
++        else:
++            print(message.content)
++
++
++# Use asyncio.run(run_countdown_agent()) when running in a script.
++asyncio.run(run_countdown_agent())
+diff --git a/python/packages/autogen-agentchat/src/autogen_agentchat/__init__.py b/python/packages/autogen-agentchat/src/autogen_agentchat/__init__.py
+index c5bdfc2..0340642 100644
+--- a/python/packages/autogen-agentchat/src/autogen_agentchat/__init__.py
++++ b/python/packages/autogen-agentchat/src/autogen_agentchat/__init__.py
+@@ -11,4 +11,4 @@
+ EVENT_LOGGER_NAME = "autogen_agentchat.events"
+ """Logger name for event logs."""
+ 
+-__version__ = importlib.metadata.version("autogen_agentchat")
++__version__ = "0.0.0"
+diff --git a/python/packages/autogen-core/src/autogen_core/__init__.py b/python/packages/autogen-core/src/autogen_core/__init__.py
+index 0198544..2d9cc33 100644
+--- a/python/packages/autogen-core/src/autogen_core/__init__.py
++++ b/python/packages/autogen-core/src/autogen_core/__init__.py
+@@ -1,6 +1,6 @@
+ import importlib.metadata
+ 
+-__version__ = importlib.metadata.version("autogen_core")
++__version__ = "0.0.0"
+ 
+ from ._agent import Agent
+ from ._agent_id import AgentId

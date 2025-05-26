@@ -1,0 +1,44 @@
+diff --git a/camel/models/deepseek_model.py b/camel/models/deepseek_model.py
+index 40375749..626cdca7 100644
+--- a/camel/models/deepseek_model.py
++++ b/camel/models/deepseek_model.py
+@@ -155,6 +155,7 @@ class DeepSeekModel(BaseModelBackend):
+                     ).strip(),
+                 }
+                 for msg in messages
++                for msg in messages
+             ]
+ 
+         response = self._client.chat.completions.create(
+diff --git a/examples/models/deepseek_reasoner_model_example.py b/examples/models/deepseek_reasoner_model_example.py
+index a2bcffc0..9fd23e71 100644
+--- a/examples/models/deepseek_reasoner_model_example.py
++++ b/examples/models/deepseek_reasoner_model_example.py
+@@ -35,8 +35,13 @@ sys_msg = "You are a helpful assistant."
+ # Set agent
+ camel_agent = ChatAgent(system_message=sys_msg, model=model)
+ 
++import re
++
+ user_msg = """How many Rs are there in the word 'strawberry'?"""
+ 
++# Pre-process user messages to remove any <think> tags and their content
++user_msg = re.sub(r'<think>.*?</think>', '', user_msg, flags=re.DOTALL).strip()
++
+ # Get response information
+ response = camel_agent.step(user_msg)
+ print(response.msgs[0].content)
+diff --git a/examples/models/deepseek_reasoner_model_separate_answers.py b/examples/models/deepseek_reasoner_model_separate_answers.py
+index 96c6d4cd..c8ca51b3 100644
+--- a/examples/models/deepseek_reasoner_model_separate_answers.py
++++ b/examples/models/deepseek_reasoner_model_separate_answers.py
+@@ -39,6 +39,9 @@ camel_agent = ChatAgent(system_message=sys_msg, model=model)
+ 
+ user_msg = """Please explain in detail how the output sequence of transformer becomes longer"""
+ 
++# Pre-process user messages to remove any <think> tags and their content
++user_msg = re.sub(r'<think>.*?</think>', '', user_msg, flags=re.DOTALL).strip()
++
+ # Get response information
+ response = camel_agent.step(user_msg)
+ 

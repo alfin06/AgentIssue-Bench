@@ -1,0 +1,26 @@
+diff --git a/camel/models/deepseek_model.py b/camel/models/deepseek_model.py
+index 32c2102..11ae41b 100644
+--- a/camel/models/deepseek_model.py
++++ b/camel/models/deepseek_model.py
+@@ -163,7 +163,20 @@ class DeepSeekModel(BaseModelBackend):
+             **self.model_config_dict,
+         )
+ 
+-        # Handle reasoning content with <think> tags at the beginning
++        response_messages = [
++            {  # type: ignore[misc]
++                **msg,
++                'content': re.sub(
++                    r'<think>.*?</think>',
++                    '',
++                    msg['content'],  # type: ignore[arg-type]
++                    flags=re.DOTALL,
++                ).strip(),
++            }
++            for msg in response['messages']
++        ]
++
++        # Process response messages
+         if (
+             self.model_type
+             in [

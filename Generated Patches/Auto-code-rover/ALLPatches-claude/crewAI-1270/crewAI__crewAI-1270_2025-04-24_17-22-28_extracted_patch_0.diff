@@ -1,0 +1,13 @@
+diff --git a/src/crewai/agent.py b/src/crewai/agent.py
+index 0711c741..7471f520 100644
+--- a/src/crewai/agent.py
++++ b/src/crewai/agent.py
+@@ -83,7 +83,7 @@ class Agent(BaseAgent):
+     )
+     llm: Any = Field(
+         default_factory=lambda: ChatOpenAI(
+-            model=os.environ.get("OPENAI_MODEL_NAME", "gpt-4o")
++            model=os.environ.get("OPENAI_MODEL_NAME", "gpt-4o-mini")
+         ),
+         description="Language model that will run the agent.",
+     )

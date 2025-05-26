@@ -1,0 +1,69 @@
+diff --git a/camel/agents/chat_agent.py b/camel/agents/chat_agent.py
+index c2d6c66..c495a56 100644
+--- a/camel/agents/chat_agent.py
++++ b/camel/agents/chat_agent.py
+@@ -768,14 +768,17 @@ class ChatAgent(BaseAgent):
+         )
+ 
+     def _record_final_output(self, output_messages: List[BaseMessage]) -> None:
+-        r"""Log final messages or warnings about multiple responses."""
+-        if len(output_messages) == 1:
+-            self.record_message(output_messages[0])
+-        else:
+-            logger.warning(
++        r"""Log final messages or warnings about multiple responses.
++        
++        Note: Messages must be recorded manually using `record_message()` to ensure
++        consistent handling of both single and multiple message cases.
++        """
++        if len(output_messages) > 1:
++            logger.info(
+                 "Multiple messages returned in `step()`. Record "
+                 "selected message manually using `record_message()`."
+             )
++        # No automatic recording of messages - must be done manually by caller
+ 
+     def _get_model_response(
+         self,
+diff --git a/reproduce_issue.py b/reproduce_issue.py
+new file mode 100644
+index 0000000..d6e0765
+--- /dev/null
++++ b/reproduce_issue.py
+@@ -0,0 +1,35 @@
++from typing import List, Optional
++
++class SimpleMessage:
++    def __init__(self, role: str, content: str):
++        self.role = role
++        self.content = content
++
++class SimpleChatAgent:
++    def __init__(self):
++        self.messages = []
++        
++    def record_message(self, message: SimpleMessage) -> None:
++        self.messages.append(message)
++        
++    def _record_final_output(self, output_messages: List[SimpleMessage]) -> None:
++        if len(output_messages) == 1:
++            self.record_message(output_messages[0])
++        else:
++            print("WARNING: Multiple messages returned. Record selected message manually.")
++
++# Create test messages
++msg1 = SimpleMessage(role="assistant", content="Message 1")
++msg2 = SimpleMessage(role="assistant", content="Message 2")
++
++# Test case 1: Single message
++print("Test case 1: Single message")
++agent = SimpleChatAgent()
++agent._record_final_output([msg1])
++print("Messages after single message:", [m.content for m in agent.messages])
++
++# Test case 2: Multiple messages
++print("\nTest case 2: Multiple messages")
++agent = SimpleChatAgent()
++agent._record_final_output([msg1, msg2])
++print("Messages after multiple messages:", [m.content for m in agent.messages])
+\ No newline at end of file

@@ -1,0 +1,32 @@
+diff --git a/python/packages/autogen-ext/src/autogen_ext/models/openai/_model_info.py b/python/packages/autogen-ext/src/autogen_ext/models/openai/_model_info.py
+index d8bf3ae..95c84a3 100644
+--- a/python/packages/autogen-ext/src/autogen_ext/models/openai/_model_info.py
++++ b/python/packages/autogen-ext/src/autogen_ext/models/openai/_model_info.py
+@@ -128,9 +128,9 @@ def resolve_model(model: str) -> str:
+ 
+ def get_capabilities(model: str) -> ModelCapabilities:
+     resolved_model = resolve_model(model)
+-    return _MODEL_CAPABILITIES[resolved_model]
++    return _MODEL_CAPABILITIES.get(resolved_model, {'function_calling': False, 'json_output': False, 'vision': False})
+ 
+ 
+ def get_token_limit(model: str) -> int:
+     resolved_model = resolve_model(model)
+-    return _MODEL_TOKEN_LIMITS[resolved_model]
++    return _MODEL_TOKEN_LIMITS[resolved_model]
+diff --git a/python/packages/autogen-ext/src/autogen_ext/models/openai/_openai_client.py b/python/packages/autogen-ext/src/autogen_ext/models/openai/_openai_client.py
+index 007ec6b..6b9ed92 100644
+--- a/python/packages/autogen-ext/src/autogen_ext/models/openai/_openai_client.py
++++ b/python/packages/autogen-ext/src/autogen_ext/models/openai/_openai_client.py
+@@ -359,10 +359,7 @@ class BaseOpenAIChatCompletionClient(ChatCompletionClient):
+         model_capabilities: Optional[ModelCapabilities] = None,
+     ):
+         self._client = client
+-        if model_capabilities is None:
+-            self._model_capabilities = _model_info.get_capabilities(create_args["model"])
+-        else:
+-            self._model_capabilities = model_capabilities
++        self._model_capabilities = model_capabilities or _model_info.get_capabilities(create_args["model"])
+ 
+         self._resolved_model: Optional[str] = None
+         if "model" in create_args:

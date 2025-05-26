@@ -1,0 +1,29 @@
+diff --git a/python/packages/autogen-core/src/autogen_core/models/_types.py b/python/packages/autogen-core/src/autogen_core/models/_types.py
+index fb118562e..a3d6af1ed 100644
+--- a/python/packages/autogen-core/src/autogen_core/models/_types.py
++++ b/python/packages/autogen-core/src/autogen_core/models/_types.py
+@@ -52,7 +52,7 @@ class RequestUsage:
+     completion_tokens: int
+ 
+ 
+-FinishReasons = Literal["stop", "length", "function_calls", "content_filter"]
++FinishReasons = Literal["stop", "length", "function_calls", "content_filter", "unknown"]
+ 
+ 
+ @dataclass
+diff --git a/python/packages/autogen-ext/src/autogen_ext/models/openai/_openai_client.py b/python/packages/autogen-ext/src/autogen_ext/models/openai/_openai_client.py
+index 5b9f51129..9a44299e9 100644
+--- a/python/packages/autogen-ext/src/autogen_ext/models/openai/_openai_client.py
++++ b/python/packages/autogen-ext/src/autogen_ext/models/openai/_openai_client.py
+@@ -559,9 +559,9 @@ async def create(
+                 for x in choice.logprobs.content
+             ]
+         response = CreateResult(
+-            finish_reason=finish_reason,  # type: ignore
++            finish_reason=normalize_stop_reason(finish_reason),
+             content=content,
+-            usage=usage,
++            usage=usage, 
+             cached=False,
+             logprobs=logprobs,
+         )

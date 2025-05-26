@@ -1,0 +1,9 @@
+diff --git a/test_import.py b/test_import.py
+new file mode 100644
+index 0000000..92a3530
+--- /dev/null
++++ b/test_import.py
+@@ -0,0 +1,2 @@
++from lagent.actions import AsyncWebBrowser, WebBrowser
++print("Import successful!")
+\ No newline at end of file

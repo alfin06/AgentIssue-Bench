@@ -1,0 +1,36 @@
+diff --git a/camel/models/openai_model.py b/camel/models/openai_model.py
+index 8e8f8b1f..11880b19 100644
+--- a/camel/models/openai_model.py
++++ b/camel/models/openai_model.py
+@@ -67,12 +67,25 @@ class OpenAIModel(BaseModelBackend):
+         super().__init__(
+             model_type, model_config_dict, api_key, url, token_counter
+         )
+-        self._client = OpenAI(
+-            timeout=60,
+-            max_retries=3,
+-            base_url=self._url,
+-            api_key=self._api_key,
+-        )
++        client_kwargs = {
++            'timeout': 60,
++            'max_retries': 3,
++            'base_url': self._url,
++            'api_key': self._api_key,
++        }
++        
++        # Add proxy configuration from environment variables if available
++        http_proxy = os.environ.get('HTTP_PROXY') or os.environ.get('http_proxy')
++        https_proxy = os.environ.get('HTTPS_PROXY') or os.environ.get('https_proxy')
++        if http_proxy or https_proxy:
++            proxies = {}
++            if http_proxy:
++                proxies['http'] = http_proxy
++            if https_proxy:
++                proxies['https'] = https_proxy
++            client_kwargs['http_client'] = httpx.Client(proxies=proxies)
++            
++        self._client = OpenAI(**client_kwargs)
+ 
+     @property
+     def token_counter(self) -> BaseTokenCounter:

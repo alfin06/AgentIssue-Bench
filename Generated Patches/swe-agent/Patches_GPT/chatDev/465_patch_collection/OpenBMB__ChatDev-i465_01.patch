@@ -1,0 +1,40 @@
+diff --git a/test_chat_agent.py b/test_chat_agent.py
+new file mode 100644
+index 0000000..b3eac1c
+--- /dev/null
++++ b/test_chat_agent.py
+@@ -0,0 +1,34 @@
++from camel.agents.chat_agent import ChatAgent
++from camel.messages import ChatMessage
++from camel.model_backend import ModelBackend
++from typing import List
++
++def test_chat_agent():
++    agent = ChatAgent(
++        system_message=None,
++        with_memory=False,
++        model=None,
++        model_config=None,
++    )
++    response = {
++        "choices": [
++            {
++                "message": {
++                    "role_name": "user", 
++                    "role_type": "assistant",
++                    "content": "Hello",
++                }
++            }
++        ]
++    }
++    try:
++        output_messages = [
++            ChatMessage(role_name="user", role_type="assistant", content="Hello", audio="some_audio_data")
++            for choice in response["choices"]
++        ]
++        print("Output Messages: ", output_messages)
++    except TypeError as e:
++        print("Error:", e)
++
++if __name__ == "__main__":
++    test_chat_agent()

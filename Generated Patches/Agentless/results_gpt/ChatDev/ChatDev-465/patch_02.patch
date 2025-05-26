@@ -1,0 +1,25 @@
+diff --git a/camel/agents/chat_agent.py b/camel/agents/chat_agent.py
+index 7b0ad0a..ed0d374 100644
+--- a/camel/agents/chat_agent.py
++++ b/camel/agents/chat_agent.py
+@@ -254,11 +254,15 @@ class ChatAgent(BaseAgent):
+             else:
+                 if not isinstance(response, dict):
+                     raise RuntimeError("OpenAI returned unexpected struct")
+-                output_messages = [
+-                    ChatMessage(role_name=self.role_name, role_type=self.role_type,
+-                                meta_dict=dict(), **dict(choice["message"]))
+-                    for choice in response["choices"]
+-                ]
++                output_messages = []
++                for choice in response["choices"]:
++                    choice_dict = dict(choice["message"])
++                    if 'audio' in choice_dict:
++                        del choice_dict['audio']
++                    output_messages.append(
++                        ChatMessage(role_name=self.role_name, role_type=self.role_type,
++                                    meta_dict=dict(), **choice_dict)
++                    )
+                 info = self.get_info(
+                     response["id"],
+                     response["usage"],

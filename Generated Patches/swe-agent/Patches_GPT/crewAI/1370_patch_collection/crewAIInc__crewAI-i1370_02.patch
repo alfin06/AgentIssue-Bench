@@ -1,0 +1,16 @@
+diff --git a/reproduce_import_time.py b/reproduce_import_time.py
+new file mode 100644
+index 0000000..c7523a3
+--- /dev/null
++++ b/reproduce_import_time.py
+@@ -0,0 +1,9 @@
++import time
++import sys
++sys.path.insert(0, '/crewAIInc__crewAI.git/src')
++
++start = time.time()
++
++import crewai
++
++print("Import time:", time.time() - start, "seconds")
+\ No newline at end of file

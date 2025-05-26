@@ -1,0 +1,50 @@
+diff --git a/camel/toolkits/ask_news_toolkit.py b/camel/toolkits/ask_news_toolkit.py
+index 0dbb743..a104308 100644
+--- a/camel/toolkits/ask_news_toolkit.py
++++ b/camel/toolkits/ask_news_toolkit.py
+@@ -639,4 +639,4 @@ class AsyncAskNewsToolkit(BaseToolkit):
+             FunctionTool(self.get_web_search),
+             FunctionTool(self.search_reddit),
+             FunctionTool(self.query_finance),
+-        ]
++        ]
+diff --git a/camel/toolkits/twitter_toolkit.py b/camel/toolkits/twitter_toolkit.py
+index 274e415..b12a5e9 100644
+--- a/camel/toolkits/twitter_toolkit.py
++++ b/camel/toolkits/twitter_toolkit.py
+@@ -406,15 +406,22 @@ def _handle_http_error(response: requests.Response) -> str:
+     else:
+         return "Unexpected Exception"
+ 
++TWITTER_FUNCS = None
+ 
+-TWITTER_FUNCS = [
+-    FunctionTool(create_tweet),
+-    FunctionTool(delete_tweet),
+-    FunctionTool(get_my_user_profile),
+-    FunctionTool(get_user_by_username),
+-]
++def _initialize_twitter_funcs():
++    global TWITTER_FUNCS
++    if TWITTER_FUNCS is None:
++        from requests_oauthlib import OAuth1  # noqa: F401
++        TWITTER_FUNCS = [
++            FunctionTool(create_tweet),
++            FunctionTool(delete_tweet),
++            FunctionTool(get_my_user_profile),
++            FunctionTool(get_user_by_username),
++        ]
+ 
+ 
++from .base import BaseToolkit
++
+ class TwitterToolkit(BaseToolkit):
+     r"""A class representing a toolkit for Twitter operations.
+ 
+@@ -442,4 +449,5 @@ class TwitterToolkit(BaseToolkit):
+             List[FunctionTool]: A list of FunctionTool objects
+                 representing the functions in the toolkit.
+         """
+-        return TWITTER_FUNCS
++        _initialize_twitter_funcs()
++        return TWITTER_FUNCS

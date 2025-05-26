@@ -1,0 +1,16 @@
+diff --git a/src/crewai/cli/utils.py b/src/crewai/cli/utils.py
+index a385e1f3..36b227a4 100644
+--- a/src/crewai/cli/utils.py
++++ b/src/crewai/cli/utils.py
+@@ -26,6 +26,11 @@ def copy_template(src, dst, name, class_name, folder_name):
+     content = content.replace("{{crew_name}}", class_name)
+     content = content.replace("{{folder_name}}", folder_name)
+ 
++    # Ensure tiktoken dependency is included in pyproject.toml
++    if '[dependencies]' in content and 'tiktoken' not in content:
++        dependencies_index = content.index('[dependencies]') + len('[dependencies]')
++        content = content[:dependencies_index] + '\ntiktoken = "*"' + content[dependencies_index:]
++
+     # Write the interpolated content to the new file
+     with open(dst, "w") as file:
+         file.write(content)

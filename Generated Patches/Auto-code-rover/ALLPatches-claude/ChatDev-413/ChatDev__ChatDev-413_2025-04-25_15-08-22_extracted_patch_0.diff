@@ -1,0 +1,25 @@
+diff --git a/camel/messages/chat_messages.py b/camel/messages/chat_messages.py
+index a79d05a..7a8d40e 100644
+--- a/camel/messages/chat_messages.py
++++ b/camel/messages/chat_messages.py
+@@ -46,6 +46,20 @@ class ChatMessage(BaseMessage):
+     role: str
+     content: str = ""
+     refusal: str = None
++    
++    def __init__(
++        self,
++        role_name: str,
++        role_type: RoleType = RoleType.USER,
++        meta_dict: Optional[Dict[str, str]] = None,
++        role: str = "user",
++        content: str = "",
++        refusal: str = None,
++        **kwargs
++    ) -> None:
++        super().__init__(role_name=role_name, role_type=role_type, 
++                        meta_dict=meta_dict, role=role, content=content, **kwargs)
++        self.refusal = refusal
+     if openai_new_api:
+         function_call: Optional[FunctionCall] = None
+         tool_calls: Optional[ChatCompletionMessageToolCall] = None

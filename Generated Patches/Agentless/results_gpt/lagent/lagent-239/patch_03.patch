@@ -1,0 +1,27 @@
+diff --git a/lagent/version.py b/lagent/version.py
+index 73df4de..c2ebe17 100644
+--- a/lagent/version.py
++++ b/lagent/version.py
+@@ -1,3 +1,4 @@
++
+ # Copyright (c) OpenMMLab. All rights reserved.
+ __version__ = '0.2.3'
+ 
+@@ -22,9 +23,9 @@ def parse_version_info(version_str: str, length: int = 4) -> tuple:
+     if len(release) < length:
+         release = release + [0] * (length - len(release))
+     if version.is_prerelease:
+-        release.extend(list(version.pre))  # type: ignore
++        release.extend([version.pre[0], version.pre[1]])  # type: ignore
+     elif version.is_postrelease:
+-        release.extend(list(version.post))  # type: ignore
++        release.extend(['post', version.post])  # type: ignore
+     else:
+         release.extend([0, 0])
+     return tuple(release)
+@@ -32,4 +33,4 @@ def parse_version_info(version_str: str, length: int = 4) -> tuple:
+ 
+ version_info = tuple(int(x) for x in __version__.split('.')[:3])
+ 
+-__all__ = ['__version__', 'version_info', 'parse_version_info']
++__all__ = ['__version__', 'version_info', 'parse_version_info']

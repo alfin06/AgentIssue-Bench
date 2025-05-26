@@ -1,0 +1,50 @@
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..b70f537
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1,43 @@
++import requests
++import time
++
++# Step 1: Create a new chat
++create_chat_url = "http://localhost:3000/api/chat/create"
++response = requests.post(create_chat_url, json={"title": "hey.txt"})
++if response.status_code == 200:
++    chat_id = response.json().get("id")
++    print(f"Chat created with ID: {chat_id}")
++else:
++    print("Failed to create chat.")
++    exit(1)
++
++# Step 2: Navigate to the root page
++root_url = "http://localhost:3000/"
++response = requests.get(root_url)
++if response.status_code == 200:
++    print("Navigated to root page.")
++else:
++    print("Failed to navigate to root page.")
++    exit(1)
++
++# Step 3: Click the "csv" example prompt
++example_prompt_url = f"http://localhost:3000/chat/{chat_id}/example/csv"
++response = requests.get(example_prompt_url)
++if response.status_code == 200:
++    print("Clicked the 'csv' example prompt.")
++else:
++    print("Failed to click the 'csv' example prompt.")
++    exit(1)
++
++# Wait for workspace transition
++time.sleep(5)
++
++# Check workspace transition status
++workspace_status_url = f"http://localhost:3000/api/workspace/{chat_id}/status"
++response = requests.get(workspace_status_url)
++if response.status_code == 200:
++    status = response.json().get("status")
++    print(f"Workspace transition status: {status}")
++else:
++    print("Failed to check workspace transition status.")
++    exit(1)
+\ No newline at end of file

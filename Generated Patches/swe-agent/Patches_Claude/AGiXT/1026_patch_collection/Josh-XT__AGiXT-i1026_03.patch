@@ -1,0 +1,54 @@
+diff --git a/agixt/extensions/voice_chat.py b/agixt/extensions/voice_chat.py
+new file mode 100644
+index 0000000..66c8a70
+--- /dev/null
++++ b/agixt/extensions/voice_chat.py
+@@ -0,0 +1,47 @@
++import requests
++import os
++import logging
++import traceback
++
++
++class voice_chat:
++    def __init__(self, **kwargs):
++        self.agent_name = kwargs.get("agent_name", "gpt4free")
++        self.USE_STREAMLABS_TTS = kwargs.get("USE_STREAMLABS_TTS", False)
++        # Fix: Check if USE_STREAMLABS_TTS is a string before calling lower()
++        if isinstance(self.USE_STREAMLABS_TTS, str):
++            self.USE_STREAMLABS_TTS = self.USE_STREAMLABS_TTS.lower() == "true"
++        self.STREAMLABS_VOICE = kwargs.get("STREAMLABS_VOICE", "Brian")
++
++    def text_to_speech(self, text):
++        """
++        Convert text to speech using either Streamlabs TTS or local TTS.
++        
++        Args:
++            text (str): The text to convert to speech
++            
++        Returns:
++            str: URL to the audio file or path to local audio file
++        """
++        try:
++            if self.USE_STREAMLABS_TTS:
++                # Use Streamlabs TTS
++                url = "https://streamlabs.com/polly/speak"
++                params = {
++                    "voice": self.STREAMLABS_VOICE,
++                    "text": text,
++                }
++                response = requests.post(url, params=params)
++                if response.status_code == 200:
++                    return response.json().get("speak_url")
++                else:
++                    logging.error(f"Streamlabs TTS request failed with status code {response.status_code}")
++                    return None
++            else:
++                # Use local TTS (placeholder - implement your local TTS logic here)
++                logging.info("Local TTS not implemented yet")
++                return None
++        except Exception as e:
++            logging.error(f"Error in text_to_speech: {str(e)}")
++            logging.debug(traceback.format_exc())
++            return None
+\ No newline at end of file

@@ -1,0 +1,22 @@
+diff --git a/gpt_engineer/core/default/steps.py b/gpt_engineer/core/default/steps.py
+index d778948..94c8eb7 100644
+--- a/gpt_engineer/core/default/steps.py
++++ b/gpt_engineer/core/default/steps.py
+@@ -347,10 +347,13 @@ def salvage_correct_hunks(
+     for _, diff in diffs.items():
+         # if diff is a new file, validation and correction is unnecessary
+         if not diff.is_new_file():
+-            problems = diff.validate_and_correct(
+-                file_to_lines_dict(files_dict[diff.filename_pre])
+-            )
+-            error_messages.extend(problems)
++            if diff.filename_pre in files_dict:
++                problems = diff.validate_and_correct(
++                    file_to_lines_dict(files_dict[diff.filename_pre])
++                )
++                error_messages.extend(problems)
++            else:
++                error_messages.append(f"File {diff.filename_pre} not found in files_dict.")
+     files_dict = apply_diffs(diffs, files_dict)
+     memory.log(IMPROVE_LOG_FILE, "\n\n".join(x.pretty_repr() for x in messages))
+     memory.log(DIFF_LOG_FILE, "\n\n".join(error_messages))

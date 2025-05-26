@@ -1,0 +1,23 @@
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..350e139
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1,16 @@
++from crewai.memory.storage.rag_storage import RAGStorage
++from crewai.memory.short_term.short_term_memory import ShortTermMemory
++
++# Create a RAG storage instance for short-term memory
++storage = RAGStorage(type="short_term", allow_reset=True)
++
++# Create a short-term memory instance
++memory = ShortTermMemory(storage=storage)
++
++# Save some data
++memory.save("Test memory", metadata={"test": "metadata"})
++
++# Try to reset the memory
++print("Attempting to reset memory...")
++memory.reset()
++print("Memory reset successful!")
+\ No newline at end of file

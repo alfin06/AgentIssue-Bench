@@ -1,0 +1,18 @@
+diff --git a/src/crewai/cli/install_crew.py b/src/crewai/cli/install_crew.py
+index 8961048..fbc7ed5 100644
+--- a/src/crewai/cli/install_crew.py
++++ b/src/crewai/cli/install_crew.py
+@@ -9,11 +9,11 @@ def install_crew(proxy_options: list[str]) -> None:
+     """
+     try:
+         command = ["uv", "sync"] + proxy_options
+-        subprocess.run(command, check=True, capture_output=False, text=True)
++        subprocess.run(command, check=True, capture_output=True, text=True)
+ 
+     except subprocess.CalledProcessError as e:
+         click.echo(f"An error occurred while running the crew: {e}", err=True)
+         click.echo(e.output, err=True)
+ 
+     except Exception as e:
+-        click.echo(f"An unexpected error occurred: {e}", err=True)
++        click.echo(f"An unexpected error occurred: {e}", err=True)

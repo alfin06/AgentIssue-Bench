@@ -1,0 +1,55 @@
+diff --git a/reproduce_enum_error.py b/reproduce_enum_error.py
+new file mode 100644
+index 0000000..36924ed
+--- /dev/null
++++ b/reproduce_enum_error.py
+@@ -0,0 +1,48 @@
++from enum import Enum
++from crewai import Crew, Task, Agent
++from crewai.utilities.crew_json_encoder import CrewJSONEncoder
++import json
++
++class CrewStatus(Enum):
++    TODO = "To Do"
++    SUCCESSFUL = "Successful"
++    FAILED = "Failed"
++
++# Create a simple agent
++agent = Agent(
++    name="Test Agent",
++    goal="Test the enum serialization",
++    backstory="I'm a test agent",
++    allow_delegation=False
++)
++
++# Create a task with CrewStatus as output_pydantic
++task = Task(
++    description="Test task",
++    agent=agent,
++    output_pydantic=CrewStatus,
++)
++
++# Create a crew with memory=True
++crew = Crew(
++    agents=[agent],
++    tasks=[task],
++    memory=True
++)
++
++# Try to serialize an enum directly to verify encoder works
++print("Testing direct enum serialization:")
++status = CrewStatus.SUCCESSFUL
++try:
++    json_str = json.dumps(status, cls=CrewJSONEncoder)
++    print(f"Success! Serialized enum: {json_str}")
++except Exception as e:
++    print(f"Error serializing enum directly: {e}")
++
++# Now try the crew.kickoff()
++print("\nTesting crew.kickoff():")
++try:
++    result = crew.kickoff()
++    print("Success! Crew completed without errors")
++except Exception as e:
++    print(f"Error during crew.kickoff(): {e}")
+\ No newline at end of file

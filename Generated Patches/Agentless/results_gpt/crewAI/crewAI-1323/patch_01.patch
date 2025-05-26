@@ -1,0 +1,16 @@
+diff --git a/src/crewai/agent.py b/src/crewai/agent.py
+index 6402196..f9b5816 100644
+--- a/src/crewai/agent.py
++++ b/src/crewai/agent.py
+@@ -305,7 +305,10 @@ class Agent(BaseAgent):
+                 self.response_template.split("{{ .Response }}")[1].strip()
+             )
+ 
+-        bind = self.llm.bind(stop=stop_words)
++        bind_args = {}
++        if self.llm.model_name not in ["o1-preview", "o1-mini"]:
++            bind_args["stop"] = stop_words
++        bind = self.llm.bind(**bind_args)
+ 
+         inner_agent = agent_args | execution_prompt | bind | CrewAgentParser(agent=self)
+         self.agent_executor = CrewAgentExecutor(

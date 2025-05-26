@@ -1,0 +1,44 @@
+diff --git a/camel/models/openai_model.py b/camel/models/openai_model.py
+index b5e52e8..3809c22 100644
+--- a/camel/models/openai_model.py
++++ b/camel/models/openai_model.py
+@@ -90,18 +90,27 @@ class OpenAIModel(BaseModelBackend):
+             model_type, model_config_dict, api_key, url, token_counter, timeout
+         )
+ 
+-        self._client = OpenAI(
+-            timeout=self._timeout,
+-            max_retries=3,
+-            base_url=self._url,
+-            api_key=self._api_key,
+-        )
+-        self._async_client = AsyncOpenAI(
+-            timeout=self._timeout,
+-            max_retries=3,
+-            base_url=self._url,
+-            api_key=self._api_key,
+-        )
++        # Initialize client kwargs with only supported parameters
++        client_kwargs = {
++            'timeout': self._timeout,
++            'max_retries': 3,
++            'api_key': self._api_key,
++        }
++        # Only add base_url if it's set to avoid issues with default OpenAI endpoint
++        if self._url:
++            client_kwargs['base_url'] = self._url
++
++        try:
++            self._client = OpenAI(**client_kwargs)
++            self._async_client = AsyncOpenAI(**client_kwargs)
++        except TypeError as e:
++            # If we get a TypeError about unexpected kwargs, try to identify and remove the problematic ones
++            error_msg = str(e)
++            if 'unexpected keyword argument' in error_msg:
++                param = error_msg.split("'")[1]  # Extract parameter name from error message
++                client_kwargs.pop(param, None)
++                self._client = OpenAI(**client_kwargs)
++                self._async_client = AsyncOpenAI(**client_kwargs)
+ 
+     def _sanitize_config(self, config_dict: Dict[str, Any]) -> Dict[str, Any]:
+         r"""Sanitize the model configuration for O1 models."""

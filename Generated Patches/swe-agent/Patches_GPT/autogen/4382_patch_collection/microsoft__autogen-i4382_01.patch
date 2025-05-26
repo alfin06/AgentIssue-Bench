@@ -1,0 +1,84 @@
+diff --git a/python/packages/autogen-agentchat/src/autogen_agentchat/task.py b/python/packages/autogen-agentchat/src/autogen_agentchat/task.py
+new file mode 100644
+index 0000000..8f5b0f9
+--- /dev/null
++++ b/python/packages/autogen-agentchat/src/autogen_agentchat/task.py
+@@ -0,0 +1,23 @@
++import asyncio
++
++class Console:
++    """
++    A class to stream messages to the console.
++    """
++    def __init__(self, stream):
++        self.stream = stream
++
++    async def __call__(self):
++        async for message in self.stream:
++            print(message)
++
++
++class TextMentionTermination:
++    """
++    A termination condition based on text mentions.
++    """
++    def __init__(self, termination_text):
++        self.termination_text = termination_text
++
++    def check_termination(self, message):
++        return self.termination_text in message
+\ No newline at end of file
+diff --git a/python/packages/autogen-core/pyproject.toml b/python/packages/autogen-core/pyproject.toml
+index 2dda442..2fc52f6 100644
+--- a/python/packages/autogen-core/pyproject.toml
++++ b/python/packages/autogen-core/pyproject.toml
+@@ -21,6 +21,7 @@ dependencies = [
+     "protobuf~=5.29.3",
+     "opentelemetry-api>=1.27.0",
+     "jsonref~=1.1.0",
++    "grpcio>=1.56.0",
+ ]
+ 
+ 
+diff --git a/python/reproduce_error.py b/python/reproduce_error.py
+new file mode 100644
+index 0000000..b585eec
+--- /dev/null
++++ b/python/reproduce_error.py
+@@ -0,0 +1,35 @@
++import asyncio
++
++from autogen_agentchat.agents import AssistantAgent
++from autogen_agentchat.task import Console, TextMentionTermination
++from autogen_agentchat.teams import RoundRobinGroupChat
++from autogen_ext.models import OpenAIChatCompletionClient
++
++
++# Define a tool
++async def get_weather(city: str) -> str:
++    return f"The weather in {city} is 73 degrees and Sunny."
++
++
++async def main() -> None:
++    # Define an agent
++    weather_agent = AssistantAgent(
++        name="weather_agent",
++        model_client=OpenAIChatCompletionClient(
++            model="gpt-4o-2024-08-06",
++            # api_key="YOUR_API_KEY",
++        ),
++        tools=[get_weather],
++    )
++
++    # Define termination condition
++    termination = TextMentionTermination("TERMINATE")
++
++    # Define a team
++    agent_team = RoundRobinGroupChat([weather_agent], termination_condition=termination)
++
++    # Run the team and stream messages to the console
++    stream = agent_team.run_stream(task="What is the weather in New York?")
++    await Console(stream)
++
++asyncio.run(main())
+\ No newline at end of file

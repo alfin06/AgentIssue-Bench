@@ -1,0 +1,35 @@
+diff --git a/lagent/agents/internlm2_agent.py b/lagent/agents/internlm2_agent.py
+index 269fb13..558ceeb 100644
+--- a/lagent/agents/internlm2_agent.py
++++ b/lagent/agents/internlm2_agent.py
+@@ -267,10 +267,11 @@ class Internlm2Agent(BaseAgent):
+                     continue
+                 action_return: ActionReturn = executor(action['name'],
+                                                        action['parameters'])
+-                action_return.thought = language
+-                agent_return.actions.append(action_return)
++                if action_return:
++                    action_return.thought = language
++                    agent_return.actions.append(action_return)
+             inner_history.append(dict(role='language', content=language))
+-            if not name or action_return.type == executor.finish_action.name:
++            if not name or (action_return and action_return.type == executor.finish_action.name):
+                 agent_return.response = language
+                 agent_return.state = AgentStatusCode.END
+                 break
+@@ -358,10 +359,11 @@ class Internlm2Agent(BaseAgent):
+             if name:
+                 action_return: ActionReturn = executor(action['name'],
+                                                        action['parameters'])
+-                action_return.type = action['name']
+-                action_return.thought = language
+-                agent_return.actions.append(action_return)
+-                print(colored(action_return.result, 'magenta'))
++                if action_return:
++                    action_return.type = action['name']
++                    action_return.thought = language
++                    agent_return.actions.append(action_return)
++                    print(colored(action_return.result, 'magenta'))
+             inner_history.append(dict(role='language', content=language))
+             if not name:
+                 agent_return.response = language

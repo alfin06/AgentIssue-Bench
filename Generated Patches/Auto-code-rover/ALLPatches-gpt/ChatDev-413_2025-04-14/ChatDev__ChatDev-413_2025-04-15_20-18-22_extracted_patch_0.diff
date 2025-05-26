@@ -1,0 +1,28 @@
+diff --git a/camel/agents/chat_agent.py b/camel/agents/chat_agent.py
+index c824a15..757fbfa 100644
+--- a/camel/agents/chat_agent.py
++++ b/camel/agents/chat_agent.py
+@@ -240,9 +240,10 @@ class ChatAgent(BaseAgent):
+             if openai_new_api:
+                 if not isinstance(response, ChatCompletion):
+                     raise RuntimeError("OpenAI returned unexpected struct")
++                allowed_keys = {"role_name", "role_type", "meta_dict", "role", "content", "refusal", "function_call", "tool_calls"}
+                 output_messages = [
+                     ChatMessage(role_name=self.role_name, role_type=self.role_type,
+-                                meta_dict=dict(), **dict(choice.message))
++                                meta_dict=dict(), **{k: v for k, v in dict(choice.message).items() if k in allowed_keys})
+                     for choice in response.choices
+                 ]
+                 info = self.get_info(
+@@ -254,9 +255,10 @@ class ChatAgent(BaseAgent):
+             else:
+                 if not isinstance(response, dict):
+                     raise RuntimeError("OpenAI returned unexpected struct")
++                allowed_keys = {"role_name", "role_type", "meta_dict", "role", "content", "refusal", "function_call", "tool_calls"}
+                 output_messages = [
+                     ChatMessage(role_name=self.role_name, role_type=self.role_type,
+-                                meta_dict=dict(), **dict(choice["message"]))
++                                meta_dict=dict(), **{k: v for k, v in dict(choice["message"]).items() if k in allowed_keys})
+                     for choice in response["choices"]
+                 ]
+                 info = self.get_info(

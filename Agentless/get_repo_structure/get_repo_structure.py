@@ -49,7 +49,7 @@ def clone_repo(repo_name, repo_playground, max_retries=3, delay=5):
     print(
         f"Cloning repository from https://github.com/{repo_name}.git to {repo_playground}/{repo_to_top_folder[repo_name]}..."
     )
-    token = "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"
+    token = ""
     repo_url = (
         f"https://{token}@github.com/{repo_name}.git" if token 
         else f"https://github.com/{repo_name}.git"

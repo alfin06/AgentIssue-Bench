@@ -55,7 +55,7 @@ $ git clone https://github.com/To-D/AgentIssue-Bench.git
 
 ### 2. Run studied SE Agents
 
-*Note: please download the repo folder from https://drive.google.com/file/d/1obN3y2HYDsHfvr8hi0rymldgkjel5HNv/view?usp=sharing . Extract the file and store the repo/ folder in Agentless' root directory and AutoCodeRover's root directory for patch generation.*
+*Note: please download the repo folder from 🔗[Repo Link](https://drive.google.com/file/d/1obN3y2HYDsHfvr8hi0rymldgkjel5HNv/view?usp=sharing) . Extract the file and store the repo/ folder in Agentless' root directory and AutoCodeRover's root directory for patch generation.*
 
 **Agentless**
 

@@ -1,7 +1,7 @@
 # AGENTISSUE-BENCH
 
-[![Paper](https://img.shields.io/badge/Paper-ARXIV%3A2505.20749-B31B1B?style=social&logo=arxiv&logoColor=white)](https://arxiv.org/pdf/2505.20749)&nbsp;&nbsp;
-[![Leaderboard](https://img.shields.io/badge/View-Leaderboard-blue?style=social&logo=trophy&logoColor=white)](https://alfin06.github.io/AgentIssue-Bench-Leaderboard/)
+[![Paper](https://img.shields.io/badge/Paper-ARXIV%3A2505.20749-B31B1B)](https://arxiv.org/pdf/2505.20749)&nbsp;&nbsp;
+[![Leaderboard](https://img.shields.io/badge/View-Leaderboard-blue)](https://alfin06.github.io/AgentIssue-Bench-Leaderboard/)
 
 ***AGENTISSUE-BENCH*** is the first reproducible issue resolution benchmark focused on real-world agent system issues. It is designed to evaluate the efficacy of state-of-the-art software engineering (SE) agents in resolving these issues.
 

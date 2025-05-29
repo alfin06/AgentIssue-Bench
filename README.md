@@ -44,6 +44,9 @@ The following figure shows the resolution rate of AgentIssue-Bench v.s. traditio
 The following table presents the overall results of SE agents on AgentIssue-Bench:
 <img src="output\images\table_results.png" alt="table_results" />
 
+The following figure shows the distribution of ***AgentIssue-Bench***:
+<img src="output\images\pie.png" alt="pie" />
+
 ## 🔧 Patch Generation
 
 We evaluate the capabilities of 3 state-of-the-art SE agents on ***AGENTISSUE-BENCH***, collecting the patches they generate to resolve real-world agent issues.

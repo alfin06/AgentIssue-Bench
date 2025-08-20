@@ -4,7 +4,7 @@ url = "https://openkey.cloud/v1/chat/completions"
 
 headers = {
   'Content-Type': 'application/json',
-  'Authorization': 'Bearer sk-IAwDmW2DSSvYMTbz28700f79673d4a43BbFe794eBf543eB1'
+  'Authorization': 'Bearer YOUR_OPENAI_API_KEY'  # Replace with your actual OpenAI API key
 }
 
 data = {

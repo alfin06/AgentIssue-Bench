@@ -2,7 +2,7 @@ import docker
 import argparse
 
 # Docker Hub user and repository
-DOCKERHUB_USER = "llmagents"
+DOCKERHUB_USER = "alfin06"
 REPO_NAME = "agentissue-bench"
 
 # List of image tags

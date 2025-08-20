@@ -56,7 +56,7 @@ We evaluate the capabilities of 3 state-of-the-art SE agents on ***AGENTISSUE-BE
 ### 1. Clone the Repository
 
 ```
-$ git clone https://github.com/To-D/AgentIssue-Bench.git
+$ git clone https://github.com/alfin06/AgentIssue-Bench.git
 ```
 
 ### 2. Run studied SE Agents

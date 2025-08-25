@@ -1,5 +1,6 @@
 import docker
 import argparse
+import os
 
 # Docker Hub user and repository
 DOCKERHUB_USER = "alfin06"
@@ -7,6 +8,18 @@ REPO_NAME = "agentissue-bench"
 
 # List of image tags
 IMAGE_TAGS = [
+    "ai_2705",
+    "ai_3953",
+    "ai_4411",
+    "ai_4412",
+    "ai_4446",
+    "ai_4619",
+    "ai_4761",
+    "ai_5365",
+    "ai_5380",
+    "ai_5628",
+    "ai_6510",
+    "anything_llm_2218",
     "autogen_4733",
     "autogen_3361",
     "autogen_4197",
@@ -23,6 +36,7 @@ IMAGE_TAGS = [
     "agixt_1026",
     "agixt_1030",
     "agixt_1253",
+    "beeai_framework_55",
     "camel_1145",
     "camel_1309",
     "camel_1273",
@@ -40,16 +54,34 @@ IMAGE_TAGS = [
     "crewai_1370",
     "crewai_1463",
     "crewai_1532",
+    "crewai_2102",
+    "crewai_2127",
+    "crewai_2150",
+    "crewai_2237",
     "evoninja_445",
     "evoninja_504",
     "evoninja_515",
     "evoninja_525",
     "evoninja_594",
     "evoninja_652",
+    "haystack_8912",
+    "haystack_9193",
+    "haystack_9313",
+    "haystack_9480",
+    "haystack_9487",
+    "haystack_9523",
     "lagent_244",
     "lagent_239",
     "lagent_279",
+    "langgraphjs_1217",
+    "mastra_4331",
     "metagpt_1313",
+    "mle_agent_173",
+    "openmanus_1099",
+    "openmanus_1133",
+    "openmanus_1140",
+    "openmanus_1143",
+    "openmanus_1155",
     "superagent_953",
     "gpt-researcher_1027",
     "gpt-engineer_1197",

@@ -1,0 +1,639 @@
+From 420f826e561d4d5aa2fb98277f70fb0e6886ffab Mon Sep 17 00:00:00 2001
+From: Devin AI <158243242+devin-ai-integration[bot]@users.noreply.github.com>
+Date: Wed, 12 Feb 2025 06:24:05 +0000
+Subject: [PATCH 1/7] fix: Initialize agentops in Crew setup (#2102)
+
+- Add proper agentops initialization in Crew's set_private_attrs
+- Add test coverage for agentops initialization
+- Add test coverage for Gemini LLM with agentops
+
+Co-Authored-By: Joe Moura <joao@crewai.com>
+---
+ src/crewai/crew.py | 15 ++++++++
+ tests/crew_test.py | 85 ++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 100 insertions(+)
+
+diff --git a/src/crewai/crew.py b/src/crewai/crew.py
+index 9ae9ce2c00..f72fac30e7 100644
+--- a/src/crewai/crew.py
++++ b/src/crewai/crew.py
+@@ -1,5 +1,6 @@
+ import asyncio
+ import json
++import os
+ import re
+ import uuid
+ import warnings
+@@ -248,6 +249,20 @@ def set_private_attrs(self) -> "Crew":
+         if self.output_log_file:
+             self._file_handler = FileHandler(self.output_log_file)
+         self._rpm_controller = RPMController(max_rpm=self.max_rpm, logger=self._logger)
++
++        # Initialize agentops if available and API key is present
++        if agentops:
++            api_key = os.getenv("AGENTOPS_API_KEY")
++            if api_key:
++                try:
++                    agentops.init(api_key)
++                except Exception as e:
++                    self._logger.log(
++                        "warning",
++                        f"Failed to initialize agentops: {e}",
++                        color="yellow"
++                    )
++
+         if self.function_calling_llm and not isinstance(self.function_calling_llm, LLM):
+             self.function_calling_llm = create_llm(self.function_calling_llm)
+ 
+diff --git a/tests/crew_test.py b/tests/crew_test.py
+index 0539ea3475..b773d9c694 100644
+--- a/tests/crew_test.py
++++ b/tests/crew_test.py
+@@ -27,6 +27,91 @@
+ from crewai.utilities.rpm_controller import RPMController
+ from crewai.utilities.task_output_storage_handler import TaskOutputStorageHandler
+ 
++def test_agentops_initialization_with_api_key(monkeypatch):
++    """Test that agentops is properly initialized when API key is present."""
++    import agentops
++    
++    # Mock agentops.init
++    mock_init = MagicMock()
++    monkeypatch.setattr(agentops, "init", mock_init)
++    
++    # Set API key
++    monkeypatch.setenv("AGENTOPS_API_KEY", "test-key")
++    
++    # Create crew
++    task = Task(
++        description="Test task",
++        expected_output="Test output",
++        agent=researcher,
++    )
++    crew = Crew(agents=[researcher], tasks=[task])
++    
++    # Verify agentops was initialized
++    mock_init.assert_called_once_with("test-key")
++
++def test_agentops_initialization_without_api_key(monkeypatch):
++    """Test that agentops is not initialized when API key is not present."""
++    import agentops
++    
++    # Mock agentops.init
++    mock_init = MagicMock()
++    monkeypatch.setattr(agentops, "init", mock_init)
++    
++    # Create crew without setting API key
++    task = Task(
++        description="Test task",
++        expected_output="Test output",
++        agent=researcher,
++    )
++    crew = Crew(agents=[researcher], tasks=[task])
++    
++    # Verify agentops.init was not called
++    mock_init.assert_not_called()
++
++def test_gemini_llm_with_agentops(monkeypatch):
++    """Test that Gemini LLM works correctly with agentops."""
++    from crewai.llm import LLM
++    import agentops
++    
++    # Mock agentops
++    mock_agentops = MagicMock()
++    monkeypatch.setattr("crewai.crew.agentops", mock_agentops)
++    
++    # Set API keys
++    monkeypatch.setenv("AGENTOPS_API_KEY", "test-key")
++    monkeypatch.setenv("GOOGLE_API_KEY", "test-key")
++    
++    # Create crew with Gemini LLM
++    llm = LLM(model="gemini-pro")
++    agent = Agent(
++        role="test",
++        goal="test",
++        backstory="test",
++        llm=llm
++    )
++    task = Task(
++        description="test task",
++        expected_output="test output",
++        agent=agent
++    )
++    crew = Crew(agents=[agent], tasks=[task])
++    
++    # Mock the agent execution to avoid actual API calls
++    with patch.object(Task, 'execute_sync', return_value=TaskOutput(
++        description="test",
++        raw="test output",
++        agent=agent.role
++    )):
++        # Run crew
++        crew.kickoff()
++    
++    # Verify agentops.end_session was called correctly
++    mock_agentops.end_session.assert_called_once_with(
++        end_state="Success",
++        end_state_reason="Finished Execution",
++        is_auto_end=True
++    )
++
+ ceo = Agent(
+     role="CEO",
+     goal="Make sure the writers in your company produce amazing content.",
+
+From abc71be5f6c78219b6856647a75cbec6b1fd92ea Mon Sep 17 00:00:00 2001
+From: Devin AI <158243242+devin-ai-integration[bot]@users.noreply.github.com>
+Date: Wed, 12 Feb 2025 06:25:41 +0000
+Subject: [PATCH 2/7] fix: Sort imports to fix linting issues
+
+Co-Authored-By: Joe Moura <joao@crewai.com>
+---
+ tests/crew_test.py | 5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
+
+diff --git a/tests/crew_test.py b/tests/crew_test.py
+index b773d9c694..fea4c19860 100644
+--- a/tests/crew_test.py
++++ b/tests/crew_test.py
+@@ -6,6 +6,7 @@
+ from unittest import mock
+ from unittest.mock import MagicMock, patch
+ 
++import agentops
+ import instructor
+ import pydantic_core
+ import pytest
+@@ -15,6 +16,7 @@
+ from crewai.crew import Crew
+ from crewai.crews.crew_output import CrewOutput
+ from crewai.knowledge.source.string_knowledge_source import StringKnowledgeSource
++from crewai.llm import LLM
+ from crewai.memory.contextual.contextual_memory import ContextualMemory
+ from crewai.process import Process
+ from crewai.project import crew
+@@ -70,9 +72,6 @@ def test_agentops_initialization_without_api_key(monkeypatch):
+ 
+ def test_gemini_llm_with_agentops(monkeypatch):
+     """Test that Gemini LLM works correctly with agentops."""
+-    from crewai.llm import LLM
+-    import agentops
+-    
+     # Mock agentops
+     mock_agentops = MagicMock()
+     monkeypatch.setattr("crewai.crew.agentops", mock_agentops)
+
+From f724ed93b9383915db0d4f9ad1c2bee79deeec96 Mon Sep 17 00:00:00 2001
+From: Devin AI <158243242+devin-ai-integration[bot]@users.noreply.github.com>
+Date: Wed, 12 Feb 2025 06:27:21 +0000
+Subject: [PATCH 3/7] fix: Sort imports to fix linting issues
+
+Co-Authored-By: Joe Moura <joao@crewai.com>
+---
+ tests/crew_test.py | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/tests/crew_test.py b/tests/crew_test.py
+index fea4c19860..5c81363a8e 100644
+--- a/tests/crew_test.py
++++ b/tests/crew_test.py
+@@ -29,6 +29,7 @@
+ from crewai.utilities.rpm_controller import RPMController
+ from crewai.utilities.task_output_storage_handler import TaskOutputStorageHandler
+ 
++
+ def test_agentops_initialization_with_api_key(monkeypatch):
+     """Test that agentops is properly initialized when API key is present."""
+     import agentops
+
+From 48604f567b3e588a779ffa88cd4494ba2c1526d6 Mon Sep 17 00:00:00 2001
+From: Devin AI <158243242+devin-ai-integration[bot]@users.noreply.github.com>
+Date: Wed, 12 Feb 2025 06:27:56 +0000
+Subject: [PATCH 4/7] fix: Improve agentops initialization with better
+ validation and logging
+
+Co-Authored-By: Joe Moura <joao@crewai.com>
+---
+ src/crewai/crew.py | 9 +++++++--
+ 1 file changed, 7 insertions(+), 2 deletions(-)
+
+diff --git a/src/crewai/crew.py b/src/crewai/crew.py
+index f72fac30e7..8f918bee3f 100644
+--- a/src/crewai/crew.py
++++ b/src/crewai/crew.py
+@@ -253,10 +253,15 @@ def set_private_attrs(self) -> "Crew":
+         # Initialize agentops if available and API key is present
+         if agentops:
+             api_key = os.getenv("AGENTOPS_API_KEY")
+-            if api_key:
++            if api_key and api_key.strip():  # Validate API key
+                 try:
+                     agentops.init(api_key)
+-                except Exception as e:
++                    self._logger.log(
++                        "info",
++                        "Successfully initialized agentops",
++                        color="green"
++                    )
++                except (ConnectionError, ValueError) as e:
+                     self._logger.log(
+                         "warning",
+                         f"Failed to initialize agentops: {e}",
+
+From 3cf2f982dd80433cf2b1c3931977517a5532a081 Mon Sep 17 00:00:00 2001
+From: Devin AI <158243242+devin-ai-integration[bot]@users.noreply.github.com>
+Date: Wed, 12 Feb 2025 06:41:36 +0000
+Subject: [PATCH 5/7] fix: Add pytest.ini and improve test initialization
+
+Co-Authored-By: Joe Moura <joao@crewai.com>
+---
+ pytest.ini         |   3 +
+ src/crewai/crew.py |  57 +++++++++++++---
+ tests/crew_test.py | 167 ++++++++++++++++++++++++---------------------
+ 3 files changed, 141 insertions(+), 86 deletions(-)
+ create mode 100644 pytest.ini
+
+diff --git a/pytest.ini b/pytest.ini
+new file mode 100644
+index 0000000000..c582d056e4
+--- /dev/null
++++ b/pytest.ini
+@@ -0,0 +1,3 @@
++[pytest]
++markers =
++    agentops: Tests for AgentOps integration
+diff --git a/src/crewai/crew.py b/src/crewai/crew.py
+index 8f918bee3f..5a9da4dc20 100644
+--- a/src/crewai/crew.py
++++ b/src/crewai/crew.py
+@@ -53,10 +53,15 @@
+ from crewai.utilities.task_output_storage_handler import TaskOutputStorageHandler
+ from crewai.utilities.training_handler import CrewTrainingHandler
+ 
++from typing import Optional
++
+ try:
+     import agentops  # type: ignore
++    from agentops.exceptions import AgentOpsError, AuthenticationError  # type: ignore
+ except ImportError:
+     agentops = None
++    AgentOpsError = None
++    AuthenticationError = None
+ 
+ 
+ warnings.filterwarnings("ignore", category=SyntaxWarning, module="pysbd")
+@@ -91,6 +96,8 @@ class Crew(BaseModel):
+     __hash__ = object.__hash__  # type: ignore
+     _execution_span: Any = PrivateAttr()
+     _rpm_controller: RPMController = PrivateAttr()
++    _agentops: Optional['agentops.AgentOps'] = PrivateAttr(default=None)
++    _telemetry: Optional[Telemetry] = PrivateAttr(default=None)
+     _logger: Logger = PrivateAttr()
+     _file_handler: FileHandler = PrivateAttr()
+     _cache_handler: InstanceOf[CacheHandler] = PrivateAttr(default=CacheHandler())
+@@ -241,38 +248,72 @@ def check_config_type(
+         # TODO: Improve typing
+         return json.loads(v) if isinstance(v, Json) else v  # type: ignore
+ 
+-    @model_validator(mode="after")
++    def _validate_api_key(self, api_key: Optional[str]) -> bool:
++        """Validate the AgentOps API key.
++        
++        Args:
++            api_key: The API key to validate
++            
++        Returns:
++            bool: True if the API key is valid, False otherwise
++        """
++        if not api_key:
++            return False
++        stripped_key = api_key.strip()
++        return bool(stripped_key and len(stripped_key) > 10)
++
+     def set_private_attrs(self) -> "Crew":
+-        """Set private attributes."""
++        """Initialize private attributes including AgentOps integration.
++        
++        This method sets up:
++        - Logger and file handler for output logging
++        - RPM controller for rate limiting
++        - AgentOps integration for monitoring (if available and configured)
++        """
+         self._cache_handler = CacheHandler()
+         self._logger = Logger(verbose=self.verbose)
+         if self.output_log_file:
+             self._file_handler = FileHandler(self.output_log_file)
+         self._rpm_controller = RPMController(max_rpm=self.max_rpm, logger=self._logger)
++        self._telemetry = Telemetry()
++        self._telemetry.set_tracer()
+ 
+         # Initialize agentops if available and API key is present
+         if agentops:
+             api_key = os.getenv("AGENTOPS_API_KEY")
+-            if api_key and api_key.strip():  # Validate API key
++            if self._validate_api_key(api_key):
+                 try:
+                     agentops.init(api_key)
++                    self._agentops = agentops
+                     self._logger.log(
+                         "info",
+                         "Successfully initialized agentops",
+                         color="green"
+                     )
+-                except (ConnectionError, ValueError) as e:
++                except (ConnectionError, AuthenticationError) as e:
+                     self._logger.log(
+                         "warning",
+-                        f"Failed to initialize agentops: {e}",
++                        f"Failed to connect to agentops: {e}",
+                         color="yellow"
+                     )
++                    self._agentops = None
++                except (ValueError, AgentOpsError) as e:
++                    self._logger.log(
++                        "warning",
++                        f"Invalid agentops configuration: {e}",
++                        color="yellow"
++                    )
++                    self._agentops = None
++            else:
++                self._logger.log(
++                    "warning",
++                    "Invalid AGENTOPS_API_KEY provided",
++                    color="yellow"
++                )
++                self._agentops = None
+ 
+         if self.function_calling_llm and not isinstance(self.function_calling_llm, LLM):
+             self.function_calling_llm = create_llm(self.function_calling_llm)
+-
+-        self._telemetry = Telemetry()
+-        self._telemetry.set_tracer()
+         return self
+ 
+     @model_validator(mode="after")
+diff --git a/tests/crew_test.py b/tests/crew_test.py
+index 5c81363a8e..bf578e4572 100644
+--- a/tests/crew_test.py
++++ b/tests/crew_test.py
+@@ -30,87 +30,98 @@
+ from crewai.utilities.task_output_storage_handler import TaskOutputStorageHandler
+ 
+ 
+-def test_agentops_initialization_with_api_key(monkeypatch):
+-    """Test that agentops is properly initialized when API key is present."""
+-    import agentops
+-    
+-    # Mock agentops.init
+-    mock_init = MagicMock()
+-    monkeypatch.setattr(agentops, "init", mock_init)
+-    
+-    # Set API key
+-    monkeypatch.setenv("AGENTOPS_API_KEY", "test-key")
+-    
+-    # Create crew
+-    task = Task(
+-        description="Test task",
+-        expected_output="Test output",
+-        agent=researcher,
+-    )
+-    crew = Crew(agents=[researcher], tasks=[task])
+-    
+-    # Verify agentops was initialized
+-    mock_init.assert_called_once_with("test-key")
+-
+-def test_agentops_initialization_without_api_key(monkeypatch):
+-    """Test that agentops is not initialized when API key is not present."""
+-    import agentops
+-    
+-    # Mock agentops.init
+-    mock_init = MagicMock()
+-    monkeypatch.setattr(agentops, "init", mock_init)
+-    
+-    # Create crew without setting API key
+-    task = Task(
+-        description="Test task",
+-        expected_output="Test output",
+-        agent=researcher,
++@pytest.fixture
++def researcher():
++    """Fixture to create a researcher agent."""
++    return Agent(
++        role="Researcher",
++        goal="Make the best research and analysis on content about AI and AI agents",
++        backstory="You're an expert researcher, specialized in technology, software engineering, AI and startups.",
++        allow_delegation=False,
+     )
+-    crew = Crew(agents=[researcher], tasks=[task])
+-    
+-    # Verify agentops.init was not called
+-    mock_init.assert_not_called()
+ 
+-def test_gemini_llm_with_agentops(monkeypatch):
+-    """Test that Gemini LLM works correctly with agentops."""
+-    # Mock agentops
++@pytest.fixture
++def mock_agentops():
++    """Fixture to mock agentops for testing."""
+     mock_agentops = MagicMock()
+-    monkeypatch.setattr("crewai.crew.agentops", mock_agentops)
+-    
+-    # Set API keys
+-    monkeypatch.setenv("AGENTOPS_API_KEY", "test-key")
+-    monkeypatch.setenv("GOOGLE_API_KEY", "test-key")
+-    
+-    # Create crew with Gemini LLM
+-    llm = LLM(model="gemini-pro")
+-    agent = Agent(
+-        role="test",
+-        goal="test",
+-        backstory="test",
+-        llm=llm
+-    )
+-    task = Task(
+-        description="test task",
+-        expected_output="test output",
+-        agent=agent
+-    )
+-    crew = Crew(agents=[agent], tasks=[task])
+-    
+-    # Mock the agent execution to avoid actual API calls
+-    with patch.object(Task, 'execute_sync', return_value=TaskOutput(
+-        description="test",
+-        raw="test output",
+-        agent=agent.role
+-    )):
+-        # Run crew
+-        crew.kickoff()
+-    
+-    # Verify agentops.end_session was called correctly
+-    mock_agentops.end_session.assert_called_once_with(
+-        end_state="Success",
+-        end_state_reason="Finished Execution",
+-        is_auto_end=True
+-    )
++    mock_agentops.init = MagicMock()
++    return mock_agentops
++
++@pytest.mark.agentops
++class TestAgentOpsIntegration:
++    """Tests for AgentOps integration."""
++
++    def test_initialization_with_api_key(self, mock_agentops, monkeypatch):
++        """Test that agentops is properly initialized when API key is present."""
++        monkeypatch.setattr("crewai.crew.agentops", mock_agentops)
++        monkeypatch.setenv("AGENTOPS_API_KEY", "test-key-12345")
++        crew = Crew(agents=[researcher], tasks=[Task(
++            description="Test task",
++            expected_output="Test output",
++            agent=researcher,
++        )])
++        crew.set_private_attrs()
++        mock_agentops.init.assert_called_once_with("test-key-12345")
++
++    def test_initialization_without_api_key(self, mock_agentops):
++        """Test that agentops is not initialized when API key is not present."""
++        crew = Crew(agents=[researcher], tasks=[Task(
++            description="Test task",
++            expected_output="Test output",
++            agent=researcher,
++        )])
++        mock_agentops.assert_not_called()
++
++    def test_initialization_with_invalid_api_key(self, mock_agentops, monkeypatch):
++        """Test that agentops is not initialized when API key is invalid."""
++        monkeypatch.setenv("AGENTOPS_API_KEY", "   ")
++        crew = Crew(agents=[researcher], tasks=[Task(
++            description="Test task",
++            expected_output="Test output",
++            agent=researcher,
++        )])
++        mock_agentops.assert_not_called()
++
++    def test_gemini_llm_integration(self, mock_agentops, monkeypatch):
++        """Test that Gemini LLM works correctly with agentops."""
++        # Mock agentops
++        monkeypatch.setattr("crewai.crew.agentops", mock_agentops)
++        
++        # Set API keys
++        monkeypatch.setenv("AGENTOPS_API_KEY", "test-key-12345")
++        monkeypatch.setenv("GOOGLE_API_KEY", "test-key")
++        
++        # Create crew with Gemini LLM
++        llm = LLM(model="gemini-pro")
++        agent = Agent(
++            role="test",
++            goal="test",
++            backstory="test",
++            llm=llm
++        )
++        task = Task(
++            description="test task",
++            expected_output="test output",
++            agent=agent
++        )
++        crew = Crew(agents=[agent], tasks=[task])
++        crew.set_private_attrs()
++        
++        # Mock the agent execution to avoid actual API calls
++        with patch.object(Task, 'execute_sync', return_value=TaskOutput(
++            description="test",
++            raw="test output",
++            agent=agent.role
++        )):
++            # Run crew
++            crew.kickoff()
++        
++        # Verify agentops.end_session was called correctly
++        mock_agentops.end_session.assert_called_once_with(
++            end_state="Success",
++            end_state_reason="Finished Execution",
++            is_auto_end=True
++        )
+ 
+ ceo = Agent(
+     role="CEO",
+
+From 6c3f4a6446645f72fb3d8498f9243dc4bfc174dd Mon Sep 17 00:00:00 2001
+From: Devin AI <158243242+devin-ai-integration[bot]@users.noreply.github.com>
+Date: Wed, 12 Feb 2025 06:43:26 +0000
+Subject: [PATCH 6/7] refactor: Improve agentops integration with better types
+ and tests
+
+- Add specific error handling for agentops initialization
+- Add type hints for better code readability
+- Improve API key validation
+- Reorganize tests using pytest fixtures and classes
+- Add documentation for set_private_attrs method
+
+Co-Authored-By: Joe Moura <joao@crewai.com>
+---
+ src/crewai/crew.py | 2 --
+ 1 file changed, 2 deletions(-)
+
+diff --git a/src/crewai/crew.py b/src/crewai/crew.py
+index 5a9da4dc20..69dcf08353 100644
+--- a/src/crewai/crew.py
++++ b/src/crewai/crew.py
+@@ -53,8 +53,6 @@
+ from crewai.utilities.task_output_storage_handler import TaskOutputStorageHandler
+ from crewai.utilities.training_handler import CrewTrainingHandler
+ 
+-from typing import Optional
+-
+ try:
+     import agentops  # type: ignore
+     from agentops.exceptions import AgentOpsError, AuthenticationError  # type: ignore
+
+From db34516b18af0ff1f5d9f0fabd5703cb7af72c15 Mon Sep 17 00:00:00 2001
+From: Devin AI <158243242+devin-ai-integration[bot]@users.noreply.github.com>
+Date: Wed, 12 Feb 2025 06:46:27 +0000
+Subject: [PATCH 7/7] fix: Fix type-checker issues with _finish_execution
+ method
+
+Co-Authored-By: Joe Moura <joao@crewai.com>
+---
+ src/crewai/crew.py | 17 ++++++++++++-----
+ 1 file changed, 12 insertions(+), 5 deletions(-)
+
+diff --git a/src/crewai/crew.py b/src/crewai/crew.py
+index 69dcf08353..c6207d1898 100644
+--- a/src/crewai/crew.py
++++ b/src/crewai/crew.py
+@@ -602,7 +602,8 @@ def kickoff(
+             inputs = before_callback(inputs)
+ 
+         """Starts the crew to work on its assigned tasks."""
+-        self._execution_span = self._telemetry.crew_execution_span(self, inputs)
++        if self._telemetry:
++            self._execution_span = self._telemetry.crew_execution_span(self, inputs)
+         self._task_output_handler.reset()
+         self._logging_color = "bold_purple"
+ 
+@@ -1180,16 +1181,22 @@ def _interpolate_inputs(self, inputs: Dict[str, Any]) -> None:
+         for agent in self.agents:
+             agent.interpolate_inputs(inputs)
+ 
+-    def _finish_execution(self, final_string_output: str) -> None:
++    def _finish_execution(self, final_output: Union[str, CrewOutput]) -> None:
++        """Finish execution and cleanup.
++        
++        Args:
++            final_output: The final output from crew execution, either as string or CrewOutput
++        """
+         if self.max_rpm:
+             self._rpm_controller.stop_rpm_counter()
+-        if agentops:
+-            agentops.end_session(
++        if self._telemetry:
++            self._telemetry.end_crew(self, final_output)
++        if self._agentops:
++            self._agentops.end_session(
+                 end_state="Success",
+                 end_state_reason="Finished Execution",
+                 is_auto_end=True,
+             )
+-        self._telemetry.end_crew(self, final_string_output)
+ 
+     def calculate_usage_metrics(self) -> UsageMetrics:
+         """Calculates and returns the usage metrics."""

@@ -1,0 +1,312 @@
+From dfa014c4de0c1cae6c475cf69040af6a484456bc Mon Sep 17 00:00:00 2001
+From: Lars Grammel <lars.grammel@gmail.com>
+Date: Sun, 9 Feb 2025 11:47:54 +0100
+Subject: [PATCH 1/3] fix (ui): update ui before automatic client-side tool
+ call is executed
+
+---
+ .changeset/famous-rabbits-wonder.md           |  5 +++
+ .../next-openai/app/use-chat-tools/page.tsx   |  3 ++
+ .../process-chat-response.test.ts.snap        | 40 ++++++++++++++++++-
+ .../src/process-chat-response.test.ts         |  2 +-
+ .../ui-utils/src/process-chat-response.ts     | 16 ++++----
+ 5 files changed, 56 insertions(+), 10 deletions(-)
+ create mode 100644 .changeset/famous-rabbits-wonder.md
+
+diff --git a/.changeset/famous-rabbits-wonder.md b/.changeset/famous-rabbits-wonder.md
+new file mode 100644
+index 000000000000..be53dab62479
+--- /dev/null
++++ b/.changeset/famous-rabbits-wonder.md
+@@ -0,0 +1,5 @@
++---
++'@ai-sdk/ui-utils': patch
++---
++
++fix (ui): update ui before automatic client-side tool call is executed
+diff --git a/examples/next-openai/app/use-chat-tools/page.tsx b/examples/next-openai/app/use-chat-tools/page.tsx
+index 4c1f12cb646e..3623d2cc7555 100644
+--- a/examples/next-openai/app/use-chat-tools/page.tsx
++++ b/examples/next-openai/app/use-chat-tools/page.tsx
+@@ -10,6 +10,9 @@ export default function Chat() {
+ 
+       // run client-side tools that are automatically executed:
+       async onToolCall({ toolCall }) {
++        // artificial 2 second delay
++        await new Promise(resolve => setTimeout(resolve, 2000));
++
+         if (toolCall.toolName === 'getLocation') {
+           const cities = [
+             'New York',
+diff --git a/packages/ui-utils/src/__snapshots__/process-chat-response.test.ts.snap b/packages/ui-utils/src/__snapshots__/process-chat-response.test.ts.snap
+index 2beca25cc671..a29d5407615e 100644
+--- a/packages/ui-utils/src/__snapshots__/process-chat-response.test.ts.snap
++++ b/packages/ui-utils/src/__snapshots__/process-chat-response.test.ts.snap
+@@ -302,8 +302,44 @@ exports[`scenario: onToolCall is executed > should call the onFinish function wi
+ ]
+ `;
+ 
+-exports[`scenario: onToolCall is executed > should call the update function with the correct arguments 1`] = `
++exports[`scenario: onToolCall is executed > should call the update function twice with the correct arguments 1`] = `
+ [
++  {
++    "data": [],
++    "message": {
++      "content": "",
++      "createdAt": 2023-01-01T00:00:00.000Z,
++      "id": "id-0",
++      "parts": [
++        {
++          "toolInvocation": {
++            "args": {
++              "city": "London",
++            },
++            "state": "call",
++            "step": 0,
++            "toolCallId": "tool-call-id",
++            "toolName": "tool-name",
++          },
++          "type": "tool-invocation",
++        },
++      ],
++      "revisionId": "id-1",
++      "role": "assistant",
++      "toolInvocations": [
++        {
++          "args": {
++            "city": "London",
++          },
++          "state": "call",
++          "step": 0,
++          "toolCallId": "tool-call-id",
++          "toolName": "tool-name",
++        },
++      ],
++    },
++    "replaceLastMessage": false,
++  },
+   {
+     "data": [],
+     "message": {
+@@ -325,7 +361,7 @@ exports[`scenario: onToolCall is executed > should call the update function with
+           "type": "tool-invocation",
+         },
+       ],
+-      "revisionId": "id-1",
++      "revisionId": "id-2",
+       "role": "assistant",
+       "toolInvocations": [
+         {
+diff --git a/packages/ui-utils/src/process-chat-response.test.ts b/packages/ui-utils/src/process-chat-response.test.ts
+index 531394567916..ea064e26dbb0 100644
+--- a/packages/ui-utils/src/process-chat-response.test.ts
++++ b/packages/ui-utils/src/process-chat-response.test.ts
+@@ -631,7 +631,7 @@ describe('scenario: onToolCall is executed', () => {
+     });
+   });
+ 
+-  it('should call the update function with the correct arguments', async () => {
++  it('should call the update function twice with the correct arguments', async () => {
+     expect(updateCalls).toMatchSnapshot();
+   });
+ 
+diff --git a/packages/ui-utils/src/process-chat-response.ts b/packages/ui-utils/src/process-chat-response.ts
+index 32745c4ce253..8dde499067cb 100644
+--- a/packages/ui-utils/src/process-chat-response.ts
++++ b/packages/ui-utils/src/process-chat-response.ts
+@@ -1,4 +1,9 @@
++import { LanguageModelV1FinishReason } from '@ai-sdk/provider';
+ import { generateId as generateIdFunction } from '@ai-sdk/provider-utils';
++import {
++  calculateLanguageModelUsage,
++  LanguageModelUsage,
++} from './duplicated/usage';
+ import { parsePartialJson } from './parse-partial-json';
+ import { processDataStream } from './process-data-stream';
+ import type {
+@@ -10,11 +15,6 @@ import type {
+   UIMessage,
+   UseChatOptions,
+ } from './types';
+-import { LanguageModelV1FinishReason } from '@ai-sdk/provider';
+-import {
+-  calculateLanguageModelUsage,
+-  LanguageModelUsage,
+-} from './duplicated/usage';
+ 
+ export async function processChatResponse({
+   stream,
+@@ -231,6 +231,8 @@ export async function processChatResponse({
+ 
+       updateToolInvocationPart(value.toolCallId, invocation);
+ 
++      execUpdate();
++
+       // invoke the onToolCall callback if it exists. This is blocking.
+       // In the future we should make this non-blocking, which
+       // requires additional state management for error handling etc.
+@@ -249,10 +251,10 @@ export async function processChatResponse({
+             invocation;
+ 
+           updateToolInvocationPart(value.toolCallId, invocation);
++
++          execUpdate();
+         }
+       }
+-
+-      execUpdate();
+     },
+     onToolResultPart(value) {
+       const toolInvocations = message.toolInvocations;
+
+From 72eb2573fc404c305f4a34a7ae1eb9662fc3cfa6 Mon Sep 17 00:00:00 2001
+From: Lars Grammel <lars.grammel@gmail.com>
+Date: Sun, 9 Feb 2025 12:01:48 +0100
+Subject: [PATCH 2/3] solid test
+
+---
+ packages/solid/src/use-chat.ui.test.tsx | 30 ++++++++++++++++++-------
+ 1 file changed, 22 insertions(+), 8 deletions(-)
+
+diff --git a/packages/solid/src/use-chat.ui.test.tsx b/packages/solid/src/use-chat.ui.test.tsx
+index 6d66005ee0c0..3bc33b606a38 100644
+--- a/packages/solid/src/use-chat.ui.test.tsx
++++ b/packages/solid/src/use-chat.ui.test.tsx
+@@ -618,9 +618,13 @@ describe('text stream', () => {
+ });
+ 
+ describe('onToolCall', () => {
++  let resolve: () => void;
++  let toolCallPromise: Promise<void>;
++
+   const TestComponent = () => {
+     const { messages, append } = useChat(() => ({
+       async onToolCall({ toolCall }) {
++        await toolCallPromise;
+         return `test-tool-response: ${toolCall.toolName} ${
+           toolCall.toolCallId
+         } ${JSON.stringify(toolCall.args)}`;
+@@ -633,13 +637,11 @@ describe('onToolCall', () => {
+           {(m, idx) => (
+             <div data-testid={`message-${idx()}`}>
+               <For each={m.toolInvocations ?? []}>
+-                {(toolInvocation, toolIdx) =>
+-                  'result' in toolInvocation ? (
+-                    <div data-testid={`tool-invocation-${toolIdx()}`}>
+-                      {toolInvocation.result}
+-                    </div>
+-                  ) : null
+-                }
++                {(toolInvocation, toolIdx) => (
++                  <div data-testid={`tool-invocation-${toolIdx()}`}>
++                    {JSON.stringify(toolInvocation)}
++                  </div>
++                )}
+               </For>
+             </div>
+           )}
+@@ -656,6 +658,10 @@ describe('onToolCall', () => {
+   };
+ 
+   beforeEach(() => {
++    toolCallPromise = new Promise(resolveArg => {
++      resolve = resolveArg;
++    });
++
+     render(() => <TestComponent />);
+   });
+ 
+@@ -680,8 +686,16 @@ describe('onToolCall', () => {
+ 
+     await screen.findByTestId('message-1');
+     expect(screen.getByTestId('message-1')).toHaveTextContent(
+-      'test-tool-response: test-tool tool-call-0 {"testArg":"test-value"}',
++      `{"state":"call","step":0,"toolCallId":"tool-call-0","toolName":"test-tool","args":{"testArg":"test-value"}}`,
+     );
++
++    resolve();
++
++    await waitFor(() => {
++      expect(screen.getByTestId('message-1')).toHaveTextContent(
++        `{"state":"result","step":0,"toolCallId":"tool-call-0","toolName":"test-tool","args":{"testArg":"test-value"},"result":"test-tool-response: test-tool tool-call-0 {\\"testArg\\":\\"test-value\\"}"}`,
++      );
++    });
+   });
+ });
+ 
+
+From a12fec1229ba1a788e3cc99a2fce88564c5eb36d Mon Sep 17 00:00:00 2001
+From: Lars Grammel <lars.grammel@gmail.com>
+Date: Sun, 9 Feb 2025 12:03:53 +0100
+Subject: [PATCH 3/3] react test
+
+---
+ packages/react/src/use-chat.ui.test.tsx | 30 ++++++++++++++++++-------
+ 1 file changed, 22 insertions(+), 8 deletions(-)
+
+diff --git a/packages/react/src/use-chat.ui.test.tsx b/packages/react/src/use-chat.ui.test.tsx
+index 5f6c94571359..cc326a4ddb80 100644
+--- a/packages/react/src/use-chat.ui.test.tsx
++++ b/packages/react/src/use-chat.ui.test.tsx
+@@ -741,9 +741,13 @@ describe('prepareRequestBody', () => {
+ });
+ 
+ describe('onToolCall', () => {
++  let resolve: () => void;
++  let toolCallPromise: Promise<void>;
++
+   const TestComponent = () => {
+     const { messages, append } = useChat({
+       async onToolCall({ toolCall }) {
++        await toolCallPromise;
+         return `test-tool-response: ${toolCall.toolName} ${
+           toolCall.toolCallId
+         } ${JSON.stringify(toolCall.args)}`;
+@@ -754,13 +758,11 @@ describe('onToolCall', () => {
+       <div>
+         {messages.map((m, idx) => (
+           <div data-testid={`message-${idx}`} key={m.id}>
+-            {m.toolInvocations?.map((toolInvocation, toolIdx) =>
+-              'result' in toolInvocation ? (
+-                <div key={toolIdx} data-testid={`tool-invocation-${toolIdx}`}>
+-                  {toolInvocation.result}
+-                </div>
+-              ) : null,
+-            )}
++            {m.toolInvocations?.map((toolInvocation, toolIdx) => (
++              <div key={toolIdx} data-testid={`tool-invocation-${toolIdx}`}>
++                {JSON.stringify(toolInvocation)}
++              </div>
++            ))}
+           </div>
+         ))}
+ 
+@@ -775,6 +777,10 @@ describe('onToolCall', () => {
+   };
+ 
+   beforeEach(() => {
++    toolCallPromise = new Promise(resolveArg => {
++      resolve = resolveArg;
++    });
++
+     render(<TestComponent />);
+   });
+ 
+@@ -802,8 +808,16 @@ describe('onToolCall', () => {
+ 
+         await screen.findByTestId('message-1');
+         expect(screen.getByTestId('message-1')).toHaveTextContent(
+-          'test-tool-response: test-tool tool-call-0 {"testArg":"test-value"}',
++          `{"state":"call","step":0,"toolCallId":"tool-call-0","toolName":"test-tool","args":{"testArg":"test-value"}}`,
+         );
++
++        resolve();
++
++        await waitFor(() => {
++          expect(screen.getByTestId('message-1')).toHaveTextContent(
++            `{"state":"result","step":0,"toolCallId":"tool-call-0","toolName":"test-tool","args":{"testArg":"test-value"},"result":"test-tool-response: test-tool tool-call-0 {\\"testArg\\":\\"test-value\\"}"}`,
++          );
++        });
+       },
+     ),
+   );

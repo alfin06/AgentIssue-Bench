@@ -1,0 +1,152 @@
+From 51383fc86dcbe9bbba3b934b45c029ed9fc29d4d Mon Sep 17 00:00:00 2001
+From: Tom Jenkinson <tom@humaans.io>
+Date: Wed, 9 Apr 2025 11:19:37 +0100
+Subject: [PATCH 1/3] Support `additionalProperties` in open api schema
+
+`z.record(z.string())` currently gets converted to `undefined`, which is invalid and causes an error from vertex ai.
+
+This now gets converted to `{ type: 'object', additionalProperties: { type: "string" } }`
+---
+ ...vert-json-schema-to-openapi-schema.test.ts | 47 +++++++++++++++++++
+ .../convert-json-schema-to-openapi-schema.ts  | 11 ++++-
+ 2 files changed, 57 insertions(+), 1 deletion(-)
+
+diff --git a/packages/google/src/convert-json-schema-to-openapi-schema.test.ts b/packages/google/src/convert-json-schema-to-openapi-schema.test.ts
+index cf1b7fce992a..3a7e1e527495 100644
+--- a/packages/google/src/convert-json-schema-to-openapi-schema.test.ts
++++ b/packages/google/src/convert-json-schema-to-openapi-schema.test.ts
+@@ -23,6 +23,53 @@ it('should remove additionalProperties and $schema', () => {
+   expect(convertJSONSchemaToOpenAPISchema(input)).toEqual(expected);
+ });
+ 
++it('supports additionalProperties: true', () => {
++  const input: JSONSchema7 = {
++    $schema: 'http://json-schema.org/draft-07/schema#',
++    type: 'object',
++    properties: {
++      name: { type: 'string' },
++      age: { type: 'number' },
++    },
++    additionalProperties: true,
++  };
++
++  const expected = {
++    type: 'object',
++    properties: {
++      name: { type: 'string' },
++      age: { type: 'number' },
++    },
++    additionalProperties: true,
++  };
++
++  expect(convertJSONSchemaToOpenAPISchema(input)).toEqual(expected);
++});
++
++// z.record(z.string())
++it('supports `additionalProperties` as an object', () => {
++  const input: JSONSchema7 = {
++    $schema: 'http://json-schema.org/draft-07/schema#',
++    type: 'object',
++    properties: {
++      name: { type: 'string' },
++      age: { type: 'number' },
++    },
++    additionalProperties: { type: 'string' },
++  };
++
++  const expected = {
++    type: 'object',
++    properties: {
++      name: { type: 'string' },
++      age: { type: 'number' },
++    },
++    additionalProperties: { type: 'string' },
++  };
++
++  expect(convertJSONSchemaToOpenAPISchema(input)).toEqual(expected);
++});
++
+ it('should handle nested objects and arrays', () => {
+   const input: JSONSchema7 = {
+     type: 'object',
+diff --git a/packages/google/src/convert-json-schema-to-openapi-schema.ts b/packages/google/src/convert-json-schema-to-openapi-schema.ts
+index 108c376746d2..034d7a1a2245 100644
+--- a/packages/google/src/convert-json-schema-to-openapi-schema.ts
++++ b/packages/google/src/convert-json-schema-to-openapi-schema.ts
+@@ -28,6 +28,7 @@ export function convertJSONSchemaToOpenAPISchema(
+     const: constValue,
+     minLength,
+     enum: enumValues,
++    additionalProperties,
+   } = jsonSchema;
+ 
+   const result: Record<string, unknown> = {};
+@@ -115,6 +116,13 @@ export function convertJSONSchemaToOpenAPISchema(
+     result.minLength = minLength;
+   }
+ 
++  if (additionalProperties === true) {
++    result.additionalProperties = true;
++  } else if (additionalProperties) {
++    result.additionalProperties =
++      convertJSONSchemaToOpenAPISchema(additionalProperties);
++  }
++
+   return result;
+ }
+ 
+@@ -124,6 +132,7 @@ function isEmptyObjectSchema(jsonSchema: JSONSchema7Definition): boolean {
+     typeof jsonSchema === 'object' &&
+     jsonSchema.type === 'object' &&
+     (jsonSchema.properties == null ||
+-      Object.keys(jsonSchema.properties).length === 0)
++      Object.keys(jsonSchema.properties).length === 0) &&
++    !jsonSchema.additionalProperties
+   );
+ }
+
+From ace5116b2b873c99b2f397e107b6343c318e4f10 Mon Sep 17 00:00:00 2001
+From: Lars Grammel <lars.grammel@gmail.com>
+Date: Mon, 30 Jun 2025 08:58:45 +0200
+Subject: [PATCH 2/3] x
+
+---
+ .../google/src/convert-json-schema-to-openapi-schema.test.ts   | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+diff --git a/packages/google/src/convert-json-schema-to-openapi-schema.test.ts b/packages/google/src/convert-json-schema-to-openapi-schema.test.ts
+index 3a7e1e527495..4e6aee8ba411 100644
+--- a/packages/google/src/convert-json-schema-to-openapi-schema.test.ts
++++ b/packages/google/src/convert-json-schema-to-openapi-schema.test.ts
+@@ -46,8 +46,7 @@ it('supports additionalProperties: true', () => {
+   expect(convertJSONSchemaToOpenAPISchema(input)).toEqual(expected);
+ });
+ 
+-// z.record(z.string())
+-it('supports `additionalProperties` as an object', () => {
++it('supports `additionalProperties` as an object (for z.record(z.string()))', () => {
+   const input: JSONSchema7 = {
+     $schema: 'http://json-schema.org/draft-07/schema#',
+     type: 'object',
+
+From 9d02fc19196de7d00df21fcc30d91bc63f422032 Mon Sep 17 00:00:00 2001
+From: Lars Grammel <lars.grammel@gmail.com>
+Date: Mon, 30 Jun 2025 08:59:13 +0200
+Subject: [PATCH 3/3] cs
+
+---
+ .changeset/khaki-crabs-reply.md | 5 +++++
+ 1 file changed, 5 insertions(+)
+ create mode 100644 .changeset/khaki-crabs-reply.md
+
+diff --git a/.changeset/khaki-crabs-reply.md b/.changeset/khaki-crabs-reply.md
+new file mode 100644
+index 000000000000..6b814e6e3611
+--- /dev/null
++++ b/.changeset/khaki-crabs-reply.md
+@@ -0,0 +1,5 @@
++---
++'@ai-sdk/google': patch
++---
++
++Support tool schemas that allow additional properties (e.g `z.record(z.string())`)

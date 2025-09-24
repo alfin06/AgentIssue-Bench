@@ -1,47 +1,66 @@
-# reproduce.py
+import os
+import sys
+from unittest.mock import MagicMock, patch
 
-# Simulated command registry
-COMMANDS = {}
+# --- Test Setup ---
+try:
+    from agixt.Agent import Agent
+    from agixt.Chain import Chain
+except ImportError as e:
+    print(f"FATAL: Could not import the necessary module. Check the installation. Error: {e}")
+    sys.exit(1)
 
-def register_command(name, func, command_type="regular"):
-    """Mock function to register a command."""
-    COMMANDS[name] = {
-        "function": func,
-        "type": command_type
-    }
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
-# Simulate regular command
-def say_hello():
-    return "Hello!"
+engine = create_engine('sqlite:///:memory:')
 
-register_command("say_hello", say_hello)
+Session = sessionmaker(bind=engine)
 
-# Simulate loading a chain command
-# In AGiXT, chain commands should also get registered
-def fake_chain_loader():
-    # Simulate a command-like structure from a chain
-    def chain_cmd():
-        return "This is a chain command."
-    
-    # ❌ Intentionally forget to register it as a regular command
-    return chain_cmd  # It's returned but not registered!
+patch_target = "agixt.db.get_session"
 
-# Simulate loading chains
-chain_func = fake_chain_loader()
+print("--- Setting up a test agent with both a standard command and a chain. ---")
 
-# 🔍 Check registered commands
-print("\n=== Registered Commands ===")
-for name, meta in COMMANDS.items():
-    print(f"{name} ({meta['type']})")
+# --- Verification Logic ---
+try:
+    with patch(patch_target, return_value=Session()):
+        chain = Chain(name="my_test_chain")
+        chain.add_chain("Test Chain")
+        print("--- Dummy chain 'my_test_chain' created. ---")
 
-# ✅ Expected: say_hello
-# ❌ Missing: chain_cmd should be here if properly registered
+        agent_name = "TestAgent"
+        agent = Agent(agent_name)
+        
+        agent.setup_commands() 
+        print(f"--- Agent '{agent_name}' initialized. ---")
 
-# Demonstrate the chain command works but is not registered
-print("\nChain command output (manually invoked):", chain_func())
-
-# 🔥 Simulate bug
-if "chain_cmd" not in COMMANDS:
-    print("\n❌  BUG: chain command was not registered!")
-else:
-    print("\n✅ chain command registered.")
+        agent_config = {
+            "commands": {
+                "Standard Command": True,
+                "my_test_chain": True,
+            }
+        }
+        
+        agent.update_agent_config(agent_config, "commands")
+        print("--- Agent configuration saved. It should include 'Standard Command' and 'my_test_chain'. ---")
+        
+        reloaded_config = agent.get_agent_config()
+        enabled_commands = [cmd for cmd, enabled in reloaded_config["commands"].items() if enabled]
+        
+        print("\n--- Reloaded agent's enabled commands from the database: ---")
+        print(enabled_commands)
+        
+        print("\n--- Verifying Bug ---")
+        if "my_test_chain" in enabled_commands:
+            print("FAILURE: The bug was NOT reproduced. The chain command was saved correctly.")
+            sys.exit(0)
+        else:
+            print("SUCCESS: The bug is reproduced.")
+            print("The 'my_test_chain' command was NOT found in the reloaded configuration.")
+            sys.exit(1)
+            
+except Exception as e:
+    print(f"\nFAILURE: An unexpected error occurred: {type(e).__name__}: {e}")
+    import traceback
+    traceback.print_exc()
+    sys.exit(0)

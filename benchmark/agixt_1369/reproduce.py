@@ -17,7 +17,6 @@ chain_data = {
     ]
 }
 
-# Simulate POSTing an invalid chain to AGiXT
 print("Posting chain with empty name...")
 
 res = requests.post(
@@ -31,7 +30,6 @@ try:
 except Exception as e:
     print("Failed to parse response JSON:", e)
 
-# Now simulate frontend fetching chains (triggering Zod validation)
 print("\nFetching chains (simulate Zod validation on frontend)...")
 
 chains_res = requests.get(f"{API_URL}/api/chain")

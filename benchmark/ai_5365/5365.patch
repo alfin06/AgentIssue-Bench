@@ -1,0 +1,336 @@
+From d8f342f1d8f963b586c7d8b905212d4266e4528f Mon Sep 17 00:00:00 2001
+From: Grace Yun <graceyunn@gmail.com>
+Date: Tue, 25 Mar 2025 12:41:27 -0400
+Subject: [PATCH 1/4] chore: docs, cookbook
+
+---
+ content/cookbook/01-next/73-mcp-tools.mdx     | 107 ++++++++++++++++++
+ .../next-openai/app/api/mcp-zapier/route.ts   |  33 ++++++
+ examples/next-openai/app/mcp-zapier/page.tsx  |  37 ++++++
+ 3 files changed, 177 insertions(+)
+ create mode 100644 content/cookbook/01-next/73-mcp-tools.mdx
+ create mode 100644 examples/next-openai/app/api/mcp-zapier/route.ts
+ create mode 100644 examples/next-openai/app/mcp-zapier/page.tsx
+
+diff --git a/content/cookbook/01-next/73-mcp-tools.mdx b/content/cookbook/01-next/73-mcp-tools.mdx
+new file mode 100644
+index 000000000000..36a58173a173
+--- /dev/null
++++ b/content/cookbook/01-next/73-mcp-tools.mdx
+@@ -0,0 +1,107 @@
++---
++title: Model Context Protocol (MCP) Tools
++description: Learn how to use MCP tools with the AI SDK and Next.js
++tags: ['next', 'tool use', 'agent', 'mcp']
++---
++
++# MCP Tools
++
++The AI SDK supports Model Context Protocol (MCP) tools by offering a lightweight client that exposes a `tools` method for retrieving tools from a MCP server. After use, the client should always be closed to release resources.
++
++## Server
++
++Let's create a route handler for `/api/completion` that will generate text based on the input prompt and MCP tools that can be called at any time during a generation. The route will call the `streamText` function from the `ai` module, which will then generate text based on the input prompt and stream it to the client.
++
++```ts filename="app/api/completion/route.ts"
++import { experimental_createMCPClient, streamText } from 'ai';
++import { Experimental_StdioMCPTransport } from 'ai/mcp-stdio';
++import { openai } from '@ai-sdk/openai';
++
++export async function POST(req: Request) {
++  const { prompt }: { prompt: string } = await req.json();
++
++  try {
++    // Initialize an MCP client to connect to a `stdio` MCP server:
++    const transport = new Experimental_StdioMCPTransport({
++      command: 'node',
++      args: ['src/stdio/dist/server.js'],
++    });
++    const stdioClient = await experimental_createMCPClient({
++      transport,
++    });
++
++    // Alternatively, you can connect to a Server-Sent Events (SSE) MCP server:
++    const sseClient = await experimental_createMCPClient({
++      transport: {
++        type: 'sse',
++        url: 'https://actions.zapier.com/mcp/[YOUR_KEY]/sse',
++      },
++    });
++
++    // Similarly to the stdio example, you can pass in your own custom transport as long as it implements the `MCPTransport` interface:
++    const transport = new MyCustomTransport({
++      // ...
++    });
++    const customTransportClient = await experimental_createMCPClient({
++      transport,
++    });
++
++    const toolSetOne = await stdioClient.tools();
++    const toolSetTwo = await sseClient.tools();
++    const toolSetThree = await customTransportClient.tools();
++    const tools = {
++      ...toolSetOne,
++      ...toolSetTwo,
++      ...toolSetThree, // note: this approach causes subsequent tool sets to override tools with the same name
++    };
++
++    const response = await streamText({
++      model: openai('gpt-4o'),
++      tools,
++      prompt,
++      // When streaming, the client should be closed after the response is finished:
++      onFinish: async () => {
++        await stdioClient.close();
++        await sseClient.close();
++        await customTransportClient.close();
++      },
++    });
++
++    return response.toDataStreamResponse();
++  } catch (error) {
++    return new Response('Internal Server Error', { status: 500 });
++  }
++}
++```
++
++## Client
++
++Let's create a simple React component that imports the `useCompletion` hook from the `@ai-sdk/react` module. The `useCompletion` hook will call the `/api/completion` endpoint when a button is clicked. The endpoint will generate text based on the input prompt and stream it to the client.
++
++```tsx filename="app/page.tsx"
++'use client';
++
++import { useCompletion } from '@ai-sdk/react';
++
++export default function Page() {
++  const { completion, complete } = useCompletion({
++    api: '/api/completion',
++  });
++
++  return (
++    <div>
++      <div
++        onClick={async () => {
++          await complete(
++            'Please schedule a call with Sonny and Robby for tomorrow at 10am ET for me!',
++          );
++        }}
++      >
++        Schedule a call
++      </div>
++
++      {completion}
++    </div>
++  );
++}
++```
+diff --git a/examples/next-openai/app/api/mcp-zapier/route.ts b/examples/next-openai/app/api/mcp-zapier/route.ts
+new file mode 100644
+index 000000000000..10fdcb399800
+--- /dev/null
++++ b/examples/next-openai/app/api/mcp-zapier/route.ts
+@@ -0,0 +1,33 @@
++import { openai } from '@ai-sdk/openai';
++import { experimental_createMCPClient, streamText } from 'ai';
++
++export const maxDuration = 30;
++
++export async function POST(req: Request) {
++  const { messages } = await req.json();
++
++  const mcpClient = await experimental_createMCPClient({
++    transport: {
++      type: 'sse',
++      url: 'https://actions.zapier.com/mcp/[YOUR_KEY]/sse',
++    },
++  });
++
++  try {
++    const zapierTools = await mcpClient.tools();
++
++    const result = streamText({
++      model: openai('gpt-4o'),
++      messages,
++      tools: zapierTools,
++      onFinish: async () => {
++        await mcpClient.close();
++      },
++      maxSteps: 10,
++    });
++
++    return result.toDataStreamResponse();
++  } catch (error) {
++    return new Response('Internal Server Error', { status: 500 });
++  }
++}
+diff --git a/examples/next-openai/app/mcp-zapier/page.tsx b/examples/next-openai/app/mcp-zapier/page.tsx
+new file mode 100644
+index 000000000000..abea8ac07cc5
+--- /dev/null
++++ b/examples/next-openai/app/mcp-zapier/page.tsx
+@@ -0,0 +1,37 @@
++'use client';
++
++import { useChat } from '@ai-sdk/react';
++
++export default function Page() {
++  const { messages, input, handleInputChange, handleSubmit } = useChat({
++    api: '/api/mcp-zapier',
++  });
++
++  return (
++    <div className="flex flex-col items-center justify-end h-screen gap-4">
++      <h1 className="text-xl p-4">My AI Assistant</h1>
++
++      <div className="flex flex-col gap-2 p-4 mt-auto">
++        {messages.map(message => (
++          <div key={message.id}>{message.content}</div>
++        ))}
++      </div>
++
++      <div className="flex flex-col items-center gap-2 p-4">
++        <textarea
++          value={input}
++          onChange={handleInputChange}
++          placeholder="Start chatting"
++          className="border-2 border-gray-300 rounded-md p-2 w-96 h-32"
++        />
++        <button
++          className="bg-blue-500 text-white p-2 rounded-md w-full px-4"
++          type="button"
++          onClick={handleSubmit}
++        >
++          Send
++        </button>
++      </div>
++    </div>
++  );
++}
+
+From dd8305f4eef4a286454863ff9e7acd8e8f87fc19 Mon Sep 17 00:00:00 2001
+From: Grace Yun <graceyunn@gmail.com>
+Date: Tue, 25 Mar 2025 12:48:51 -0400
+Subject: [PATCH 2/4] tool calling page
+
+---
+ .../15-tools-and-tool-calling.mdx             | 23 +++++++++++++++++--
+ 1 file changed, 21 insertions(+), 2 deletions(-)
+
+diff --git a/content/docs/03-ai-sdk-core/15-tools-and-tool-calling.mdx b/content/docs/03-ai-sdk-core/15-tools-and-tool-calling.mdx
+index e50b72cc9d9a..d62c6f31e128 100644
+--- a/content/docs/03-ai-sdk-core/15-tools-and-tool-calling.mdx
++++ b/content/docs/03-ai-sdk-core/15-tools-and-tool-calling.mdx
+@@ -693,15 +693,34 @@ const mcpClient = await createMCPClient({
+ 
+ #### Closing the MCP Client
+ 
+-After initialization, always close the MCP client when you're done to prevent resource leaks. Use try/finally or cleanup functions in your framework:
++After initialization, always close the MCP client after the response is finished to prevent resource leaks. 
++
++When streaming responses, close the client when the LLM response has finished. For example, when using `streamText`, you can use the `onFinish` callback:
++
++```typescript
++const mcpClient = await experimental_createMCPClient({
++  // ...
++});
++
++const result = await streamText({
++  model: openai('gpt-4o'),
++  tools: mcpClient.tools(),
++  prompt: 'What is the weather in Brooklyn, New York?',
++  onFinish: async () => {
++    await mcpClient.close();
++  },
++});
++```
++
++When generating responses without streaming, use try/finally or cleanup functions in your framework:
+ 
+ ```typescript
+ let mcpClient: MCPClient | undefined;
++
+ try {
+   mcpClient = await experimental_createMCPClient({
+     // ...
+   });
+-  // ...
+ } finally {
+   await mcpClient?.close();
+ }
+
+From e6ef1d06639fbc2a7f927ae2d53f24c3581961ba Mon Sep 17 00:00:00 2001
+From: Grace Yun <graceyunn@gmail.com>
+Date: Tue, 25 Mar 2025 13:04:02 -0400
+Subject: [PATCH 3/4] chore: tweak doc copy
+
+---
+ .../docs/03-ai-sdk-core/15-tools-and-tool-calling.mdx    | 9 ++++++---
+ 1 file changed, 6 insertions(+), 3 deletions(-)
+
+diff --git a/content/docs/03-ai-sdk-core/15-tools-and-tool-calling.mdx b/content/docs/03-ai-sdk-core/15-tools-and-tool-calling.mdx
+index d62c6f31e128..7b00f125f0b3 100644
+--- a/content/docs/03-ai-sdk-core/15-tools-and-tool-calling.mdx
++++ b/content/docs/03-ai-sdk-core/15-tools-and-tool-calling.mdx
+@@ -693,9 +693,12 @@ const mcpClient = await createMCPClient({
+ 
+ #### Closing the MCP Client
+ 
+-After initialization, always close the MCP client after the response is finished to prevent resource leaks. 
++After initialization, you should close the MCP client based on your usage pattern:
+ 
+-When streaming responses, close the client when the LLM response has finished. For example, when using `streamText`, you can use the `onFinish` callback:
++- For short-lived usage (e.g., single requests), close the client when the response is finished
++- For long-running clients (e.g., command line apps), keep the client open but ensure it's closed when the application terminates
++
++When streaming responses, you can close the client when the LLM response has finished. For example, when using `streamText`, you should use the `onFinish` callback:
+ 
+ ```typescript
+ const mcpClient = await experimental_createMCPClient({
+@@ -712,7 +715,7 @@ const result = await streamText({
+ });
+ ```
+ 
+-When generating responses without streaming, use try/finally or cleanup functions in your framework:
++When generating responses without streaming, you can use try/finally or cleanup functions in your framework:
+ 
+ ```typescript
+ let mcpClient: MCPClient | undefined;
+
+From 4fd5b381d5ea250d9c0068b357a9d73371413317 Mon Sep 17 00:00:00 2001
+From: Grace Yun <graceyunn@gmail.com>
+Date: Tue, 25 Mar 2025 15:50:20 -0400
+Subject: [PATCH 4/4] fix: parts
+
+---
+ examples/next-openai/app/mcp-zapier/page.tsx | 17 ++++++++++++++++-
+ 1 file changed, 16 insertions(+), 1 deletion(-)
+
+diff --git a/examples/next-openai/app/mcp-zapier/page.tsx b/examples/next-openai/app/mcp-zapier/page.tsx
+index abea8ac07cc5..58fd3ddf8ea2 100644
+--- a/examples/next-openai/app/mcp-zapier/page.tsx
++++ b/examples/next-openai/app/mcp-zapier/page.tsx
+@@ -13,7 +13,22 @@ export default function Page() {
+ 
+       <div className="flex flex-col gap-2 p-4 mt-auto">
+         {messages.map(message => (
+-          <div key={message.id}>{message.content}</div>
++          <div key={message.id}>
++            <strong>{`${message.role}: `}</strong>
++            {message.parts.map((part, index) => {
++              switch (part.type) {
++                case 'text':
++                  return <span key={index}>{part.text}</span>;
++                case 'tool-invocation': {
++                  return (
++                    <pre key={index}>
++                      {JSON.stringify(part.toolInvocation, null, 2)}
++                    </pre>
++                  );
++                }
++              }
++            })}
++          </div>
+         ))}
+       </div>
+ 

@@ -1,0 +1,501 @@
+From 7b6b4c81a9478d82a8dd398d324f67009336c9cd Mon Sep 17 00:00:00 2001
+From: Sebastian Husch Lee <sjrl423@gmail.com>
+Date: Tue, 8 Apr 2025 18:34:11 +0200
+Subject: [PATCH 1/5] Fix issue and set messages in state_schema at init time
+
+---
+ haystack/components/agents/agent.py  | 16 +++++++++++++---
+ test/components/agents/test_agent.py | 17 +++++++++++++++--
+ 2 files changed, 28 insertions(+), 5 deletions(-)
+
+diff --git a/haystack/components/agents/agent.py b/haystack/components/agents/agent.py
+index 16902e79f8..9ec91d4c0f 100644
+--- a/haystack/components/agents/agent.py
++++ b/haystack/components/agents/agent.py
+@@ -3,6 +3,7 @@
+ # SPDX-License-Identifier: Apache-2.0
+ 
+ import inspect
++from copy import deepcopy
+ from typing import Any, Dict, List, Optional
+ 
+ from haystack import component, default_from_dict, default_to_dict, logging
+@@ -10,6 +11,7 @@
+ from haystack.components.tools import ToolInvoker
+ from haystack.dataclasses import ChatMessage
+ from haystack.dataclasses.state import State, _schema_from_dict, _schema_to_dict, _validate_schema
++from haystack.dataclasses.state_utils import merge_lists
+ from haystack.dataclasses.streaming_chunk import SyncStreamingCallbackT
+ from haystack.tools import Tool, deserialize_tools_or_toolset_inplace
+ from haystack.utils.callable_serialization import deserialize_callable, serialize_callable
+@@ -97,9 +99,14 @@ def __init__(
+                 "Ensure that each exit condition corresponds to either 'text' or a valid tool name."
+             )
+ 
++        # Handle state schema
+         if state_schema is not None:
+             _validate_schema(state_schema)
+-        self.state_schema = state_schema or {}
++        self._state_schema = state_schema or {}
++        resolved_state_schema = deepcopy(self._state_schema)
++        if resolved_state_schema.get("messages") is None:
++            resolved_state_schema["messages"] = {"type": List[ChatMessage], "handler": merge_lists}
++        self.state_schema = resolved_state_schema
+ 
+         self.chat_generator = chat_generator
+         self.tools = tools or []
+@@ -111,8 +118,11 @@ def __init__(
+ 
+         output_types = {}
+         for param, config in self.state_schema.items():
+-            component.set_input_type(self, name=param, type=config["type"], default=None)
+             output_types[param] = config["type"]
++            # Skip setting input types for parameters that are already in the run method
++            if param in ["messages", "streaming_callback"]:
++                continue
++            component.set_input_type(self, name=param, type=config["type"], default=None)
+         component.set_output_types(self, **output_types)
+ 
+         self._tool_invoker = ToolInvoker(tools=self.tools, raise_on_failure=self.raise_on_tool_invocation_failure)
+@@ -144,7 +154,7 @@ def to_dict(self) -> Dict[str, Any]:
+             tools=[t.to_dict() for t in self.tools],
+             system_prompt=self.system_prompt,
+             exit_conditions=self.exit_conditions,
+-            state_schema=_schema_to_dict(self.state_schema),
++            state_schema=_schema_to_dict(self._state_schema),
+             max_agent_steps=self.max_agent_steps,
+             raise_on_tool_invocation_failure=self.raise_on_tool_invocation_failure,
+             streaming_callback=streaming_callback,
+diff --git a/test/components/agents/test_agent.py b/test/components/agents/test_agent.py
+index 92d58dab3a..84e36700c7 100644
+--- a/test/components/agents/test_agent.py
++++ b/test/components/agents/test_agent.py
+@@ -16,10 +16,12 @@
+ from haystack.components.builders.prompt_builder import PromptBuilder
+ from haystack.components.generators.chat.openai import OpenAIChatGenerator
+ from haystack.components.generators.chat.types import ChatGenerator
++from haystack.core.component.types import OutputSocket
+ from haystack.dataclasses import ChatMessage, ToolCall
+ from haystack.dataclasses.streaming_chunk import StreamingChunk
+ from haystack.tools import Tool, ComponentTool
+ from haystack.utils import serialize_callable, Secret
++from haystack.dataclasses.state_utils import merge_lists
+ 
+ 
+ def streaming_callback_for_serde(chunk: StreamingChunk):
+@@ -103,6 +105,14 @@ def run(self, messages: List[ChatMessage]) -> Dict[str, Any]:
+ 
+ 
+ class TestAgent:
++    def test_output_types(self, weather_tool, component_tool, monkeypatch):
++        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
++        chat_generator = OpenAIChatGenerator()
++        agent = Agent(chat_generator=chat_generator, tools=[weather_tool, component_tool])
++        assert agent.__haystack_output__._sockets_dict == {
++            "messages": OutputSocket(name="messages", type=List[ChatMessage], receivers=[])
++        }
++
+     def test_serde(self, weather_tool, component_tool, monkeypatch):
+         monkeypatch.setenv("FAKE_OPENAI_KEY", "fake-key")
+         generator = OpenAIChatGenerator(api_key=Secret.from_env_var("FAKE_OPENAI_KEY"))
+@@ -122,7 +132,7 @@ def test_serde(self, weather_tool, component_tool, monkeypatch):
+             init_parameters["chat_generator"]["type"]
+             == "haystack.components.generators.chat.openai.OpenAIChatGenerator"
+         )
+-        assert init_parameters["streaming_callback"] == None
++        assert init_parameters["streaming_callback"] is None
+         assert init_parameters["tools"][0]["data"]["function"] == serialize_callable(weather_function)
+         assert (
+             init_parameters["tools"][1]["data"]["component"]["type"]
+@@ -137,7 +147,10 @@ def test_serde(self, weather_tool, component_tool, monkeypatch):
+         assert deserialized_agent.tools[0].function is weather_function
+         assert isinstance(deserialized_agent.tools[1]._component, PromptBuilder)
+         assert deserialized_agent.exit_conditions == ["text", "weather_tool"]
+-        assert deserialized_agent.state_schema == {"foo": {"type": str}}
++        assert deserialized_agent.state_schema == {
++            "foo": {"type": str},
++            "messages": {"handler": merge_lists, "type": List[ChatMessage]},
++        }
+ 
+     def test_serde_with_streaming_callback(self, weather_tool, component_tool, monkeypatch):
+         monkeypatch.setenv("FAKE_OPENAI_KEY", "fake-key")
+
+From d28818c6164d352e68961bd003421fbc797ae870 Mon Sep 17 00:00:00 2001
+From: Sebastian Husch Lee <sjrl423@gmail.com>
+Date: Tue, 8 Apr 2025 18:38:03 +0200
+Subject: [PATCH 2/5] Add reno
+
+---
+ .../notes/fix-agent-output-messages-550404a95199bb67.yaml    | 5 +++++
+ 1 file changed, 5 insertions(+)
+ create mode 100644 releasenotes/notes/fix-agent-output-messages-550404a95199bb67.yaml
+
+diff --git a/releasenotes/notes/fix-agent-output-messages-550404a95199bb67.yaml b/releasenotes/notes/fix-agent-output-messages-550404a95199bb67.yaml
+new file mode 100644
+index 0000000000..452772b6d6
+--- /dev/null
++++ b/releasenotes/notes/fix-agent-output-messages-550404a95199bb67.yaml
+@@ -0,0 +1,5 @@
++---
++fixes:
++  - |
++    In Agent we make sure state_schema is always initialized to have 'messages'. Previously this was only happening at run time which is why pipeline.connect failed because output types are set at init time.
++    Now the Agent correctly sets everything in state_schema (including messages by default) at init time.
+
+From 0fc471baa50a8677920ea6c0cc2173d7ed0c9384 Mon Sep 17 00:00:00 2001
+From: Sebastian Husch Lee <sjrl423@gmail.com>
+Date: Wed, 9 Apr 2025 08:12:03 +0200
+Subject: [PATCH 3/5] Small changes and add more tests for state
+
+---
+ haystack/components/agents/agent.py  |   4 +-
+ haystack/dataclasses/state.py        |   5 +-
+ test/components/agents/test_agent.py | 152 +++++++++++++++++++++++++++
+ test/dataclasses/test_state.py       |  49 +++++++--
+ 4 files changed, 198 insertions(+), 12 deletions(-)
+
+diff --git a/haystack/components/agents/agent.py b/haystack/components/agents/agent.py
+index 9ec91d4c0f..f37187905f 100644
+--- a/haystack/components/agents/agent.py
++++ b/haystack/components/agents/agent.py
+@@ -99,10 +99,12 @@ def __init__(
+                 "Ensure that each exit condition corresponds to either 'text' or a valid tool name."
+             )
+ 
+-        # Handle state schema
++        # Validate state schema if provided
+         if state_schema is not None:
+             _validate_schema(state_schema)
+         self._state_schema = state_schema or {}
++
++        # Initialize state schema
+         resolved_state_schema = deepcopy(self._state_schema)
+         if resolved_state_schema.get("messages") is None:
+             resolved_state_schema["messages"] = {"type": List[ChatMessage], "handler": merge_lists}
+diff --git a/haystack/dataclasses/state.py b/haystack/dataclasses/state.py
+index 02fc3c63e1..0f933a0b70 100644
+--- a/haystack/dataclasses/state.py
++++ b/haystack/dataclasses/state.py
+@@ -2,6 +2,7 @@
+ #
+ # SPDX-License-Identifier: Apache-2.0
+ 
++from copy import deepcopy
+ from typing import Any, Callable, Dict, List, Optional
+ 
+ from haystack.dataclasses import ChatMessage
+@@ -93,13 +94,13 @@ def __init__(self, schema: Dict[str, Any], data: Optional[Dict[str, Any]] = None
+         :param data: Optional dictionary of initial data to populate the state
+         """
+         _validate_schema(schema)
+-        self.schema = schema
++        self.schema = deepcopy(schema)
+         if self.schema.get("messages") is None:
+             self.schema["messages"] = {"type": List[ChatMessage], "handler": merge_lists}
+         self._data = data or {}
+ 
+         # Set default handlers if not provided in schema
+-        for definition in schema.values():
++        for definition in self.schema.values():
+             # Skip if handler is already defined and not None
+             if definition.get("handler") is not None:
+                 continue
+diff --git a/test/components/agents/test_agent.py b/test/components/agents/test_agent.py
+index 84e36700c7..b7e1814209 100644
+--- a/test/components/agents/test_agent.py
++++ b/test/components/agents/test_agent.py
+@@ -113,6 +113,158 @@ def test_output_types(self, weather_tool, component_tool, monkeypatch):
+             "messages": OutputSocket(name="messages", type=List[ChatMessage], receivers=[])
+         }
+ 
++    def test_to_dict(self, weather_tool, component_tool, monkeypatch):
++        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
++        generator = OpenAIChatGenerator()
++        agent = Agent(
++            chat_generator=generator,
++            tools=[weather_tool, component_tool],
++            exit_conditions=["text", "weather_tool"],
++            state_schema={"foo": {"type": str}},
++        )
++        serialized_agent = agent.to_dict()
++        assert serialized_agent == {
++            "type": "haystack.components.agents.agent.Agent",
++            "init_parameters": {
++                "chat_generator": {
++                    "type": "haystack.components.generators.chat.openai.OpenAIChatGenerator",
++                    "init_parameters": {
++                        "model": "gpt-4o-mini",
++                        "streaming_callback": None,
++                        "api_base_url": None,
++                        "organization": None,
++                        "generation_kwargs": {},
++                        "api_key": {"type": "env_var", "env_vars": ["OPENAI_API_KEY"], "strict": True},
++                        "timeout": None,
++                        "max_retries": None,
++                        "tools": None,
++                        "tools_strict": False,
++                    },
++                },
++                "tools": [
++                    {
++                        "type": "haystack.tools.tool.Tool",
++                        "data": {
++                            "name": "weather_tool",
++                            "description": "Provides weather information for a given location.",
++                            "parameters": {
++                                "type": "object",
++                                "properties": {"location": {"type": "string"}},
++                                "required": ["location"],
++                            },
++                            "function": "test_agent.weather_function",
++                            "outputs_to_string": None,
++                            "inputs_from_state": None,
++                            "outputs_to_state": None,
++                        },
++                    },
++                    {
++                        "type": "haystack.tools.component_tool.ComponentTool",
++                        "data": {
++                            "component": {
++                                "type": "haystack.components.builders.prompt_builder.PromptBuilder",
++                                "init_parameters": {
++                                    "template": "{{parrot}}",
++                                    "variables": None,
++                                    "required_variables": None,
++                                },
++                            },
++                            "name": "parrot",
++                            "description": "This is a parrot.",
++                            "parameters": None,
++                            "outputs_to_string": None,
++                            "inputs_from_state": None,
++                            "outputs_to_state": None,
++                        },
++                    },
++                ],
++                "system_prompt": None,
++                "exit_conditions": ["text", "weather_tool"],
++                "state_schema": {"foo": {"type": "str"}},
++                "max_agent_steps": 100,
++                "raise_on_tool_invocation_failure": False,
++                "streaming_callback": None,
++            },
++        }
++
++    def test_from_dict(self, weather_tool, component_tool, monkeypatch):
++        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
++        data = {
++            "type": "haystack.components.agents.agent.Agent",
++            "init_parameters": {
++                "chat_generator": {
++                    "type": "haystack.components.generators.chat.openai.OpenAIChatGenerator",
++                    "init_parameters": {
++                        "model": "gpt-4o-mini",
++                        "streaming_callback": None,
++                        "api_base_url": None,
++                        "organization": None,
++                        "generation_kwargs": {},
++                        "api_key": {"type": "env_var", "env_vars": ["OPENAI_API_KEY"], "strict": True},
++                        "timeout": None,
++                        "max_retries": None,
++                        "tools": None,
++                        "tools_strict": False,
++                    },
++                },
++                "tools": [
++                    {
++                        "type": "haystack.tools.tool.Tool",
++                        "data": {
++                            "name": "weather_tool",
++                            "description": "Provides weather information for a given location.",
++                            "parameters": {
++                                "type": "object",
++                                "properties": {"location": {"type": "string"}},
++                                "required": ["location"],
++                            },
++                            "function": "test_agent.weather_function",
++                            "outputs_to_string": None,
++                            "inputs_from_state": None,
++                            "outputs_to_state": None,
++                        },
++                    },
++                    {
++                        "type": "haystack.tools.component_tool.ComponentTool",
++                        "data": {
++                            "component": {
++                                "type": "haystack.components.builders.prompt_builder.PromptBuilder",
++                                "init_parameters": {
++                                    "template": "{{parrot}}",
++                                    "variables": None,
++                                    "required_variables": None,
++                                },
++                            },
++                            "name": "parrot",
++                            "description": "This is a parrot.",
++                            "parameters": None,
++                            "outputs_to_string": None,
++                            "inputs_from_state": None,
++                            "outputs_to_state": None,
++                        },
++                    },
++                ],
++                "system_prompt": None,
++                "exit_conditions": ["text", "weather_tool"],
++                "state_schema": {"foo": {"type": "str"}},
++                "max_agent_steps": 100,
++                "raise_on_tool_invocation_failure": False,
++                "streaming_callback": None,
++            },
++        }
++        agent = Agent.from_dict(data)
++        assert isinstance(agent, Agent)
++        assert isinstance(agent.chat_generator, OpenAIChatGenerator)
++        assert agent.chat_generator.model == "gpt-4o-mini"
++        assert agent.chat_generator.api_key == Secret.from_env_var("OPENAI_API_KEY")
++        assert agent.tools[0].function is weather_function
++        assert isinstance(agent.tools[1]._component, PromptBuilder)
++        assert agent.exit_conditions == ["text", "weather_tool"]
++        assert agent.state_schema == {
++            "foo": {"type": str},
++            "messages": {"handler": merge_lists, "type": List[ChatMessage]},
++        }
++
+     def test_serde(self, weather_tool, component_tool, monkeypatch):
+         monkeypatch.setenv("FAKE_OPENAI_KEY", "fake-key")
+         generator = OpenAIChatGenerator(api_key=Secret.from_env_var("FAKE_OPENAI_KEY"))
+diff --git a/test/dataclasses/test_state.py b/test/dataclasses/test_state.py
+index 2a9d23aecd..18012651a3 100644
+--- a/test/dataclasses/test_state.py
++++ b/test/dataclasses/test_state.py
+@@ -2,7 +2,7 @@
+ from typing import List, Dict
+ 
+ from haystack.dataclasses import ChatMessage
+-from haystack.dataclasses.state import State, _validate_schema
++from haystack.dataclasses.state import State, _validate_schema, _schema_to_dict, _schema_from_dict
+ from haystack.dataclasses.state_utils import merge_lists
+ 
+ 
+@@ -11,16 +11,15 @@ def basic_schema():
+     return {"numbers": {"type": list}, "metadata": {"type": dict}, "name": {"type": str}}
+ 
+ 
++def numbers_handler(current, new):
++    if current is None:
++        return sorted(set(new))
++    return sorted(set(current + new))
++
++
+ @pytest.fixture
+ def complex_schema():
+-    return {
+-        "numbers": {
+-            "type": list,
+-            "handler": lambda current, new: sorted(set(current + new)) if current else sorted(set(new)),
+-        },
+-        "metadata": {"type": dict},
+-        "name": {"type": str},
+-    }
++    return {"numbers": {"type": list, "handler": numbers_handler}, "metadata": {"type": dict}, "name": {"type": str}}
+ 
+ 
+ def test_validate_schema_valid(basic_schema):
+@@ -147,3 +146,35 @@ def test_state_nested_structures():
+ 
+     expected = {"a": [1, 2], "b": [3, 4, 5, 6], "c": [7, 8]}
+     assert state.get("complex") == expected
++
++
++def test_schema_to_dict(basic_schema):
++    expected_dict = {"numbers": {"type": "list"}, "metadata": {"type": "dict"}, "name": {"type": "str"}}
++    result = _schema_to_dict(basic_schema)
++    assert result == expected_dict
++
++
++def test_schema_to_dict_with_handlers(complex_schema):
++    expected_dict = {
++        "numbers": {"type": "list", "handler": "test_state.numbers_handler"},
++        "metadata": {"type": "dict"},
++        "name": {"type": "str"},
++    }
++    result = _schema_to_dict(complex_schema)
++    assert result == expected_dict
++
++
++def test_schema_from_dict(basic_schema):
++    schema_dict = {"numbers": {"type": "list"}, "metadata": {"type": "dict"}, "name": {"type": "str"}}
++    result = _schema_from_dict(schema_dict)
++    assert result == basic_schema
++
++
++def test_schema_from_dict_with_handlers(complex_schema):
++    schema_dict = {
++        "numbers": {"type": "list", "handler": "test_state.numbers_handler"},
++        "metadata": {"type": "dict"},
++        "name": {"type": "str"},
++    }
++    result = _schema_from_dict(schema_dict)
++    assert result == complex_schema
+
+From 51f16fd4a19eac79b032e26b33fde17c7818b4ed Mon Sep 17 00:00:00 2001
+From: Sebastian Husch Lee <sjrl423@gmail.com>
+Date: Wed, 9 Apr 2025 09:23:29 +0200
+Subject: [PATCH 4/5] Add comment
+
+---
+ haystack/components/agents/agent.py | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/haystack/components/agents/agent.py b/haystack/components/agents/agent.py
+index f37187905f..b301032c0f 100644
+--- a/haystack/components/agents/agent.py
++++ b/haystack/components/agents/agent.py
+@@ -156,6 +156,7 @@ def to_dict(self) -> Dict[str, Any]:
+             tools=[t.to_dict() for t in self.tools],
+             system_prompt=self.system_prompt,
+             exit_conditions=self.exit_conditions,
++            # We serialize the original state schema, not the resolved one to reflect the original user input
+             state_schema=_schema_to_dict(self._state_schema),
+             max_agent_steps=self.max_agent_steps,
+             raise_on_tool_invocation_failure=self.raise_on_tool_invocation_failure,
+
+From 5ac5fd20eed1f3d9f4f6dbd110a441dc5e508e50 Mon Sep 17 00:00:00 2001
+From: Sebastian Husch Lee <sjrl423@gmail.com>
+Date: Wed, 9 Apr 2025 15:26:51 +0200
+Subject: [PATCH 5/5] PR comments
+
+---
+ haystack/dataclasses/state.py  | 2 +-
+ test/dataclasses/test_state.py | 9 +++++++++
+ 2 files changed, 10 insertions(+), 1 deletion(-)
+
+diff --git a/haystack/dataclasses/state.py b/haystack/dataclasses/state.py
+index 0f933a0b70..14b884820d 100644
+--- a/haystack/dataclasses/state.py
++++ b/haystack/dataclasses/state.py
+@@ -118,7 +118,7 @@ def get(self, key: str, default: Any = None) -> Any:
+         :param default: Value to return if key is not found
+         :returns: Value associated with key or default if not found
+         """
+-        return self._data.get(key, default)
++        return deepcopy(self._data.get(key, default))
+ 
+     def set(self, key: str, value: Any, handler_override: Optional[Callable[[Any, Any], Any]] = None) -> None:
+         """
+diff --git a/test/dataclasses/test_state.py b/test/dataclasses/test_state.py
+index 18012651a3..977d502510 100644
+--- a/test/dataclasses/test_state.py
++++ b/test/dataclasses/test_state.py
+@@ -178,3 +178,12 @@ def test_schema_from_dict_with_handlers(complex_schema):
+     }
+     result = _schema_from_dict(schema_dict)
+     assert result == complex_schema
++
++
++def test_state_mutability():
++    state = State({"my_list": {"type": list}}, {"my_list": [1, 2]})
++
++    my_list = state.get("my_list")
++    my_list.append(3)
++
++    assert state.get("my_list") == [1, 2]

@@ -1,0 +1,360 @@
+From 266e5f129e13b366aee1df960818726167af2758 Mon Sep 17 00:00:00 2001
+From: tstadel <60758086+tstadel@users.noreply.github.com>
+Date: Mon, 24 Feb 2025 15:21:46 +0100
+Subject: [PATCH 1/7] fix: set ComponentTool addtionalProperties for OpenAI
+ tools_strict=True
+
+---
+ haystack/tools/component_tool.py  |  2 +-
+ test/tools/test_component_tool.py | 36 +++++++++++++++++++++++++++++++
+ 2 files changed, 37 insertions(+), 1 deletion(-)
+
+diff --git a/haystack/tools/component_tool.py b/haystack/tools/component_tool.py
+index 93e384c377..eda5f6790e 100644
+--- a/haystack/tools/component_tool.py
++++ b/haystack/tools/component_tool.py
+@@ -209,7 +209,7 @@ def _create_tool_parameters_schema(self, component: Component) -> Dict[str, Any]
+             if socket.is_mandatory:
+                 required.append(input_name)
+ 
+-        parameters_schema = {"type": "object", "properties": properties}
++        parameters_schema = {"type": "object", "properties": properties, "additionalProperties": False}
+ 
+         if required:
+             parameters_schema["required"] = required
+diff --git a/test/tools/test_component_tool.py b/test/tools/test_component_tool.py
+index 4c0033e045..3c2e2a1066 100644
+--- a/test/tools/test_component_tool.py
++++ b/test/tools/test_component_tool.py
+@@ -134,6 +134,7 @@ def test_from_component_basic(self):
+             "type": "object",
+             "properties": {"text": {"type": "string", "description": "user's name"}},
+             "required": ["text"],
++            "additionalProperties": False,
+         }
+ 
+         # Test tool invocation
+@@ -165,6 +166,7 @@ def test_from_component_with_dataclass(self):
+                 }
+             },
+             "required": ["user"],
++            "additionalProperties": False,
+         }
+ 
+         assert tool.name == "user_greeter"
+@@ -193,6 +195,7 @@ def test_from_component_with_list_input(self):
+                 }
+             },
+             "required": ["texts"],
++            "additionalProperties": False,
+         }
+ 
+         # Test tool invocation
+@@ -226,6 +229,7 @@ def test_from_component_with_nested_dataclass(self):
+                 }
+             },
+             "required": ["person"],
++            "additionalProperties": False,
+         }
+ 
+         # Test tool invocation
+@@ -294,6 +298,7 @@ def test_from_component_with_document_list(self):
+                 "top_k": {"description": "The number of top documents to concatenate", "type": "integer"},
+             },
+             "required": ["documents"],
++            "additionalProperties": False,
+         }
+ 
+         # Test tool invocation
+@@ -346,6 +351,37 @@ def test_component_tool_in_pipeline(self):
+         assert "Vladimir" in tool_message.tool_call_result.result
+         assert not tool_message.tool_call_result.error
+ 
++    @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
++    @pytest.mark.integration
++    def test_component_tool_in_pipeline_openai_tools_strict(self):
++        # Create component and convert it to tool
++        component = SimpleComponent()
++        tool = ComponentTool(
++            component=component, name="hello_tool", description="A tool that generates a greeting message for the user"
++        )
++
++        # Create pipeline with OpenAIChatGenerator and ToolInvoker
++        pipeline = Pipeline()
++        pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-4o-mini", tools=[tool], tools_strict=True))
++        pipeline.add_component("tool_invoker", ToolInvoker(tools=[tool]))
++
++        # Connect components
++        pipeline.connect("llm.replies", "tool_invoker.messages")
++
++        message = ChatMessage.from_user(text="Vladimir")
++
++        # Run pipeline
++        result = pipeline.run({"llm": {"messages": [message]}})
++
++        # Check results
++        tool_messages = result["tool_invoker"]["tool_messages"]
++        assert len(tool_messages) == 1
++
++        tool_message = tool_messages[0]
++        assert tool_message.is_from(ChatRole.TOOL)
++        assert "Vladimir" in tool_message.tool_call_result.result
++        assert not tool_message.tool_call_result.error
++
+     @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
+     @pytest.mark.integration
+     def test_user_greeter_in_pipeline(self):
+
+From 5dc3c1aa215efa95c66c57c90daf61c8213c4ad4 Mon Sep 17 00:00:00 2001
+From: tstadel <60758086+tstadel@users.noreply.github.com>
+Date: Mon, 24 Feb 2025 15:24:16 +0100
+Subject: [PATCH 2/7] add reno
+
+---
+ ...omponenttool-for-openai-tools_strict-998e5cd7ebc6ec19.yaml | 4 ++++
+ 1 file changed, 4 insertions(+)
+ create mode 100644 releasenotes/notes/fix-componenttool-for-openai-tools_strict-998e5cd7ebc6ec19.yaml
+
+diff --git a/releasenotes/notes/fix-componenttool-for-openai-tools_strict-998e5cd7ebc6ec19.yaml b/releasenotes/notes/fix-componenttool-for-openai-tools_strict-998e5cd7ebc6ec19.yaml
+new file mode 100644
+index 0000000000..d765757c8a
+--- /dev/null
++++ b/releasenotes/notes/fix-componenttool-for-openai-tools_strict-998e5cd7ebc6ec19.yaml
+@@ -0,0 +1,4 @@
++---
++fixes:
++  - |
++    Fix the `ComponentTool` for OpenAI tools strict mode. This sets `additionalProperties` to `false` for the function schema.
+
+From af77f4bfbdbe27660d6e7ff66d54ffe8d62b9c1b Mon Sep 17 00:00:00 2001
+From: Sebastian Husch Lee <sebastian.lee@deepset.ai>
+Date: Mon, 3 Mar 2025 12:11:01 +0000
+Subject: [PATCH 3/7] Move the additionalProperties into the
+ OpenAIChatGenerator
+
+---
+ haystack/components/generators/chat/openai.py | 8 +++++++-
+ test/tools/test_component_tool.py             | 5 -----
+ 2 files changed, 7 insertions(+), 6 deletions(-)
+
+diff --git a/haystack/components/generators/chat/openai.py b/haystack/components/generators/chat/openai.py
+index 52f7c9340c..c3669cc404 100644
+--- a/haystack/components/generators/chat/openai.py
++++ b/haystack/components/generators/chat/openai.py
+@@ -374,7 +374,13 @@ def _prepare_api_call(  # noqa: PLR0913
+         openai_tools = {}
+         if tools:
+             tool_definitions = [
+-                {"type": "function", "function": {**t.tool_spec, **({"strict": tools_strict} if tools_strict else {})}}
++                {
++                    "type": "function",
++                    "function": {
++                        **t.tool_spec,
++                        **({"strict": tools_strict, "additionalProperties": False} if tools_strict else {}),
++                    },
++                }
+                 for t in tools
+             ]
+             openai_tools = {"tools": tool_definitions}
+diff --git a/test/tools/test_component_tool.py b/test/tools/test_component_tool.py
+index 3c2e2a1066..f2daa9f935 100644
+--- a/test/tools/test_component_tool.py
++++ b/test/tools/test_component_tool.py
+@@ -134,7 +134,6 @@ def test_from_component_basic(self):
+             "type": "object",
+             "properties": {"text": {"type": "string", "description": "user's name"}},
+             "required": ["text"],
+-            "additionalProperties": False,
+         }
+ 
+         # Test tool invocation
+@@ -166,7 +165,6 @@ def test_from_component_with_dataclass(self):
+                 }
+             },
+             "required": ["user"],
+-            "additionalProperties": False,
+         }
+ 
+         assert tool.name == "user_greeter"
+@@ -195,7 +193,6 @@ def test_from_component_with_list_input(self):
+                 }
+             },
+             "required": ["texts"],
+-            "additionalProperties": False,
+         }
+ 
+         # Test tool invocation
+@@ -229,7 +226,6 @@ def test_from_component_with_nested_dataclass(self):
+                 }
+             },
+             "required": ["person"],
+-            "additionalProperties": False,
+         }
+ 
+         # Test tool invocation
+@@ -298,7 +294,6 @@ def test_from_component_with_document_list(self):
+                 "top_k": {"description": "The number of top documents to concatenate", "type": "integer"},
+             },
+             "required": ["documents"],
+-            "additionalProperties": False,
+         }
+ 
+         # Test tool invocation
+
+From fcc6a4d131f44ae51cfb016cf8a531746037f172 Mon Sep 17 00:00:00 2001
+From: Sebastian Husch Lee <sebastian.lee@deepset.ai>
+Date: Mon, 3 Mar 2025 12:12:10 +0000
+Subject: [PATCH 4/7] Remove
+
+---
+ haystack/tools/component_tool.py | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/haystack/tools/component_tool.py b/haystack/tools/component_tool.py
+index eda5f6790e..93e384c377 100644
+--- a/haystack/tools/component_tool.py
++++ b/haystack/tools/component_tool.py
+@@ -209,7 +209,7 @@ def _create_tool_parameters_schema(self, component: Component) -> Dict[str, Any]
+             if socket.is_mandatory:
+                 required.append(input_name)
+ 
+-        parameters_schema = {"type": "object", "properties": properties, "additionalProperties": False}
++        parameters_schema = {"type": "object", "properties": properties}
+ 
+         if required:
+             parameters_schema["required"] = required
+
+From 6aaa0bcd45d7b0761f9b7abdd3a09b8eaf18f038 Mon Sep 17 00:00:00 2001
+From: Sebastian Husch Lee <sebastian.lee@deepset.ai>
+Date: Mon, 3 Mar 2025 12:32:29 +0000
+Subject: [PATCH 5/7] Put additionalProperties into the correct place
+
+---
+ haystack/components/generators/chat/openai.py   | 17 +++++++----------
+ test/components/generators/chat/test_openai.py  |  7 ++++---
+ .../generators/chat/test_openai_async.py        |  7 ++++---
+ 3 files changed, 15 insertions(+), 16 deletions(-)
+
+diff --git a/haystack/components/generators/chat/openai.py b/haystack/components/generators/chat/openai.py
+index c3669cc404..86de51898e 100644
+--- a/haystack/components/generators/chat/openai.py
++++ b/haystack/components/generators/chat/openai.py
+@@ -373,16 +373,13 @@ def _prepare_api_call(  # noqa: PLR0913
+ 
+         openai_tools = {}
+         if tools:
+-            tool_definitions = [
+-                {
+-                    "type": "function",
+-                    "function": {
+-                        **t.tool_spec,
+-                        **({"strict": tools_strict, "additionalProperties": False} if tools_strict else {}),
+-                    },
+-                }
+-                for t in tools
+-            ]
++            tool_definitions = []
++            for t in tools:
++                function_spec = {**t.tool_spec}
++                if tools_strict:
++                    function_spec["strict"] = True
++                    function_spec["parameters"]["additionalProperties"] = False
++                tool_definitions.append({"type": "function", "function": function_spec})
+             openai_tools = {"tools": tool_definitions}
+ 
+         is_streaming = streaming_callback is not None
+diff --git a/test/components/generators/chat/test_openai.py b/test/components/generators/chat/test_openai.py
+index 561c5bb700..f8636067e0 100644
+--- a/test/components/generators/chat/test_openai.py
++++ b/test/components/generators/chat/test_openai.py
+@@ -424,9 +424,10 @@ def test_run_with_tools(self, tools):
+             response = component.run([ChatMessage.from_user("What's the weather like in Paris?")])
+ 
+         # ensure that the tools are passed to the OpenAI API
+-        assert mock_chat_completion_create.call_args[1]["tools"] == [
+-            {"type": "function", "function": {**tools[0].tool_spec, "strict": True}}
+-        ]
++        function_spec = {**tools[0].tool_spec}
++        function_spec["strict"] = True
++        function_spec["properties"]["additionalProperties"] = False
++        assert mock_chat_completion_create.call_args[1]["tools"] == [{"type": "function", "function": function_spec}]
+ 
+         assert len(response["replies"]) == 1
+         message = response["replies"][0]
+diff --git a/test/components/generators/chat/test_openai_async.py b/test/components/generators/chat/test_openai_async.py
+index 9d6ae6b67f..527d4458d1 100644
+--- a/test/components/generators/chat/test_openai_async.py
++++ b/test/components/generators/chat/test_openai_async.py
+@@ -216,9 +216,10 @@ async def test_run_with_tools_async(self, tools):
+             response = await component.run_async([ChatMessage.from_user("What's the weather like in Paris?")])
+ 
+         # ensure that the tools are passed to the OpenAI API
+-        assert mock_chat_completion_create.call_args[1]["tools"] == [
+-            {"type": "function", "function": {**tools[0].tool_spec, "strict": True}}
+-        ]
++        function_spec = {**tools[0].tool_spec}
++        function_spec["strict"] = True
++        function_spec["properties"]["additionalProperties"] = False
++        assert mock_chat_completion_create.call_args[1]["tools"] == [{"type": "function", "function": function_spec}]
+ 
+         assert len(response["replies"]) == 1
+         message = response["replies"][0]
+
+From ff7b75442cbfec27d4fc00de15b6da7c964bdfed Mon Sep 17 00:00:00 2001
+From: Sebastian Husch Lee <sebastian.lee@deepset.ai>
+Date: Mon, 3 Mar 2025 12:38:46 +0000
+Subject: [PATCH 6/7] Fix test
+
+---
+ test/components/generators/chat/test_openai.py       | 2 +-
+ test/components/generators/chat/test_openai_async.py | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/test/components/generators/chat/test_openai.py b/test/components/generators/chat/test_openai.py
+index f8636067e0..69d07347a0 100644
+--- a/test/components/generators/chat/test_openai.py
++++ b/test/components/generators/chat/test_openai.py
+@@ -426,7 +426,7 @@ def test_run_with_tools(self, tools):
+         # ensure that the tools are passed to the OpenAI API
+         function_spec = {**tools[0].tool_spec}
+         function_spec["strict"] = True
+-        function_spec["properties"]["additionalProperties"] = False
++        function_spec["parameters"]["additionalProperties"] = False
+         assert mock_chat_completion_create.call_args[1]["tools"] == [{"type": "function", "function": function_spec}]
+ 
+         assert len(response["replies"]) == 1
+diff --git a/test/components/generators/chat/test_openai_async.py b/test/components/generators/chat/test_openai_async.py
+index 527d4458d1..3401ff6835 100644
+--- a/test/components/generators/chat/test_openai_async.py
++++ b/test/components/generators/chat/test_openai_async.py
+@@ -218,7 +218,7 @@ async def test_run_with_tools_async(self, tools):
+         # ensure that the tools are passed to the OpenAI API
+         function_spec = {**tools[0].tool_spec}
+         function_spec["strict"] = True
+-        function_spec["properties"]["additionalProperties"] = False
++        function_spec["parameters"]["additionalProperties"] = False
+         assert mock_chat_completion_create.call_args[1]["tools"] == [{"type": "function", "function": function_spec}]
+ 
+         assert len(response["replies"]) == 1
+
+From 330038b31ab46d3db45e3d8c4d64bd594d202849 Mon Sep 17 00:00:00 2001
+From: Sebastian Husch Lee <sjrl@users.noreply.github.com>
+Date: Mon, 3 Mar 2025 15:59:07 +0100
+Subject: [PATCH 7/7] Update
+ releasenotes/notes/fix-componenttool-for-openai-tools_strict-998e5cd7ebc6ec19.yaml
+
+Co-authored-by: Stefano Fiorucci <stefanofiorucci@gmail.com>
+---
+ ...-componenttool-for-openai-tools_strict-998e5cd7ebc6ec19.yaml | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/releasenotes/notes/fix-componenttool-for-openai-tools_strict-998e5cd7ebc6ec19.yaml b/releasenotes/notes/fix-componenttool-for-openai-tools_strict-998e5cd7ebc6ec19.yaml
+index d765757c8a..a5c53a20e4 100644
+--- a/releasenotes/notes/fix-componenttool-for-openai-tools_strict-998e5cd7ebc6ec19.yaml
++++ b/releasenotes/notes/fix-componenttool-for-openai-tools_strict-998e5cd7ebc6ec19.yaml
+@@ -1,4 +1,4 @@
+ ---
+ fixes:
+   - |
+-    Fix the `ComponentTool` for OpenAI tools strict mode. This sets `additionalProperties` to `false` for the function schema.
++    Make sure that `OpenAIChatGenerator` sets `additionalProperties: False` in the tool schema when `tool_strict` is set to `True`.

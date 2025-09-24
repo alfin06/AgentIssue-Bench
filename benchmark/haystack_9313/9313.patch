@@ -1,0 +1,451 @@
+From 90999790387f7cb6680f5cf022b4a9c1541509c7 Mon Sep 17 00:00:00 2001
+From: Sebastian Husch Lee <sjrl423@gmail.com>
+Date: Thu, 15 May 2025 10:03:02 +0200
+Subject: [PATCH 1/3] Make agent as a tool more streamlined
+
+---
+ haystack/components/agents/agent.py        | 59 ++++++++++++++--------
+ haystack/components/generators/utils.py    |  7 +--
+ haystack/components/tools/tool_invoker.py  | 34 ++++++++++---
+ test/components/agents/test_agent.py       | 28 +++++++++-
+ test/components/tools/test_tool_invoker.py | 27 +++++++---
+ 5 files changed, 116 insertions(+), 39 deletions(-)
+
+diff --git a/haystack/components/agents/agent.py b/haystack/components/agents/agent.py
+index b65f046527..d57ca343b0 100644
+--- a/haystack/components/agents/agent.py
++++ b/haystack/components/agents/agent.py
+@@ -86,6 +86,7 @@ def __init__(
+         :param streaming_callback: A callback that will be invoked when a response is streamed from the LLM.
+             The same callback can be configured to emit tool results when a tool is called.
+         :raises TypeError: If the chat_generator does not support tools parameter in its run method.
++        :raises ValueError: If the exit_conditions are not valid.
+         """
+         # Check if chat_generator supports tools parameter
+         chat_generator_run_method = inspect.signature(chat_generator.run)
+@@ -124,7 +125,7 @@ def __init__(
+         self.raise_on_tool_invocation_failure = raise_on_tool_invocation_failure
+         self.streaming_callback = streaming_callback
+ 
+-        output_types = {}
++        output_types = {"last_message": ChatMessage}
+         for param, config in self.state_schema.items():
+             output_types[param] = config["type"]
+             # Skip setting input types for parameters that are already in the run method
+@@ -225,14 +226,19 @@ def run(
+         **kwargs: Dict[str, Any],
+     ) -> Dict[str, Any]:
+         """
+-        Process messages and execute tools until the exit condition is met.
++        Process messages and execute tools until an exit condition is met.
+ 
+-        :param messages: List of chat messages to process
++        :param messages: List of Haystack ChatMessage objects to process.
++            If a list of dictionaries is provided, each dictionary will be converted to a ChatMessage object.
+         :param streaming_callback: A callback that will be invoked when a response is streamed from the LLM.
+             The same callback can be configured to emit tool results when a tool is called.
+         :param kwargs: Additional data to pass to the State schema used by the Agent.
+             The keys must match the schema defined in the Agent's `state_schema`.
+-        :return: Dictionary containing messages and outputs matching the defined output types
++        :returns:
++            A dictionary with the following keys:
++            - "messages": List of all messages exchanged during the agent's run.
++            - "last_message": The last message exchanged during the agent's run.
++            - Any additional keys defined in the `state_schema`.
+         """
+         if not self._is_warmed_up and hasattr(self.chat_generator, "warm_up"):
+             raise RuntimeError("The component Agent wasn't warmed up. Run 'warm_up()' before calling 'run()'.")
+@@ -240,16 +246,14 @@ def run(
+         if self.system_prompt is not None:
+             messages = [ChatMessage.from_system(self.system_prompt)] + messages
+ 
+-        streaming_callback = select_streaming_callback(
+-            init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=False
+-        )
+-
+         state = State(schema=self.state_schema, data=kwargs)
+         state.set("messages", messages)
++        component_visits = dict.fromkeys(["chat_generator", "tool_invoker"], 0)
+ 
++        streaming_callback = select_streaming_callback(
++            init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=False
++        )
+         generator_inputs = self._prepare_generator_inputs(streaming_callback=streaming_callback)
+-
+-        component_visits = dict.fromkeys(["chat_generator", "tool_invoker"], 0)
+         with self._create_agent_span() as span:
+             span.set_content_tag(
+                 "haystack.agent.input",
+@@ -258,13 +262,14 @@ def run(
+             counter = 0
+             while counter < self.max_agent_steps:
+                 # 1. Call the ChatGenerator
+-                llm_messages = Pipeline._run_component(
++                result = Pipeline._run_component(
+                     component_name="chat_generator",
+                     component={"instance": self.chat_generator},
+                     inputs={"messages": messages, **generator_inputs},
+                     component_visits=component_visits,
+                     parent_span=span,
+-                )["replies"]
++                )
++                llm_messages = result["replies"]
+                 state.set("messages", llm_messages)
+ 
+                 # 2. Check if any of the LLM responses contain a tool call or if the LLM is not using tools
+@@ -301,7 +306,12 @@ def run(
+                 )
+             span.set_content_tag("haystack.agent.output", state.data)
+             span.set_tag("haystack.agent.steps_taken", counter)
+-        return state.data
++
++        result = {**state.data}
++        all_messages = state.get("messages")
++        if all_messages:
++            result.update({"last_message": all_messages[-1]})
++        return result
+ 
+     async def run_async(
+         self,
+@@ -321,7 +331,11 @@ async def run_async(
+             The same callback can be configured to emit tool results when a tool is called.
+         :param kwargs: Additional data to pass to the State schema used by the Agent.
+             The keys must match the schema defined in the Agent's `state_schema`.
+-        :return: Dictionary containing messages and outputs matching the defined output types
++        :returns:
++            A dictionary with the following keys:
++            - "messages": List of all messages exchanged during the agent's run.
++            - "last_message": The last message exchanged during the agent's run.
++            - Any additional keys defined in the `state_schema`.
+         """
+         if not self._is_warmed_up and hasattr(self.chat_generator, "warm_up"):
+             raise RuntimeError("The component Agent wasn't warmed up. Run 'warm_up()' before calling 'run_async()'.")
+@@ -329,16 +343,14 @@ async def run_async(
+         if self.system_prompt is not None:
+             messages = [ChatMessage.from_system(self.system_prompt)] + messages
+ 
+-        streaming_callback = select_streaming_callback(
+-            init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=True
+-        )
+-
+         state = State(schema=self.state_schema, data=kwargs)
+         state.set("messages", messages)
++        component_visits = dict.fromkeys(["chat_generator", "tool_invoker"], 0)
+ 
++        streaming_callback = select_streaming_callback(
++            init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=True
++        )
+         generator_inputs = self._prepare_generator_inputs(streaming_callback=streaming_callback)
+-
+-        component_visits = dict.fromkeys(["chat_generator", "tool_invoker"], 0)
+         with self._create_agent_span() as span:
+             span.set_content_tag(
+                 "haystack.agent.input",
+@@ -394,7 +406,12 @@ async def run_async(
+                 )
+             span.set_content_tag("haystack.agent.output", state.data)
+             span.set_tag("haystack.agent.steps_taken", counter)
+-        return state.data
++
++        result = {**state.data}
++        all_messages = state.get("messages")
++        if all_messages:
++            result.update({"last_message": all_messages[-1]})
++        return result
+ 
+     def _check_exit_conditions(self, llm_messages: List[ChatMessage], tool_messages: List[ChatMessage]) -> bool:
+         """
+diff --git a/haystack/components/generators/utils.py b/haystack/components/generators/utils.py
+index 54ff68bcbf..4a8346b7b3 100644
+--- a/haystack/components/generators/utils.py
++++ b/haystack/components/generators/utils.py
+@@ -30,18 +30,15 @@ def print_streaming_chunk(chunk: StreamingChunk) -> None:
+                 if tool_call.function.name and not tool_call.function.arguments:
+                     print("[TOOL CALL]\n", flush=True, end="")
+                     print(f"Tool: {tool_call.function.name} ", flush=True, end="")
++                    print("\nArguments: ", flush=True, end="")
+ 
+                 # print the tool arguments
+                 if tool_call.function.arguments:
+-                    if tool_call.function.arguments.startswith("{"):
+-                        print("\nArguments: ", flush=True, end="")
+                     print(tool_call.function.arguments, flush=True, end="")
+-                    if tool_call.function.arguments.endswith("}"):
+-                        print("\n\n", flush=True, end="")
+ 
+     # Print tool call results if available (from ToolInvoker)
+     if chunk.meta.get("tool_result"):
+-        print(f"[TOOL RESULT]\n{chunk.meta['tool_result']}\n\n", flush=True, end="")
++        print(f"\n\n[TOOL RESULT]\n{chunk.meta['tool_result']}\n\n", flush=True, end="")
+ 
+     # Print the main content of the chunk (from ChatGenerator)
+     if chunk.content:
+diff --git a/haystack/components/tools/tool_invoker.py b/haystack/components/tools/tool_invoker.py
+index 4e557630f5..db36811fc6 100644
+--- a/haystack/components/tools/tool_invoker.py
++++ b/haystack/components/tools/tool_invoker.py
+@@ -19,6 +19,7 @@
+     serialize_tools_or_toolset,
+ )
+ from haystack.tools.errors import ToolInvocationError
++from haystack.tracing.utils import _serializable_value
+ 
+ logger = logging.getLogger(__name__)
+ 
+@@ -226,12 +227,30 @@ def _default_output_to_string_handler(self, result: Any) -> str:
+         :param result: The tool result to convert to a string.
+         :returns: The converted tool result as a string.
+         """
++        # We iterate through all items in result and call to_dict() if present
++        # Relevant for a few reasons:
++        # - If using convert_result_to_json_string we'd rather convert Haystack objects to JSON serializable dicts
++        # - If using default str() we prefer converting Haystack objects to dicts rather than relying on the
++        #   __repr__ method
++        serializable = _serializable_value(result)
++
+         if self.convert_result_to_json_string:
+-            # We disable ensure_ascii so special chars like emojis are not converted
+-            tool_result_str = json.dumps(result, ensure_ascii=False)
+-        else:
+-            tool_result_str = str(result)
+-        return tool_result_str
++            try:
++                # We disable ensure_ascii so special chars like emojis are not converted
++                str_result = json.dumps(serializable, ensure_ascii=False)
++            except Exception as error:
++                # If the result is not JSON serializable, we fall back to str
++                logger.warning(
++                    "Tool result is not JSON serializable. Falling back to str conversion. "
++                    "Result: {result}\n"
++                    "Error: {error}",
++                    result=result,
++                    err=error,
++                )
++                str_result = str(result)
++            return str_result
++
++        return str(serializable)
+ 
+     def _prepare_tool_result_message(self, result: Any, tool_call: ToolCall, tool_to_invoke: Tool) -> ChatMessage:
+         """
+@@ -454,7 +473,10 @@ def run(
+ 
+                 if streaming_callback is not None:
+                     streaming_callback(
+-                        StreamingChunk(content="", meta={"tool_result": tool_result, "tool_call": tool_call})
++                        StreamingChunk(
++                            content="",
++                            meta={"tool_result": tool_messages[-1].tool_call_result.result, "tool_call": tool_call},
++                        )
+                     )
+ 
+         return {"tool_messages": tool_messages, "state": state}
+diff --git a/test/components/agents/test_agent.py b/test/components/agents/test_agent.py
+index 0dd98aa066..26e93bac5b 100644
+--- a/test/components/agents/test_agent.py
++++ b/test/components/agents/test_agent.py
+@@ -162,7 +162,8 @@ def test_output_types(self, weather_tool, component_tool, monkeypatch):
+         chat_generator = OpenAIChatGenerator()
+         agent = Agent(chat_generator=chat_generator, tools=[weather_tool, component_tool])
+         assert agent.__haystack_output__._sockets_dict == {
+-            "messages": OutputSocket(name="messages", type=List[ChatMessage], receivers=[])
++            "messages": OutputSocket(name="messages", type=List[ChatMessage], receivers=[]),
++            "last_message": OutputSocket(name="last_message", type=ChatMessage, receivers=[]),
+         }
+ 
+     def test_to_dict(self, weather_tool, component_tool, monkeypatch):
+@@ -532,6 +533,8 @@ def streaming_callback(chunk: StreamingChunk) -> None:
+         assert len(response["messages"]) == 2
+         assert [isinstance(reply, ChatMessage) for reply in response["messages"]]
+         assert "Hello" in response["messages"][1].text  # see openai_mock_chat_completion_chunk
++        assert "last_message" in response
++        assert isinstance(response["last_message"], ChatMessage)
+ 
+     def test_run_with_run_streaming(self, openai_mock_chat_completion_chunk, weather_tool):
+         chat_generator = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
+@@ -556,6 +559,8 @@ def streaming_callback(chunk: StreamingChunk) -> None:
+         assert len(response["messages"]) == 2
+         assert [isinstance(reply, ChatMessage) for reply in response["messages"]]
+         assert "Hello" in response["messages"][1].text  # see openai_mock_chat_completion_chunk
++        assert "last_message" in response
++        assert isinstance(response["last_message"], ChatMessage)
+ 
+     def test_keep_generator_streaming(self, openai_mock_chat_completion_chunk, weather_tool):
+         streaming_callback_called = False
+@@ -582,6 +587,8 @@ def streaming_callback(chunk: StreamingChunk) -> None:
+         assert len(response["messages"]) == 2
+         assert [isinstance(reply, ChatMessage) for reply in response["messages"]]
+         assert "Hello" in response["messages"][1].text  # see openai_mock_chat_completion_chunk
++        assert "last_message" in response
++        assert isinstance(response["last_message"], ChatMessage)
+ 
+     def test_chat_generator_must_support_tools(self, weather_tool):
+         chat_generator = MockChatGeneratorWithoutTools()
+@@ -614,6 +621,9 @@ def test_multiple_llm_responses_with_tool_call(self, monkeypatch, weather_tool):
+             result["messages"][-1].tool_call_result.result
+             == "{'weather': 'mostly sunny', 'temperature': 7, 'unit': 'celsius'}"
+         )
++        assert "last_message" in result
++        assert isinstance(result["last_message"], ChatMessage)
++        assert result["messages"][-1] == result["last_message"]
+ 
+     def test_exceed_max_steps(self, monkeypatch, weather_tool, caplog):
+         monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+@@ -663,6 +673,9 @@ def test_exit_conditions_checked_across_all_llm_messages(self, monkeypatch, weat
+             result["messages"][-1].tool_call_result.result
+             == "{'weather': 'mostly sunny', 'temperature': 7, 'unit': 'celsius'}"
+         )
++        assert "last_message" in result
++        assert isinstance(result["last_message"], ChatMessage)
++        assert result["messages"][-1] == result["last_message"]
+ 
+     def test_agent_with_no_tools(self, monkeypatch, caplog):
+         monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+@@ -688,6 +701,9 @@ def test_agent_with_no_tools(self, monkeypatch, caplog):
+         assert [isinstance(reply, ChatMessage) for reply in response["messages"]]
+         assert response["messages"][0].text == "What is the capital of Germany?"
+         assert response["messages"][1].text == "Berlin"
++        assert "last_message" in response
++        assert isinstance(response["last_message"], ChatMessage)
++        assert response["messages"][-1] == response["last_message"]
+ 
+     def test_run_with_system_prompt(self, weather_tool):
+         chat_generator = MockChatGeneratorWithoutRunAsync()
+@@ -731,6 +747,9 @@ def test_run(self, weather_tool):
+         assert response["messages"][1].tool_calls[0].arguments is not None
+         assert response["messages"][2].tool_call_results[0].result is not None
+         assert response["messages"][2].tool_call_results[0].origin is not None
++        assert "last_message" in response
++        assert isinstance(response["last_message"], ChatMessage)
++        assert response["messages"][-1] == response["last_message"]
+ 
+     @pytest.mark.asyncio
+     async def test_run_async_falls_back_to_run_when_chat_generator_has_no_run_async(self, weather_tool):
+@@ -754,6 +773,9 @@ async def test_run_async_falls_back_to_run_when_chat_generator_has_no_run_async(
+         assert len(result["messages"]) == 2
+         assert [isinstance(reply, ChatMessage) for reply in result["messages"]]
+         assert "Hello" in result["messages"][1].text
++        assert "last_message" in result
++        assert isinstance(result["last_message"], ChatMessage)
++        assert result["messages"][-1] == result["last_message"]
+ 
+     @pytest.mark.asyncio
+     async def test_run_async_uses_chat_generator_run_async_when_available(self, weather_tool):
+@@ -778,6 +800,9 @@ async def test_run_async_uses_chat_generator_run_async_when_available(self, weat
+         assert len(result["messages"]) == 2
+         assert [isinstance(reply, ChatMessage) for reply in result["messages"]]
+         assert "Hello from run_async" in result["messages"][1].text
++        assert "last_message" in result
++        assert isinstance(result["last_message"], ChatMessage)
++        assert result["messages"][-1] == result["last_message"]
+ 
+     @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
+     def test_agent_streaming_with_tool_call(self, monkeypatch, weather_tool):
+@@ -796,6 +821,7 @@ def streaming_callback(chunk: StreamingChunk) -> None:
+ 
+         assert result is not None
+         assert result["messages"] is not None
++        assert result["last_message"] is not None
+         assert streaming_callback_called
+ 
+ 
+diff --git a/test/components/tools/test_tool_invoker.py b/test/components/tools/test_tool_invoker.py
+index f85bdffc9c..09c31389c9 100644
+--- a/test/components/tools/test_tool_invoker.py
++++ b/test/components/tools/test_tool_invoker.py
+@@ -1,9 +1,8 @@
+ import pytest
++import json
+ import datetime
+ 
+ from haystack import Pipeline
+-
+-
+ from haystack.components.builders.prompt_builder import PromptBuilder
+ from haystack.components.generators.chat.openai import OpenAIChatGenerator
+ from haystack.components.tools.tool_invoker import ToolInvoker, ToolNotFoundException, StringConversionError
+@@ -283,8 +282,16 @@ def test_tool_invocation_error_does_not_raise_exception(self, faulty_tool):
+         assert tool_message.tool_call_results[0].error
+         assert "Failed to invoke" in tool_message.tool_call_results[0].result
+ 
+-    def test_string_conversion_error(self, weather_tool):
+-        invoker = ToolInvoker(tools=[weather_tool], raise_on_failure=True, convert_result_to_json_string=True)
++    def test_string_conversion_error(self):
++        weather_tool = Tool(
++            name="weather_tool",
++            description="Provides weather information for a given location.",
++            parameters=weather_parameters,
++            function=weather_function,
++            # Pass custom handler that will throw an error when trying to convert tool_result
++            outputs_to_string={"handler": lambda x: json.dumps(x)},
++        )
++        invoker = ToolInvoker(tools=[weather_tool], raise_on_failure=True)
+ 
+         tool_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
+ 
+@@ -292,8 +299,16 @@ def test_string_conversion_error(self, weather_tool):
+         with pytest.raises(StringConversionError):
+             invoker._prepare_tool_result_message(result=tool_result, tool_call=tool_call, tool_to_invoke=weather_tool)
+ 
+-    def test_string_conversion_error_does_not_raise_exception(self, weather_tool):
+-        invoker = ToolInvoker(tools=[weather_tool], raise_on_failure=False, convert_result_to_json_string=True)
++    def test_string_conversion_error_does_not_raise_exception(self):
++        weather_tool = Tool(
++            name="weather_tool",
++            description="Provides weather information for a given location.",
++            parameters=weather_parameters,
++            function=weather_function,
++            # Pass custom handler that will throw an error when trying to convert tool_result
++            outputs_to_string={"handler": lambda x: json.dumps(x)},
++        )
++        invoker = ToolInvoker(tools=[weather_tool], raise_on_failure=False)
+ 
+         tool_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
+ 
+
+From 4c565c1cce88a332e21346ad4921eeb92c0658b8 Mon Sep 17 00:00:00 2001
+From: Sebastian Husch Lee <sjrl423@gmail.com>
+Date: Thu, 15 May 2025 10:08:27 +0200
+Subject: [PATCH 2/3] Add reno
+
+---
+ .../notes/agent-as-a-component-tool-78696bd25deedad2.yaml  | 7 +++++++
+ 1 file changed, 7 insertions(+)
+ create mode 100644 releasenotes/notes/agent-as-a-component-tool-78696bd25deedad2.yaml
+
+diff --git a/releasenotes/notes/agent-as-a-component-tool-78696bd25deedad2.yaml b/releasenotes/notes/agent-as-a-component-tool-78696bd25deedad2.yaml
+new file mode 100644
+index 0000000000..0bde32835b
+--- /dev/null
++++ b/releasenotes/notes/agent-as-a-component-tool-78696bd25deedad2.yaml
+@@ -0,0 +1,7 @@
++---
++enhancements:
++  - |
++    A variety of improvements have been made so an Agent component can be directly used in ComponentTool enabling straightforward building of Multi-Agent systems.
++    These improvements include:
++    - Adding a `last_message` field to the Agent's output which returns the last generated ChatMessage.
++    - Improving the `_default_output_handler` in the `ToolInvoker` to try and first serialize the outputs in the tool result before converting it into a string. This is especially relevant for getting a better representation when stringifying dataclasses like ChatMessage.
+
+From 95af513dc69bed68866ced1f94b926da0250f5ea Mon Sep 17 00:00:00 2001
+From: Sebastian Husch Lee <sjrl423@gmail.com>
+Date: Thu, 15 May 2025 10:28:25 +0200
+Subject: [PATCH 3/3] fix mypy
+
+---
+ haystack/components/tools/tool_invoker.py | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/haystack/components/tools/tool_invoker.py b/haystack/components/tools/tool_invoker.py
+index db36811fc6..d5f55e04e7 100644
+--- a/haystack/components/tools/tool_invoker.py
++++ b/haystack/components/tools/tool_invoker.py
+@@ -475,7 +475,7 @@ def run(
+                     streaming_callback(
+                         StreamingChunk(
+                             content="",
+-                            meta={"tool_result": tool_messages[-1].tool_call_result.result, "tool_call": tool_call},
++                            meta={"tool_result": tool_messages[-1].tool_call_results[0].result, "tool_call": tool_call},
+                         )
+                     )
+ 

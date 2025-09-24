@@ -1,0 +1,152 @@
+From 8ce85812f480509c9959debe3ce4816e4d7f7210 Mon Sep 17 00:00:00 2001
+From: wardpeet <ward@coding-tech.com>
+Date: Fri, 30 May 2025 13:29:58 +0200
+Subject: [PATCH 1/3] Enable runtimecontext to generateTitle
+
+---
+ packages/core/src/agent/index.ts              |  7 ++--
+ .../src/agent-memory.test.ts                  | 36 +++++++++++++++++++
+ 2 files changed, 41 insertions(+), 2 deletions(-)
+
+diff --git a/packages/core/src/agent/index.ts b/packages/core/src/agent/index.ts
+index 9eadec9dfd7..4c51cfb4dae 100644
+--- a/packages/core/src/agent/index.ts
++++ b/packages/core/src/agent/index.ts
+@@ -427,12 +427,13 @@ export class Agent<
+     return userMessages.at(-1);
+   }
+ 
+-  async genTitle(userMessage: UIMessage | undefined) {
++  async genTitle(userMessage: UIMessage | undefined, runtimeContext: RuntimeContext) {
+     let title = `New Thread ${new Date().toISOString()}`;
+     try {
+       if (userMessage) {
+         title = await this.generateTitleFromUserMessage({
+           message: userMessage,
++          runtimeContext,
+         });
+       }
+     } catch (e) {
+@@ -1103,7 +1104,9 @@ export class Agent<
+               const config = memory.getMergedThreadConfig(memoryConfig);
+               const userMessage = this.getMostRecentUserMessage(messageList.get.all.ui());
+               const title =
+-                config?.threads?.generateTitle && userMessage ? await this.genTitle(userMessage) : undefined;
++                config?.threads?.generateTitle && userMessage
++                  ? await this.genTitle(userMessage, runtimeContext)
++                  : undefined;
+               if (!title) {
+                 return;
+               }
+diff --git a/packages/memory/integration-tests/src/agent-memory.test.ts b/packages/memory/integration-tests/src/agent-memory.test.ts
+index 58f4c2c8ed0..e197346e0a5 100644
+--- a/packages/memory/integration-tests/src/agent-memory.test.ts
++++ b/packages/memory/integration-tests/src/agent-memory.test.ts
+@@ -8,6 +8,7 @@ import { Memory } from '@mastra/memory';
+ import { describe, expect, it } from 'vitest';
+ import { z } from 'zod';
+ import { weatherTool } from './mastra/tools/weather';
++import { RuntimeContext } from '@mastra/core/runtime-context';
+ 
+ describe('Agent Memory Tests', () => {
+   const dbFile = 'file:mastra-agent.db';
+@@ -144,6 +145,14 @@ describe('Agent Memory Tests', () => {
+       tools: { get_weather: weatherTool },
+     });
+ 
++    const agentWithDynamicModelTitle = new Agent({
++      name: 'title-on',
++      instructions: 'Test agent with generateTitle on.',
++      model: ({ runtimeContext }) => openai(runtimeContext.get('model') as string),
++      memory: memoryWithTitle,
++      tools: { get_weather: weatherTool },
++    });
++
+     // Agent with generateTitle: false
+     const memoryNoTitle = new Memory({
+       options: {
+@@ -185,6 +194,33 @@ describe('Agent Memory Tests', () => {
+       expect(existingThread?.metadata).toMatchObject(metadata);
+     });
+ 
++    it('should use generateTitle with runtime context', async () => {
++      const threadId = randomUUID();
++      const resourceId = 'gen-title-metadata';
++      const metadata = { foo: 'bar', custom: 123 };
++
++      const thread = await memoryWithTitle.createThread({
++        threadId,
++        resourceId,
++        metadata,
++      });
++
++      expect(thread).toBeDefined();
++      expect(thread?.metadata).toMatchObject(metadata);
++
++      const runtimeContext = new RuntimeContext();
++      runtimeContext.set('model', 'gpt-4o-mini');
++      await agentWithDynamicModelTitle.generate([{ role: 'user', content: 'Hello, world!' }], {
++        threadId,
++        resourceId,
++        runtimeContext,
++      });
++
++      const existingThread = await memoryWithTitle.getThreadById({ threadId });
++      expect(existingThread).toBeDefined();
++      expect(existingThread?.metadata).toMatchObject(metadata);
++    });
++
+     it('should preserve metadata when generateTitle is false', async () => {
+       const threadId = randomUUID();
+       const resourceId = 'no-gen-title-metadata';
+
+From 6b5e49cfa43b087404b248f6b19d26ad89bc84d1 Mon Sep 17 00:00:00 2001
+From: wardpeet <ward@coding-tech.com>
+Date: Fri, 30 May 2025 13:30:35 +0200
+Subject: [PATCH 2/3] add changeset
+
+---
+ .changeset/cruel-emus-wash.md | 5 +++++
+ 1 file changed, 5 insertions(+)
+ create mode 100644 .changeset/cruel-emus-wash.md
+
+diff --git a/.changeset/cruel-emus-wash.md b/.changeset/cruel-emus-wash.md
+new file mode 100644
+index 00000000000..5d2d8f96c6b
+--- /dev/null
++++ b/.changeset/cruel-emus-wash.md
+@@ -0,0 +1,5 @@
++---
++'@mastra/core': patch
++---
++
++Add support for runtimeContext to generateTitle
+
+From 08cb1f76c615f28896a7360912f7224ff7e2eab8 Mon Sep 17 00:00:00 2001
+From: wardpeet <ward@coding-tech.com>
+Date: Fri, 30 May 2025 14:33:36 +0200
+Subject: [PATCH 3/3] update docs
+
+---
+ packages/memory/integration-tests/src/agent-memory.test.ts | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/packages/memory/integration-tests/src/agent-memory.test.ts b/packages/memory/integration-tests/src/agent-memory.test.ts
+index e197346e0a5..b009498f861 100644
+--- a/packages/memory/integration-tests/src/agent-memory.test.ts
++++ b/packages/memory/integration-tests/src/agent-memory.test.ts
+@@ -2,13 +2,13 @@ import { randomUUID } from 'node:crypto';
+ import { openai } from '@ai-sdk/openai';
+ import { Mastra } from '@mastra/core';
+ import { Agent } from '@mastra/core/agent';
++import { RuntimeContext } from '@mastra/core/runtime-context';
+ import { fastembed } from '@mastra/fastembed';
+ import { LibSQLStore, LibSQLVector } from '@mastra/libsql';
+ import { Memory } from '@mastra/memory';
+ import { describe, expect, it } from 'vitest';
+ import { z } from 'zod';
+ import { weatherTool } from './mastra/tools/weather';
+-import { RuntimeContext } from '@mastra/core/runtime-context';
+ 
+ describe('Agent Memory Tests', () => {
+   const dbFile = 'file:mastra-agent.db';

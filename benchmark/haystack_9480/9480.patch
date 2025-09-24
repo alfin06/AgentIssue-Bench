@@ -1,0 +1,746 @@
+From 79ba43e75626e88f8391a42796529f7b6bf174c3 Mon Sep 17 00:00:00 2001
+From: Vladimir Blagojevic <dovlex@gmail.com>
+Date: Tue, 10 Jun 2025 11:45:03 +0200
+Subject: [PATCH 01/10] Use model_dump_json for tool results instead of
+ returning types.CallToolResult from mcp-sdk
+
+---
+ .../tools/mcp/mcp_tool.py                     | 77 ++++++-------------
+ .../mcp/tests/test_mcp_integration.py         | 30 +++++---
+ integrations/mcp/tests/test_mcp_toolset.py    | 30 ++++++--
+ 3 files changed, 65 insertions(+), 72 deletions(-)
+
+diff --git a/integrations/mcp/src/haystack_integrations/tools/mcp/mcp_tool.py b/integrations/mcp/src/haystack_integrations/tools/mcp/mcp_tool.py
+index a4eb386aa3..5b64cbd262 100644
+--- a/integrations/mcp/src/haystack_integrations/tools/mcp/mcp_tool.py
++++ b/integrations/mcp/src/haystack_integrations/tools/mcp/mcp_tool.py
+@@ -4,6 +4,7 @@
+ 
+ import asyncio
+ import concurrent.futures
++import json
+ import threading
+ import warnings
+ from abc import ABC, abstractmethod
+@@ -233,16 +234,16 @@ async def connect(self) -> list[Tool]:
+         """
+         pass
+ 
+-    async def call_tool(self, tool_name: str, tool_args: dict[str, Any]) -> Any:
++    async def call_tool(self, tool_name: str, tool_args: dict[str, Any]) -> str:
+         """
+         Call a tool on the connected MCP server.
+ 
+         :param tool_name: Name of the tool to call
+         :param tool_args: Arguments to pass to the tool
+-        :returns: Result of the tool invocation
++        :returns: JSON string representation of the tool invocation result
+         :raises MCPConnectionError: If not connected to an MCP server
+         :raises MCPInvocationError: If the tool invocation fails
+-        :raises MCPResponseTypeError: If response type is not TextContent
++        :raises MCPResponseTypeError: If response type is not TextContent or ImageContent
+         """
+         if not self.session:
+             message = "Not connected to an MCP server"
+@@ -250,8 +251,10 @@ async def call_tool(self, tool_name: str, tool_args: dict[str, Any]) -> Any:
+ 
+         try:
+             result = await self.session.call_tool(tool_name, tool_args)
+-            validated_result = self._validate_response(tool_name, result)
+-            return validated_result
++            if result.isError:
++                message = f"Tool '{tool_name}' returned an error: {result.content!s}"
++                raise MCPInvocationError(message=message, tool_name=tool_name)
++            return result.model_dump_json()
+         except MCPError:
+             # Re-raise specific MCP errors directly
+             raise
+@@ -260,44 +263,6 @@ async def call_tool(self, tool_name: str, tool_args: dict[str, Any]) -> Any:
+             message = f"Failed to invoke tool '{tool_name}' with args: {tool_args} , got error: {e!s}"
+             raise MCPInvocationError(message, tool_name, tool_args) from e
+ 
+-    def _validate_response(self, tool_name: str, result: types.CallToolResult) -> types.CallToolResult:
+-        """
+-        Validate response from an MCP tool call, accepting only TextContent.
+-
+-        :param tool_name: Name of the called tool (for error messages)
+-        :param result: CallToolResult from MCP tool call
+-        :returns: The original CallToolResult object
+-        :raises MCPResponseTypeError: If content type is not TextContent
+-        :raises MCPInvocationError: If the tool call resulted in an error
+-        """
+-
+-        # Check for error response
+-        if result.isError:
+-            if len(result.content) > 0 and isinstance(result.content[0], types.TextContent):
+-                # Get the error message from the first item
+-                first_item = result.content[0]
+-                message = f"Tool '{tool_name}' returned an error: {first_item.text}"
+-            else:
+-                message = f"Tool '{tool_name}' returned an error: {result.content!s}"
+-            raise MCPInvocationError(
+-                message=message,
+-                tool_name=tool_name,
+-            )
+-
+-        # Validate content types - only allow TextContent for now
+-        if result.content:
+-            for item in result.content:
+-                if not isinstance(item, types.TextContent):
+-                    # Reject any non-TextContent
+-                    message = (
+-                        f"Unsupported content type in response from tool '{tool_name}'. "
+-                        f"Only TextContent is currently supported."
+-                    )
+-                    raise MCPResponseTypeError(message, result, tool_name)
+-
+-        # Return the original result object
+-        return result
+-
+     async def aclose(self) -> None:
+         """
+         Close the connection and clean up resources.
+@@ -608,11 +573,14 @@ class MCPTool(Tool):
+     compatibility with the Haystack tool ecosystem.
+ 
+     Response handling:
+-    - Text content is supported and returned as strings
+-    - Unsupported content types (like binary/images) will raise MCPResponseTypeError
++    - Text and image content are supported and returned as JSON strings
++    - The JSON contains the structured response from the MCP server
++    - Use json.loads() to parse the response into a dictionary
++    - Unsupported content types will raise MCPResponseTypeError
+ 
+     Example using HTTP:
+     ```python
++    import json
+     from haystack.tools import MCPTool, SSEServerInfo
+ 
+     # Create tool instance
+@@ -621,12 +589,14 @@ class MCPTool(Tool):
+         server_info=SSEServerInfo(url="http://localhost:8000/sse")
+     )
+ 
+-    # Use the tool
+-    result = tool.invoke(a=5, b=3)
++    # Use the tool and parse result
++    result_json = tool.invoke(a=5, b=3)
++    result = json.loads(result_json)
+     ```
+ 
+     Example using stdio:
+     ```python
++    import json
+     from haystack.tools import MCPTool, StdioServerInfo
+ 
+     # Create tool instance
+@@ -635,8 +605,9 @@ class MCPTool(Tool):
+         server_info=StdioServerInfo(command="python", args=["path/to/server.py"])
+     )
+ 
+-    # Use the tool
+-    result = tool.invoke(timezone="America/New_York")
++    # Use the tool and parse result
++    result_json = tool.invoke(timezone="America/New_York")
++    result = json.loads(result_json)
+     ```
+     """
+ 
+@@ -732,12 +703,12 @@ def __init__(
+             message = f"Failed to initialize MCPTool '{name}': {error_message}"
+             raise MCPConnectionError(message=message, server_info=server_info, operation="initialize") from e
+ 
+-    def _invoke_tool(self, **kwargs: Any) -> Any:
++    def _invoke_tool(self, **kwargs: Any) -> str:
+         """
+         Synchronous tool invocation.
+ 
+         :param kwargs: Arguments to pass to the tool
+-        :returns: Result of the tool invocation
++        :returns: JSON string representation of the tool invocation result
+         """
+         logger.debug(f"TOOL: Invoking tool '{self.name}' with args: {kwargs}")
+         try:
+@@ -764,12 +735,12 @@ async def invoke():
+             message = f"Failed to invoke tool '{self.name}' with args: {kwargs} , got error: {e!s}"
+             raise MCPInvocationError(message, self.name, kwargs) from e
+ 
+-    async def ainvoke(self, **kwargs: Any) -> Any:
++    async def ainvoke(self, **kwargs: Any) -> str:
+         """
+         Asynchronous tool invocation.
+ 
+         :param kwargs: Arguments to pass to the tool
+-        :returns: Result of the tool invocation, processed based on content type
++        :returns: JSON string representation of the tool invocation result
+         :raises MCPInvocationError: If the tool invocation fails
+         :raises MCPResponseTypeError: If response type is not supported
+         :raises TimeoutError: If the operation times out
+diff --git a/integrations/mcp/tests/test_mcp_integration.py b/integrations/mcp/tests/test_mcp_integration.py
+index 934845f9a9..7efc6d7e70 100644
+--- a/integrations/mcp/tests/test_mcp_integration.py
++++ b/integrations/mcp/tests/test_mcp_integration.py
+@@ -86,21 +86,29 @@ def subtract(a: int, b: int) -> int:
+             tool = MCPTool(name="add", server_info=server_info)
+ 
+             # Invoke the tool
+-            result = tool.invoke(a=5, b=3)
++            result_json = tool.invoke(a=5, b=3)
++
++            # Parse the JSON result
++            import json
++
++            result = json.loads(result_json)
+ 
+             # Verify the result
+-            assert not result.isError
+-            assert len(result.content) == 1
+-            assert result.content[0].text == "8"
++            assert not result["isError"]
++            assert len(result["content"]) == 1
++            assert result["content"][0]["text"] == "8"
+ 
+             # Try another tool from the same server
+             subtract_tool = MCPTool(name="subtract", server_info=server_info)
+-            result = subtract_tool.invoke(a=10, b=4)
++            result_json = subtract_tool.invoke(a=10, b=4)
++
++            # Parse the JSON result
++            result = json.loads(result_json)
+ 
+             # Verify the result
+-            assert not result.isError
+-            assert len(result.content) == 1
+-            assert result.content[0].text == "6"
++            assert not result["isError"]
++            assert len(result["content"]) == 1
++            assert result["content"][0]["text"] == "6"
+ 
+         except Exception:
+             # Check server output for clues
+@@ -234,6 +242,6 @@ def test_mcp_tool_error_handling_integration(self):
+         # Check for platform-agnostic error message patterns
+         error_message = str(exc_info.value)
+         assert error_message, "Error message should not be empty"
+-        assert any(text in error_message.lower() for text in ["failed", "connection", "initialize"]), (
+-            f"Error message '{error_message}' should contain connection failure information"
+-        )
++        assert any(
++            text in error_message.lower() for text in ["failed", "connection", "initialize"]
++        ), f"Error message '{error_message}' should contain connection failure information"
+diff --git a/integrations/mcp/tests/test_mcp_toolset.py b/integrations/mcp/tests/test_mcp_toolset.py
+index d8806259cf..63ed8fd6ae 100644
+--- a/integrations/mcp/tests/test_mcp_toolset.py
++++ b/integrations/mcp/tests/test_mcp_toolset.py
+@@ -213,6 +213,7 @@ def test_toolset_with_sse_connection(self):
+         import socket
+         import subprocess
+         import tempfile
++        import json
+ 
+         # Find an available port
+         def find_free_port():
+@@ -270,13 +271,19 @@ def subtract(a: int, b: int) -> int:
+ 
+             # Test the add tool
+             add_tool = next(tool for tool in toolset.tools if tool.name == "add")
+-            result = add_tool.invoke(a=5, b=3)
+-            assert result.content[0].text == "8"
++            result_json = add_tool.invoke(a=5, b=3)
++
++            # Parse the JSON result
++            result = json.loads(result_json)
++            assert result["content"][0]["text"] == "8"
+ 
+             # Test the subtract tool
+             subtract_tool = next(tool for tool in toolset.tools if tool.name == "subtract")
+-            result = subtract_tool.invoke(a=10, b=4)
+-            assert result.content[0].text == "6"
++            result_json = subtract_tool.invoke(a=10, b=4)
++
++            # Parse the JSON result
++            result = json.loads(result_json)
++            assert result["content"][0]["text"] == "6"
+ 
+         except Exception:
+             # Check server output for clues
+@@ -311,6 +318,7 @@ def test_toolset_with_streamable_http_connection(self):
+         import socket
+         import subprocess
+         import tempfile
++        import json
+ 
+         # Find an available port
+         def find_free_port():
+@@ -369,13 +377,19 @@ def subtract(a: int, b: int) -> int:
+ 
+             # Test the add tool
+             add_tool = next(tool for tool in toolset.tools if tool.name == "add")
+-            result = add_tool.invoke(a=5, b=3)
+-            assert result.content[0].text == "8"
++            result_json = add_tool.invoke(a=5, b=3)
++
++            # Parse the JSON result
++            result = json.loads(result_json)
++            assert result["content"][0]["text"] == "8"
+ 
+             # Test the subtract tool
+             subtract_tool = next(tool for tool in toolset.tools if tool.name == "subtract")
+-            result = subtract_tool.invoke(a=10, b=4)
+-            assert result.content[0].text == "6"
++            result_json = subtract_tool.invoke(a=10, b=4)
++
++            # Parse the JSON result
++            result = json.loads(result_json)
++            assert result["content"][0]["text"] == "6"
+ 
+         except Exception:
+             # Check server output for clues
+
+From 0c85433a6ae3d710a54df3c178db65b606d74904 Mon Sep 17 00:00:00 2001
+From: Vladimir Blagojevic <dovlex@gmail.com>
+Date: Tue, 10 Jun 2025 12:10:35 +0200
+Subject: [PATCH 02/10] Fix lint
+
+---
+ .../mcp/src/haystack_integrations/tools/mcp/mcp_tool.py       | 1 -
+ integrations/mcp/tests/test_mcp_toolset.py                    | 4 ++--
+ 2 files changed, 2 insertions(+), 3 deletions(-)
+
+diff --git a/integrations/mcp/src/haystack_integrations/tools/mcp/mcp_tool.py b/integrations/mcp/src/haystack_integrations/tools/mcp/mcp_tool.py
+index 5b64cbd262..2453cb0e5f 100644
+--- a/integrations/mcp/src/haystack_integrations/tools/mcp/mcp_tool.py
++++ b/integrations/mcp/src/haystack_integrations/tools/mcp/mcp_tool.py
+@@ -4,7 +4,6 @@
+ 
+ import asyncio
+ import concurrent.futures
+-import json
+ import threading
+ import warnings
+ from abc import ABC, abstractmethod
+diff --git a/integrations/mcp/tests/test_mcp_toolset.py b/integrations/mcp/tests/test_mcp_toolset.py
+index 63ed8fd6ae..6c85f0491f 100644
+--- a/integrations/mcp/tests/test_mcp_toolset.py
++++ b/integrations/mcp/tests/test_mcp_toolset.py
+@@ -210,10 +210,10 @@ class TestMCPToolsetIntegration:
+     @pytest.mark.skipif(sys.platform == "win32", reason="Windows fails for some reason")
+     def test_toolset_with_sse_connection(self):
+         """Test MCPToolset with an SSE connection to a simple server."""
++        import json
+         import socket
+         import subprocess
+         import tempfile
+-        import json
+ 
+         # Find an available port
+         def find_free_port():
+@@ -315,10 +315,10 @@ def subtract(a: int, b: int) -> int:
+     @pytest.mark.skipif(sys.platform == "win32", reason="Windows fails for some reason")
+     def test_toolset_with_streamable_http_connection(self):
+         """Test MCPToolset with a streamable-http connection to a simple server."""
++        import json
+         import socket
+         import subprocess
+         import tempfile
+-        import json
+ 
+         # Find an available port
+         def find_free_port():
+
+From a99270ea32fcc66a3423c5e22e50e07266e7cebb Mon Sep 17 00:00:00 2001
+From: Vladimir Blagojevic <dovlex@gmail.com>
+Date: Tue, 10 Jun 2025 13:19:55 +0200
+Subject: [PATCH 03/10] More lint
+
+---
+ integrations/mcp/tests/test_mcp_integration.py | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/integrations/mcp/tests/test_mcp_integration.py b/integrations/mcp/tests/test_mcp_integration.py
+index 7efc6d7e70..c6cd5e4aa7 100644
+--- a/integrations/mcp/tests/test_mcp_integration.py
++++ b/integrations/mcp/tests/test_mcp_integration.py
+@@ -242,6 +242,6 @@ def test_mcp_tool_error_handling_integration(self):
+         # Check for platform-agnostic error message patterns
+         error_message = str(exc_info.value)
+         assert error_message, "Error message should not be empty"
+-        assert any(
+-            text in error_message.lower() for text in ["failed", "connection", "initialize"]
+-        ), f"Error message '{error_message}' should contain connection failure information"
++        assert any(text in error_message.lower() for text in ["failed", "connection", "initialize"]), (
++            f"Error message '{error_message}' should contain connection failure information"
++        )
+
+From 617b1c7b2a0ef308db8125f92ac3ea13a48940c3 Mon Sep 17 00:00:00 2001
+From: Vladimir Blagojevic <dovlex@gmail.com>
+Date: Tue, 10 Jun 2025 13:33:46 +0200
+Subject: [PATCH 04/10] Fix more tests
+
+---
+ integrations/mcp/tests/mcp_memory_transport.py |  9 +++++++--
+ integrations/mcp/tests/test_mcp_tool.py        | 12 ++++++------
+ 2 files changed, 13 insertions(+), 8 deletions(-)
+
+diff --git a/integrations/mcp/tests/mcp_memory_transport.py b/integrations/mcp/tests/mcp_memory_transport.py
+index ec0407c6fb..5b77206735 100644
+--- a/integrations/mcp/tests/mcp_memory_transport.py
++++ b/integrations/mcp/tests/mcp_memory_transport.py
+@@ -5,7 +5,7 @@
+ from mcp.server import Server
+ from mcp.shared.memory import create_connected_server_and_client_session
+ 
+-from haystack_integrations.tools.mcp import MCPClient, MCPServerInfo
++from haystack_integrations.tools.mcp import MCPClient, MCPInvocationError, MCPServerInfo
+ 
+ 
+ class InMemoryClient(MCPClient):
+@@ -44,7 +44,12 @@ async def call_tool(self, tool_name: str, tool_args: dict[str, Any]) -> Any:
+         async with create_connected_server_and_client_session(self.server) as session:
+             await session.initialize()
+             response = await session.call_tool(tool_name, tool_args)
+-            return self._validate_response(tool_name, response)
++            if response.isError:
++                raise MCPInvocationError(
++                    message=f"Tool '{tool_name}' returned an error: {response.content!s}",
++                    tool_name=tool_name,
++                )
++            return response.model_dump_json()
+ 
+ 
+ @dataclass
+diff --git a/integrations/mcp/tests/test_mcp_tool.py b/integrations/mcp/tests/test_mcp_tool.py
+index a6d46e79cd..4279242d64 100644
+--- a/integrations/mcp/tests/test_mcp_tool.py
++++ b/integrations/mcp/tests/test_mcp_tool.py
+@@ -66,15 +66,15 @@ def test_mcp_tool_invoke(self, mcp_add_tool, mcp_echo_tool):
+         """Test invoking MCPTools connected to in-memory servers."""
+         # Test add tool invocation
+         add_result = mcp_add_tool.invoke(a=25, b=17)
+-        assert not add_result.isError
+-        assert len(add_result.content) == 1
+-        assert add_result.content[0].text == "42"  # 25 + 17
++        import json
++
++        add_result = json.loads(add_result)
++        assert add_result["content"][0]["text"] == "42"
+ 
+         # Test echo tool invocation
+         echo_result = mcp_echo_tool.invoke(text="Hello MCP!")
+-        assert not echo_result.isError
+-        assert len(echo_result.content) == 1
+-        assert echo_result.content[0].text == "Hello MCP!"
++        echo_result = json.loads(echo_result)
++        assert echo_result["content"][0]["text"] == "Hello MCP!"
+ 
+     def test_mcp_tool_error_handling(self, mcp_error_tool):
+         """Test error handling with the in-memory server."""
+
+From 795f9e1959728fb2c38e380b626a0e65ea9fb87d Mon Sep 17 00:00:00 2001
+From: Vladimir Blagojevic <dovlex@gmail.com>
+Date: Tue, 10 Jun 2025 17:23:17 +0200
+Subject: [PATCH 05/10] PR feedback
+
+---
+ .cursor/rules/pr-description-template.mdc     | 42 +++++++++++++++++++
+ .../mcp/tests/test_mcp_integration.py         |  5 +--
+ integrations/mcp/tests/test_mcp_tool.py       |  4 +-
+ 3 files changed, 45 insertions(+), 6 deletions(-)
+ create mode 100644 .cursor/rules/pr-description-template.mdc
+
+diff --git a/.cursor/rules/pr-description-template.mdc b/.cursor/rules/pr-description-template.mdc
+new file mode 100644
+index 0000000000..3e05963c0b
+--- /dev/null
++++ b/.cursor/rules/pr-description-template.mdc
+@@ -0,0 +1,42 @@
++---
++description: 
++globs: 
++alwaysApply: false
++---
++# PR Description Template Rule
++
++When creating PR descriptions for Haystack integrations, use this concise format:
++
++## Template Structure
++
++### Why:
++Brief explanation of the motivation and problem being solved.
++
++### What:
++- **Core component**: Main functionality added
++- **Key features**: 2-3 bullet points of major capabilities
++- **Integration**: How it works with Haystack
++
++### How can it be used:
++```python
++# Basic usage example
++component = NewComponent(param="value")
++result = component.run(input_data)
++
++# Advanced usage if applicable
++component_advanced = NewComponent(
++    param="value",
++    tools=tools,
++    streaming_callback=callback
++)
++```
++
++### How did you test it:
++- **Unit tests**: Core functionality and serialization
++- **Integration tests**: Live API tests (when applicable)
++- **Feature tests**: Key capabilities like tools, streaming, async
++
++### Notes for the reviewer:
++- **Dependencies**: Any new packages added
++- **Compatibility**: Haystack integration notes
++- **Limitations**: Known issues or constraints
+diff --git a/integrations/mcp/tests/test_mcp_integration.py b/integrations/mcp/tests/test_mcp_integration.py
+index c6cd5e4aa7..ee99a99da1 100644
+--- a/integrations/mcp/tests/test_mcp_integration.py
++++ b/integrations/mcp/tests/test_mcp_integration.py
+@@ -1,3 +1,4 @@
++import json
+ import os
+ import socket
+ import subprocess
+@@ -87,10 +88,6 @@ def subtract(a: int, b: int) -> int:
+ 
+             # Invoke the tool
+             result_json = tool.invoke(a=5, b=3)
+-
+-            # Parse the JSON result
+-            import json
+-
+             result = json.loads(result_json)
+ 
+             # Verify the result
+diff --git a/integrations/mcp/tests/test_mcp_tool.py b/integrations/mcp/tests/test_mcp_tool.py
+index 4279242d64..a2e0bf5935 100644
+--- a/integrations/mcp/tests/test_mcp_tool.py
++++ b/integrations/mcp/tests/test_mcp_tool.py
+@@ -1,3 +1,5 @@
++import json
++
+ import pytest
+ from haystack.tools.errors import ToolInvocationError
+ from haystack.tools.from_function import tool
+@@ -66,8 +68,6 @@ def test_mcp_tool_invoke(self, mcp_add_tool, mcp_echo_tool):
+         """Test invoking MCPTools connected to in-memory servers."""
+         # Test add tool invocation
+         add_result = mcp_add_tool.invoke(a=25, b=17)
+-        import json
+-
+         add_result = json.loads(add_result)
+         assert add_result["content"][0]["text"] == "42"
+ 
+
+From 35142183a628e46fc2afc75ea1a292c3a19e0a14 Mon Sep 17 00:00:00 2001
+From: Vladimir Blagojevic <dovlex@gmail.com>
+Date: Tue, 10 Jun 2025 17:30:32 +0200
+Subject: [PATCH 06/10] Remove .cursor/rules/pr-description-template.mdc added
+ in latest commit
+
+---
+ .cursor/rules/pr-description-template.mdc | 42 -----------------------
+ 1 file changed, 42 deletions(-)
+ delete mode 100644 .cursor/rules/pr-description-template.mdc
+
+diff --git a/.cursor/rules/pr-description-template.mdc b/.cursor/rules/pr-description-template.mdc
+deleted file mode 100644
+index 3e05963c0b..0000000000
+--- a/.cursor/rules/pr-description-template.mdc
++++ /dev/null
+@@ -1,42 +0,0 @@
+----
+-description: 
+-globs: 
+-alwaysApply: false
+----
+-# PR Description Template Rule
+-
+-When creating PR descriptions for Haystack integrations, use this concise format:
+-
+-## Template Structure
+-
+-### Why:
+-Brief explanation of the motivation and problem being solved.
+-
+-### What:
+-- **Core component**: Main functionality added
+-- **Key features**: 2-3 bullet points of major capabilities
+-- **Integration**: How it works with Haystack
+-
+-### How can it be used:
+-```python
+-# Basic usage example
+-component = NewComponent(param="value")
+-result = component.run(input_data)
+-
+-# Advanced usage if applicable
+-component_advanced = NewComponent(
+-    param="value",
+-    tools=tools,
+-    streaming_callback=callback
+-)
+-```
+-
+-### How did you test it:
+-- **Unit tests**: Core functionality and serialization
+-- **Integration tests**: Live API tests (when applicable)
+-- **Feature tests**: Key capabilities like tools, streaming, async
+-
+-### Notes for the reviewer:
+-- **Dependencies**: Any new packages added
+-- **Compatibility**: Haystack integration notes
+-- **Limitations**: Known issues or constraints
+
+From f0c73d211812343d1215e76f39fe04dfc53232b7 Mon Sep 17 00:00:00 2001
+From: Vladimir Blagojevic <dovlex@gmail.com>
+Date: Tue, 10 Jun 2025 17:32:39 +0200
+Subject: [PATCH 07/10] Remove raises MCPResponseTypeError: If response type is
+ not TextContent or ImageContent pydoc
+
+---
+ integrations/mcp/src/haystack_integrations/tools/mcp/mcp_tool.py | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/integrations/mcp/src/haystack_integrations/tools/mcp/mcp_tool.py b/integrations/mcp/src/haystack_integrations/tools/mcp/mcp_tool.py
+index 16cb23bd70..947f90c1c5 100644
+--- a/integrations/mcp/src/haystack_integrations/tools/mcp/mcp_tool.py
++++ b/integrations/mcp/src/haystack_integrations/tools/mcp/mcp_tool.py
+@@ -244,7 +244,6 @@ async def call_tool(self, tool_name: str, tool_args: dict[str, Any]) -> str:
+         :returns: JSON string representation of the tool invocation result
+         :raises MCPConnectionError: If not connected to an MCP server
+         :raises MCPInvocationError: If the tool invocation fails
+-        :raises MCPResponseTypeError: If response type is not TextContent or ImageContent
+         """
+         if not self.session:
+             message = "Not connected to an MCP server"
+
+From 9293712a4f4d6d69838816474f4f9f86caf20c87 Mon Sep 17 00:00:00 2001
+From: Vladimir Blagojevic <dovlex@gmail.com>
+Date: Tue, 10 Jun 2025 17:36:20 +0200
+Subject: [PATCH 08/10] Fix imports
+
+---
+ integrations/mcp/tests/test_mcp_toolset.py | 12 ++++--------
+ 1 file changed, 4 insertions(+), 8 deletions(-)
+
+diff --git a/integrations/mcp/tests/test_mcp_toolset.py b/integrations/mcp/tests/test_mcp_toolset.py
+index 6c85f0491f..281afa8303 100644
+--- a/integrations/mcp/tests/test_mcp_toolset.py
++++ b/integrations/mcp/tests/test_mcp_toolset.py
+@@ -1,5 +1,9 @@
++import json
+ import os
++import socket
++import subprocess
+ import sys
++import tempfile
+ import time
+ from unittest.mock import patch
+ 
+@@ -210,10 +214,6 @@ class TestMCPToolsetIntegration:
+     @pytest.mark.skipif(sys.platform == "win32", reason="Windows fails for some reason")
+     def test_toolset_with_sse_connection(self):
+         """Test MCPToolset with an SSE connection to a simple server."""
+-        import json
+-        import socket
+-        import subprocess
+-        import tempfile
+ 
+         # Find an available port
+         def find_free_port():
+@@ -315,10 +315,6 @@ def subtract(a: int, b: int) -> int:
+     @pytest.mark.skipif(sys.platform == "win32", reason="Windows fails for some reason")
+     def test_toolset_with_streamable_http_connection(self):
+         """Test MCPToolset with a streamable-http connection to a simple server."""
+-        import json
+-        import socket
+-        import subprocess
+-        import tempfile
+ 
+         # Find an available port
+         def find_free_port():
+
+From 1403f6a364b286ef2913d9119afaf90fa1af425a Mon Sep 17 00:00:00 2001
+From: Vladimir Blagojevic <dovlex@gmail.com>
+Date: Tue, 10 Jun 2025 17:45:32 +0200
+Subject: [PATCH 09/10] Fix pydoc
+
+---
+ integrations/mcp/src/haystack_integrations/tools/mcp/mcp_tool.py | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/integrations/mcp/src/haystack_integrations/tools/mcp/mcp_tool.py b/integrations/mcp/src/haystack_integrations/tools/mcp/mcp_tool.py
+index 947f90c1c5..0f6ff66435 100644
+--- a/integrations/mcp/src/haystack_integrations/tools/mcp/mcp_tool.py
++++ b/integrations/mcp/src/haystack_integrations/tools/mcp/mcp_tool.py
+@@ -824,7 +824,6 @@ async def ainvoke(self, **kwargs: Any) -> str:
+         :param kwargs: Arguments to pass to the tool
+         :returns: JSON string representation of the tool invocation result
+         :raises MCPInvocationError: If the tool invocation fails
+-        :raises MCPResponseTypeError: If response type is not supported
+         :raises TimeoutError: If the operation times out
+         """
+         try:
+
+From 879accb2b79a6eecda3948cc3ebdeec72cca9179 Mon Sep 17 00:00:00 2001
+From: Vladimir Blagojevic <dovlex@gmail.com>
+Date: Tue, 10 Jun 2025 17:52:17 +0200
+Subject: [PATCH 10/10] Remove MCPResponseTypeError
+
+---
+ .../haystack_integrations/tools/mcp/mcp_tool.py | 17 -----------------
+ integrations/mcp/tests/mcp_memory_transport.py  |  1 -
+ 2 files changed, 18 deletions(-)
+
+diff --git a/integrations/mcp/src/haystack_integrations/tools/mcp/mcp_tool.py b/integrations/mcp/src/haystack_integrations/tools/mcp/mcp_tool.py
+index 0f6ff66435..b8f0c98583 100644
+--- a/integrations/mcp/src/haystack_integrations/tools/mcp/mcp_tool.py
++++ b/integrations/mcp/src/haystack_integrations/tools/mcp/mcp_tool.py
+@@ -179,22 +179,6 @@ def __init__(self, message: str, tool_name: str, available_tools: list[str] | No
+         self.available_tools = available_tools or []
+ 
+ 
+-class MCPResponseTypeError(MCPError):
+-    """Error when response content type is not supported."""
+-
+-    def __init__(self, message: str, response: Any, tool_name: str | None = None) -> None:
+-        """
+-        Initialize the MCPResponseTypeError.
+-
+-        :param message: Descriptive error message
+-        :param response: The response that had the wrong type
+-        :param tool_name: Name of the tool that produced the response
+-        """
+-        super().__init__(message)
+-        self.response = response
+-        self.tool_name = tool_name
+-
+-
+ class MCPInvocationError(ToolInvocationError):
+     """Error during tool invocation."""
+ 
+@@ -658,7 +642,6 @@ class MCPTool(Tool):
+     - Text and image content are supported and returned as JSON strings
+     - The JSON contains the structured response from the MCP server
+     - Use json.loads() to parse the response into a dictionary
+-    - Unsupported content types will raise MCPResponseTypeError
+ 
+     Example using HTTP:
+     ```python
+diff --git a/integrations/mcp/tests/mcp_memory_transport.py b/integrations/mcp/tests/mcp_memory_transport.py
+index 5b77206735..bbd33efa1e 100644
+--- a/integrations/mcp/tests/mcp_memory_transport.py
++++ b/integrations/mcp/tests/mcp_memory_transport.py
+@@ -39,7 +39,6 @@ async def call_tool(self, tool_name: str, tool_args: dict[str, Any]) -> Any:
+         :returns: Result of the tool invocation
+         :raises MCPConnectionError: If not connected to an MCP server
+         :raises MCPInvocationError: If the tool invocation fails
+-        :raises MCPResponseTypeError: If response type is not TextContent
+         """
+         async with create_connected_server_and_client_session(self.server) as session:
+             await session.initialize()

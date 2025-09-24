@@ -1,0 +1,300 @@
+From e25631ca57ebe872d1460d0e22e0c24d185516d3 Mon Sep 17 00:00:00 2001
+From: Sebastian Husch Lee <sjrl423@gmail.com>
+Date: Tue, 17 Jun 2025 08:57:05 +0200
+Subject: [PATCH 1/5] Fix serialization of outputs_to_string in Tool and
+ ComponentTool
+
+---
+ haystack/tools/component_tool.py  |  6 ++++--
+ haystack/tools/tool.py            |  6 ++++--
+ test/tools/test_component_tool.py | 27 ++++++++++++++++++++-------
+ test/tools/test_tool.py           | 17 +++++++++++++----
+ 4 files changed, 41 insertions(+), 15 deletions(-)
+
+diff --git a/haystack/tools/component_tool.py b/haystack/tools/component_tool.py
+index 5198ff0daa..c41e2f94cd 100644
+--- a/haystack/tools/component_tool.py
++++ b/haystack/tools/component_tool.py
+@@ -225,8 +225,10 @@ def to_dict(self) -> Dict[str, Any]:
+                 serialized_outputs[key] = serialized_config
+             serialized["outputs_to_state"] = serialized_outputs
+ 
+-        if self.outputs_to_string is not None and self.outputs_to_string.get("handler") is not None:
+-            serialized["outputs_to_string"] = serialize_callable(self.outputs_to_string["handler"])
++        if self.outputs_to_string is not None:
++            serialized["outputs_to_string"] = self.outputs_to_string.copy()
++            if self.outputs_to_string.get("handler") is not None:
++                serialized["outputs_to_string"]["handler"] = serialize_callable(self.outputs_to_string["handler"])
+ 
+         return {"type": generate_qualified_class_name(type(self)), "data": serialized}
+ 
+diff --git a/haystack/tools/tool.py b/haystack/tools/tool.py
+index c1d7670448..4ec26f08d4 100644
+--- a/haystack/tools/tool.py
++++ b/haystack/tools/tool.py
+@@ -121,8 +121,10 @@ def to_dict(self) -> Dict[str, Any]:
+                 serialized_outputs[key] = serialized_config
+             data["outputs_to_state"] = serialized_outputs
+ 
+-        if self.outputs_to_string is not None and self.outputs_to_string.get("handler") is not None:
+-            data["outputs_to_string"] = serialize_callable(self.outputs_to_string["handler"])
++        if self.outputs_to_string is not None:
++            data["outputs_to_string"] = self.outputs_to_string.copy()
++            if self.outputs_to_string.get("handler") is not None:
++                data["outputs_to_string"]["handler"] = serialize_callable(self.outputs_to_string["handler"])
+ 
+         return {"type": generate_qualified_class_name(type(self)), "data": data}
+ 
+diff --git a/test/tools/test_component_tool.py b/test/tools/test_component_tool.py
+index 470891349d..2db721c442 100644
+--- a/test/tools/test_component_tool.py
++++ b/test/tools/test_component_tool.py
+@@ -60,6 +60,10 @@ def run(self, text: str) -> Dict[str, str]:
+         return {"reply": f"Hello, {text}!"}
+ 
+ 
++def reply_formatter(input_text: str) -> str:
++    return f"Formatted reply: {input_text}"
++
++
+ @dataclass
+ class User:
+     """A simple user dataclass."""
+@@ -593,24 +597,33 @@ def test_component_tool_serde(self):
+             component=SimpleComponent(),
+             name="simple_tool",
+             description="A simple tool",
++            outputs_to_string={"source": "reply", "handler": reply_formatter},
+             inputs_from_state={"test": "input"},
+             outputs_to_state={"output": {"source": "out", "handler": output_handler}},
+         )
+ 
+         # Test serialization
++        expected_tool_dict = {
++            "type": "haystack.tools.component_tool.ComponentTool",
++            "data": {
++                "component": {"type": "test_component_tool.SimpleComponent", "init_parameters": {}},
++                "name": "simple_tool",
++                "description": "A simple tool",
++                "parameters": None,
++                "outputs_to_string": {"source": "reply", "handler": "test_component_tool.reply_formatter"},
++                "inputs_from_state": {"test": "input"},
++                "outputs_to_state": {"output": {"source": "out", "handler": "test_component_tool.output_handler"}},
++            },
++        }
+         tool_dict = tool.to_dict()
+-        assert tool_dict["type"] == "haystack.tools.component_tool.ComponentTool"
+-        assert tool_dict["data"]["name"] == "simple_tool"
+-        assert tool_dict["data"]["description"] == "A simple tool"
+-        assert "component" in tool_dict["data"]
+-        assert tool_dict["data"]["inputs_from_state"] == {"test": "input"}
+-        assert tool_dict["data"]["outputs_to_state"]["output"]["handler"] == "test_component_tool.output_handler"
++        assert tool_dict == expected_tool_dict
+ 
+         # Test deserialization
+-        new_tool = ComponentTool.from_dict(tool_dict)
++        new_tool = ComponentTool.from_dict(expected_tool_dict)
+         assert new_tool.name == tool.name
+         assert new_tool.description == tool.description
+         assert new_tool.parameters == tool.parameters
++        assert new_tool.outputs_to_string == tool.outputs_to_string
+         assert new_tool.inputs_from_state == tool.inputs_from_state
+         assert new_tool.outputs_to_state == tool.outputs_to_state
+         assert isinstance(new_tool._component, SimpleComponent)
+diff --git a/test/tools/test_tool.py b/test/tools/test_tool.py
+index 49d01aa0e8..352cd58719 100644
+--- a/test/tools/test_tool.py
++++ b/test/tools/test_tool.py
+@@ -13,6 +13,10 @@ def get_weather_report(city: str) -> str:
+     return f"Weather report for {city}: 20°C, sunny"
+ 
+ 
++def format_string(text: str) -> str:
++    return f"Formatted: {text}"
++
++
+ parameters = {"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]}
+ 
+ 
+@@ -84,6 +88,8 @@ def test_to_dict(self):
+             description="Get weather report",
+             parameters=parameters,
+             function=get_weather_report,
++            outputs_to_string={"handler": format_string},
++            inputs_from_state={"state_key": "tool_input_key"},
+             outputs_to_state={"documents": {"handler": get_weather_report, "source": "docs"}},
+         )
+ 
+@@ -94,8 +100,8 @@ def test_to_dict(self):
+                 "description": "Get weather report",
+                 "parameters": parameters,
+                 "function": "test_tool.get_weather_report",
+-                "outputs_to_string": None,
+-                "inputs_from_state": None,
++                "outputs_to_string": {"handler": "test_tool.format_string"},
++                "inputs_from_state": {"state_key": "tool_input_key"},
+                 "outputs_to_state": {"documents": {"source": "docs", "handler": "test_tool.get_weather_report"}},
+             },
+         }
+@@ -108,6 +114,8 @@ def test_from_dict(self):
+                 "description": "Get weather report",
+                 "parameters": parameters,
+                 "function": "test_tool.get_weather_report",
++                "outputs_to_string": {"handler": "test_tool.format_string"},
++                "inputs_from_state": {"state_key": "tool_input_key"},
+                 "outputs_to_state": {"documents": {"source": "docs", "handler": "test_tool.get_weather_report"}},
+             },
+         }
+@@ -118,8 +126,9 @@ def test_from_dict(self):
+         assert tool.description == "Get weather report"
+         assert tool.parameters == parameters
+         assert tool.function == get_weather_report
+-        assert tool.outputs_to_state["documents"]["source"] == "docs"
+-        assert tool.outputs_to_state["documents"]["handler"] == get_weather_report
++        assert tool.outputs_to_string == {"handler": format_string}
++        assert tool.inputs_from_state == {"state_key": "tool_input_key"}
++        assert tool.outputs_to_state == {"documents": {"source": "docs", "handler": get_weather_report}}
+ 
+ 
+ def test_check_duplicate_tool_names():
+
+From 89f2109b565b699d2732821323f47ae8de430de6 Mon Sep 17 00:00:00 2001
+From: Sebastian Husch Lee <sjrl423@gmail.com>
+Date: Tue, 17 Jun 2025 08:58:48 +0200
+Subject: [PATCH 2/5] Add reno
+
+---
+ ...fix-serialization-tool-and-comp-tool-017caac6bb56e744.yaml | 4 ++++
+ 1 file changed, 4 insertions(+)
+ create mode 100644 releasenotes/notes/fix-serialization-tool-and-comp-tool-017caac6bb56e744.yaml
+
+diff --git a/releasenotes/notes/fix-serialization-tool-and-comp-tool-017caac6bb56e744.yaml b/releasenotes/notes/fix-serialization-tool-and-comp-tool-017caac6bb56e744.yaml
+new file mode 100644
+index 0000000000..55f86ec310
+--- /dev/null
++++ b/releasenotes/notes/fix-serialization-tool-and-comp-tool-017caac6bb56e744.yaml
+@@ -0,0 +1,4 @@
++---
++fixes:
++  - |
++    Fix the serialization of ComponentTool and Tool when specifying outputs_to_string. Previously an error occurred on deserialization right after serializing if outputs_to_string is not None.
+
+From 08ddf6b705d2b0660f31bfe3f2e9fedb32497aa1 Mon Sep 17 00:00:00 2001
+From: Sebastian Husch Lee <sjrl423@gmail.com>
+Date: Tue, 17 Jun 2025 09:49:34 +0200
+Subject: [PATCH 3/5] Fix mypy, simplify logic
+
+---
+ haystack/tools/component_tool.py | 13 ++++++-------
+ haystack/tools/tool.py           |  6 ++----
+ 2 files changed, 8 insertions(+), 11 deletions(-)
+
+diff --git a/haystack/tools/component_tool.py b/haystack/tools/component_tool.py
+index c41e2f94cd..15b3d22854 100644
+--- a/haystack/tools/component_tool.py
++++ b/haystack/tools/component_tool.py
+@@ -206,14 +206,15 @@ def to_dict(self) -> Dict[str, Any]:
+         """
+         serialized_component = component_to_dict(obj=self._component, name=self.name)
+ 
+-        serialized = {
++        serialized: Dict[str, Any] = {
+             "component": serialized_component,
+             "name": self.name,
+             "description": self.description,
+             "parameters": self._unresolved_parameters,
+-            "outputs_to_string": self.outputs_to_string,
+             "inputs_from_state": self.inputs_from_state,
+-            "outputs_to_state": self.outputs_to_state,
++            # These are soft-copied as to not modify the attributes in place
++            "outputs_to_string": self.outputs_to_string.copy() if self.outputs_to_string else None,
++            "outputs_to_state": self.outputs_to_state.copy() if self.outputs_to_state else None,
+         }
+ 
+         if self.outputs_to_state is not None:
+@@ -225,10 +226,8 @@ def to_dict(self) -> Dict[str, Any]:
+                 serialized_outputs[key] = serialized_config
+             serialized["outputs_to_state"] = serialized_outputs
+ 
+-        if self.outputs_to_string is not None:
+-            serialized["outputs_to_string"] = self.outputs_to_string.copy()
+-            if self.outputs_to_string.get("handler") is not None:
+-                serialized["outputs_to_string"]["handler"] = serialize_callable(self.outputs_to_string["handler"])
++        if self.outputs_to_string is not None and self.outputs_to_string.get("handler") is not None:
++            serialized["outputs_to_string"]["handler"] = serialize_callable(self.outputs_to_string["handler"])
+ 
+         return {"type": generate_qualified_class_name(type(self)), "data": serialized}
+ 
+diff --git a/haystack/tools/tool.py b/haystack/tools/tool.py
+index 4ec26f08d4..39e3cc1431 100644
+--- a/haystack/tools/tool.py
++++ b/haystack/tools/tool.py
+@@ -121,10 +121,8 @@ def to_dict(self) -> Dict[str, Any]:
+                 serialized_outputs[key] = serialized_config
+             data["outputs_to_state"] = serialized_outputs
+ 
+-        if self.outputs_to_string is not None:
+-            data["outputs_to_string"] = self.outputs_to_string.copy()
+-            if self.outputs_to_string.get("handler") is not None:
+-                data["outputs_to_string"]["handler"] = serialize_callable(self.outputs_to_string["handler"])
++        if self.outputs_to_string is not None and self.outputs_to_string.get("handler") is not None:
++            data["outputs_to_string"]["handler"] = serialize_callable(self.outputs_to_string["handler"])
+ 
+         return {"type": generate_qualified_class_name(type(self)), "data": data}
+ 
+
+From b2d42420629af360cf9c8e4d710df840d8f2aaef Mon Sep 17 00:00:00 2001
+From: Sebastian Husch Lee <sjrl423@gmail.com>
+Date: Wed, 18 Jun 2025 09:27:21 +0200
+Subject: [PATCH 4/5] fix pylint
+
+---
+ haystack/tools/component_tool.py | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/haystack/tools/component_tool.py b/haystack/tools/component_tool.py
+index 15b3d22854..336098df2f 100644
+--- a/haystack/tools/component_tool.py
++++ b/haystack/tools/component_tool.py
+@@ -212,8 +212,7 @@ def to_dict(self) -> Dict[str, Any]:
+             "description": self.description,
+             "parameters": self._unresolved_parameters,
+             "inputs_from_state": self.inputs_from_state,
+-            # These are soft-copied as to not modify the attributes in place
+-            "outputs_to_string": self.outputs_to_string.copy() if self.outputs_to_string else None,
++            # This is soft-copied as to not modify the attributes in place
+             "outputs_to_state": self.outputs_to_state.copy() if self.outputs_to_state else None,
+         }
+ 
+@@ -227,6 +226,8 @@ def to_dict(self) -> Dict[str, Any]:
+             serialized["outputs_to_state"] = serialized_outputs
+ 
+         if self.outputs_to_string is not None and self.outputs_to_string.get("handler") is not None:
++            # This is soft-copied as to not modify the attributes in place
++            serialized["outputs_to_string"] = self.outputs_to_string.copy()
+             serialized["outputs_to_string"]["handler"] = serialize_callable(self.outputs_to_string["handler"])
+ 
+         return {"type": generate_qualified_class_name(type(self)), "data": serialized}
+
+From 387c2db19ddf7313d8f4607bc444e640325dd119 Mon Sep 17 00:00:00 2001
+From: Sebastian Husch Lee <sjrl423@gmail.com>
+Date: Wed, 18 Jun 2025 10:35:49 +0200
+Subject: [PATCH 5/5] Fix test
+
+---
+ haystack/tools/component_tool.py | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/haystack/tools/component_tool.py b/haystack/tools/component_tool.py
+index 336098df2f..01a0851f18 100644
+--- a/haystack/tools/component_tool.py
++++ b/haystack/tools/component_tool.py
+@@ -229,6 +229,8 @@ def to_dict(self) -> Dict[str, Any]:
+             # This is soft-copied as to not modify the attributes in place
+             serialized["outputs_to_string"] = self.outputs_to_string.copy()
+             serialized["outputs_to_string"]["handler"] = serialize_callable(self.outputs_to_string["handler"])
++        else:
++            serialized["outputs_to_string"] = None
+ 
+         return {"type": generate_qualified_class_name(type(self)), "data": serialized}
+ 

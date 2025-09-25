@@ -1,0 +1,41 @@
+FROM python:3.10-slim
+
+WORKDIR /app
+
+# Install git and required dependencies
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    git \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Accept build arguments for commits
+ARG BUGGY_COMMIT
+ARG FIXED_COMMIT
+ENV BUGGY_COMMIT=${BUGGY_COMMIT} FIXED_COMMIT=${FIXED_COMMIT}
+
+# Clone the repository
+RUN git clone https://github.com/Josh-XT/AGiXT.git source_code_buggy && \
+    cd source_code_buggy && \
+    git checkout ${BUGGY_COMMIT} && \
+    pip install -e .
+
+# Make a copy for the fixed version
+RUN cp -r source_code_buggy source_code_fixed && \
+    cd source_code_fixed && \
+    git checkout ${FIXED_COMMIT} && \
+    pip install -e .
+
+# Set Python path
+ENV PYTHONPATH="/app/source_code_buggy:/app/source_code_fixed:/app"
+
+# Copy the test scripts
+COPY repro_script.py /opt/repro_script.py
+COPY run_test_entrypoint.sh /usr/local/bin/run_test_entrypoint.sh
+COPY metadata.json /opt/metadata.json
+RUN chmod +x /usr/local/bin/run_test_entrypoint.sh
+
+WORKDIR /app
+
+ENTRYPOINT ["/usr/local/bin/run_test_entrypoint.sh"]
+CMD ["help"]

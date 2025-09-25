@@ -1,0 +1,9 @@
+{
+    "issue_github_url": "https://github.com/Josh-XT/AGiXT/issues/1371",
+    "repo_url": "https://github.com/Josh-XT/AGiXT.git",
+    "buggy_commit": "1773f014c6a3a85bd323dfe8036f7c0a8dd17420",
+    "fixed_commit": "3b3edf3fccfb92f20c411f5751274444fa3fe956",
+    "build_command_example": "docker build --build-arg BUGGY_COMMIT=\"1773f014c6a3a85bd323dfe8036f7c0a8dd17420\" --build-arg FIXED_COMMIT=\"3b3edf3fccfb92f20c411f5751274444fa3fe956\" -t \"alfin06/agentissue-bench:agixt_1371\" -f Dockerfile.benchmark .",
+    "run_command_example": "docker run --rm -it \"alfin06/agentissue-bench:agixt_1371\" test_buggy",
+    "target_dockerhub_image": "alfin06/agentissue-bench:agixt_1371"
+}

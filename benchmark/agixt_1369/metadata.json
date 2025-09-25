@@ -5,5 +5,7 @@
     "fixed_commit": "6aa959b7f8cf3b7349958b57bc616fd734e393c0",
     "build_command_example": "docker build --build-arg BUGGY_COMMIT=\"89c1edcd8ca26fe644b1b09c6df03d7496f1e7b5\" --build-arg FIXED_COMMIT=\"6aa959b7f8cf3b7349958b57bc616fd734e393c0\" -t \"alfin06/agentissue-bench:agixt_1369\" -f Dockerfile.benchmark .",
     "run_command_example": "docker run --rm -it --network host alfin06/agentissue-bench:agixt_1369 test_buggy",
-    "target_dockerhub_image": "alfin06/agentissue-bench:agixt_1369"
+    "target_dockerhub_image": "alfin06/agentissue-bench:agixt_1369",
+    "title": "[BUG] Chains Allow Empty Names",
+    "description": "### Description\n\nChains allow empty names to be POSTed which causes zod validation errors when they're sent back to the client.\n\n![Image](https://github.com/user-attachments/assets/a0f88b7c-7276-4bf5-8ef3-f95efb449102)\n"
 }

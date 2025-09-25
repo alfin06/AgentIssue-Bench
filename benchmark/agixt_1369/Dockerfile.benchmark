@@ -24,8 +24,9 @@ RUN cp -r source_code_buggy source_code_fixed && \
     git checkout ${FIXED_COMMIT}
 
 # Copy our test script and entrypoint
-COPY repro_script.py /app/
+COPY reproduce.py /app/
 COPY run_test_entrypoint.sh /app/
+COPY metadata.json /app/
 
 # Make the entrypoint executable
 RUN chmod +x /app/run_test_entrypoint.sh

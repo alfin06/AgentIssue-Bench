@@ -2,14 +2,11 @@
 set -eo pipefail
 
 # Define paths for test script
-REPRO_SCRIPT_PY="/opt/reproduce.py"
+reproduce_PY="/opt/reproduce.py"
 
 run_test() {
     local version=$1
     echo "--- Running Test for ${version} version ---"
-    
-    # Install setuptools for pkg_resources
-    pip install setuptools
     
     if [ "$version" == "buggy" ] || [ "$version" == "patched" ]; then
         CODE_DIR="/app/source_code_buggy"
@@ -25,37 +22,37 @@ run_test() {
     cd "${CODE_DIR}"
     
     # Execute the Python test script with the version parameter
-    if [ -f "${REPRO_SCRIPT_PY}" ]; then
+    if [ -f "${reproduce_PY}" ]; then
         echo "Found reproduce.py. Executing with python..."
-        python "${REPRO_SCRIPT_PY}" "$version"
+        python "${reproduce_PY}" "$version"
         local exit_code=$?
         
         if [ $exit_code -eq 0 ]; then
             if [ "$version" == "buggy" ]; then
-                echo "✅ BUG SUCCESSFULLY REPRODUCED: Flow @listen with and_() does not execute"
+                echo "✅ BUG SUCCESSFULLY REPRODUCED: crewAI import takes >10 seconds"
                 return 0
             elif [ "$version" == "patched" ]; then
-                echo "✅ PATCH SUCCEEDED: Flow @listen with and_() now executes correctly with your patch"
+                echo "✅ PATCH SUCCEEDED: crewAI import is now faster with your patch"
                 return 0
             else
-                echo "✅ FIX CONFIRMED: Flow @listen with and_() executes correctly"
+                echo "✅ FIX CONFIRMED: crewAI import is now faster"
                 return 0
             fi
         else
             if [ "$version" == "buggy" ]; then
-                echo "❌ BUG NOT REPRODUCED: Flow @listen with and_() executes correctly"
+                echo "❌ BUG NOT REPRODUCED: crewAI import is fast (under 10 seconds)"
                 return 1
             elif [ "$version" == "patched" ]; then
-                echo "❌ PATCH FAILED: Flow @listen with and_() still doesn't execute with your patch"
+                echo "❌ PATCH FAILED: crewAI import still takes >10 seconds with your patch"
                 return 1
             else
-                echo "❌ FIX NOT CONFIRMED: Flow @listen with and_() still doesn't execute"
+                echo "❌ FIX NOT CONFIRMED: crewAI import still takes >10 seconds"
                 return 1
             fi
         fi
     else
         echo "--- FATAL ERROR: No reproduction script found! ---"
-        echo "Looked for ${REPRO_SCRIPT_PY}"
+        echo "Looked for ${reproduce_PY}"
         exit 127
     fi
 }
@@ -123,7 +120,7 @@ case "$1" in
     show_diff)
         echo "=== Diff between BUGGY (${BUGGY_COMMIT}) and FIXED (${FIXED_COMMIT}) ==="
         cd /app/source_code_buggy
-        git diff "${BUGGY_COMMIT}" "${FIXED_COMMIT}" -- "crewai/flow/"
+        git diff "${BUGGY_COMMIT}" "${FIXED_COMMIT}"
         ;;
     inspect_buggy)
         echo "Entering buggy environment (commit: ${BUGGY_COMMIT})..."

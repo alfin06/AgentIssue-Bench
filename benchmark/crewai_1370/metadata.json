@@ -1,0 +1,11 @@
+{
+  "issue_github_url": "https://github.com/crewAIInc/crewAI/issues/1370",
+  "repo_url": "https://github.com/crewAIInc/crewAI.git",
+  "buggy_commit": "0dfe3bcb0aa605bee4192a3d3f9ea5f289cf40c4",
+  "fixed_commit": "5fe43b9ad22477fc3fb9fbe578763597b7923903",
+  "build_command_example": "docker build --build-arg BUGGY_COMMIT=\"0dfe3bcb0aa605bee4192a3d3f9ea5f289cf40c4\" --build-arg FIXED_COMMIT=\"5fe43b9ad22477fc3fb9fbe578763597b7923903\" -t \"alfin06/agentissue-bench:crewai_1370\" -f Dockerfile.benchmark .",
+  "run_command_example": "docker run --rm -it \"alfin06/agentissue-bench:crewai_1370\" test_buggy",
+  "target_dockerhub_image": "alfin06/agentissue-bench:crewai_1370",
+  "title": "[BUG] `import crewai` takes >25 seconds",
+  "description": "### Description\r\n\r\n`import crewai` takes >25 seconds\r\n\r\n### Steps to Reproduce\r\n\r\n1. `import crewai` \r\n2. run the script\r\n3. wait 25 seconds or longer\r\n\r\n### Expected behavior\r\n\r\nThe library should be imported in fraction of second. \r\n\r\n### Screenshots/Code snippets\r\n\r\n```py\r\nimport time\r\nstart = time.time()\r\n\r\nimport crewai\r\n\r\nprint(time.time() - start)\r\n```\r\n\r\n### Operating System\r\n\r\nWindows 10\r\n\r\n### Python Version\r\n\r\n3.12\r\n\r\n### crewAI Version\r\n\r\n0.32.2\r\n\r\n### crewAI Tools Version\r\n\r\n0.3.0\r\n\r\n### Virtual Environment\r\n\r\nVenv\r\n\r\n### Evidence\r\n\r\n![Code_wIKMXiY1iv](https://github.com/user-attachments/assets/0d73a7e8-4dd4-4584-a476-f836e95d0fb9)\r\n\r\n\r\n### Possible Solution\r\n\r\nNone\r\n\r\n### Additional context\r\n\r\nNone"
+}

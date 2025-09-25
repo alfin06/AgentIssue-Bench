@@ -2,12 +2,16 @@ FROM python:3.10-slim
 
 WORKDIR /app
 
-# Install git and required dependencies
+# Install git and required dependencies with retry logic
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-    git \
-    build-essential \
-    && rm -rf /var/lib/apt/lists/*
+    # Add retry logic for apt-get
+    for i in $(seq 1 3); do \
+        apt-get install -y --no-install-recommends \
+        git \
+        build-essential \
+        && break || sleep 15; \
+    done && \
+    rm -rf /var/lib/apt/lists/*
 
 # Accept build arguments for commits
 ARG BUGGY_COMMIT
@@ -30,7 +34,7 @@ RUN cp -r source_code_buggy source_code_fixed && \
 ENV PYTHONPATH="/app/source_code_buggy:/app/source_code_fixed:/app"
 
 # Copy the test scripts
-COPY repro_script.py /opt/repro_script.py
+COPY reproduce.py /opt/reproduce.py
 COPY run_test_entrypoint.sh /usr/local/bin/run_test_entrypoint.sh
 COPY metadata.json /opt/metadata.json
 RUN chmod +x /usr/local/bin/run_test_entrypoint.sh

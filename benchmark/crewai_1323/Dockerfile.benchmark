@@ -1,0 +1,88 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install git and required dependencies with robust retry logic
+RUN for i in 1 2 3 4 5; do \
+        echo "Attempt $i of 5 for apt-get update" && \
+        apt-get update && break || \
+        if [ $i -lt 5 ]; then \
+            echo "Retrying update in $((i * 5)) seconds..." && \
+            sleep $((i * 5)) && \
+            rm -rf /var/lib/apt/lists/*; \
+        else \
+            echo "apt-get update failed after 5 attempts" && \
+            exit 1; \
+        fi; \
+    done && \
+    # Install packages with retry logic
+    for i in 1 2 3 4 5; do \
+        echo "Attempt $i of 5 for package installation" && \
+        apt-get install -y --no-install-recommends \
+            git \
+            build-essential \
+            python3-dev \
+        && break || \
+        if [ $i -lt 5 ]; then \
+            echo "Retrying package installation in $((i * 5)) seconds..." && \
+            sleep $((i * 5)); \
+        else \
+            echo "Package installation failed after 5 attempts" && \
+            exit 1; \
+        fi; \
+    done && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Accept build arguments for commits
+ARG BUGGY_COMMIT
+ARG FIXED_COMMIT
+ENV BUGGY_COMMIT=${BUGGY_COMMIT} FIXED_COMMIT=${FIXED_COMMIT}
+
+# Clone the repository and set up both buggy and fixed versions with retry logic
+RUN for i in 1 2 3; do \
+        echo "Attempt $i of 3 for git clone" && \
+        git clone https://github.com/crewAIInc/crewAI.git source_code_buggy && break || \
+        if [ $i -lt 3 ]; then \
+            echo "Retrying git clone in $((i * 5)) seconds..." && \
+            sleep $((i * 5)); \
+            rm -rf source_code_buggy; \
+        else \
+            echo "Git clone failed after 3 attempts" && \
+            exit 1; \
+        fi; \
+    done && \
+    cd source_code_buggy && \
+    git fetch --all && \
+    echo "Checking out buggy commit: ${BUGGY_COMMIT}" && \
+    git checkout ${BUGGY_COMMIT} && \
+    pip install -e . && \
+    cd /app && \
+    cp -r source_code_buggy source_code_fixed && \
+    cd source_code_fixed && \
+    echo "Checking out fixed commit: ${FIXED_COMMIT}" && \
+    git checkout ${FIXED_COMMIT}
+
+# Install additional dependencies with retry logic
+RUN for i in 1 2 3; do \
+        echo "Attempt $i of 3 for pip installation" && \
+        pip install langchain openai && break || \
+        if [ $i -lt 3 ]; then \
+            echo "Retrying pip install in $((i * 5)) seconds..." && \
+            sleep $((i * 5)); \
+        else \
+            echo "Pip install failed after 3 attempts" && \
+            exit 1; \
+        fi; \
+    done
+
+# Copy test files
+COPY reproduce.py /opt/reproduce.py
+COPY run_test_entrypoint.sh /usr/local/bin/run_test_entrypoint.sh
+COPY metadata.json /opt/metadata.json
+
+# Make entrypoint executable
+RUN chmod +x /usr/local/bin/run_test_entrypoint.sh
+
+ENTRYPOINT ["/usr/local/bin/run_test_entrypoint.sh"]
+CMD ["help"]

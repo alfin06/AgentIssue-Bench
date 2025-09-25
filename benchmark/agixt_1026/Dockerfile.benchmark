@@ -1,0 +1,31 @@
+FROM python:3.10-slim
+
+WORKDIR /app
+
+# Install git and required build tools with retries and better error handling
+RUN apt-get update || (rm -rf /var/lib/apt/lists/* && apt-get update) && \
+    apt-get install -y --no-install-recommends \
+    git \
+    build-essential \
+    cmake \
+    gcc \
+    g++ \
+    curl \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Accept build arguments for commits
+ARG BUGGY_COMMIT
+ARG FIXED_COMMIT
+ENV BUGGY_COMMIT=${BUGGY_COMMIT} FIXED_COMMIT=${FIXED_COMMIT}
+
+# We'll skip installing llama-cpp-python since it's not needed for our test
+ENV SKIP_LLAMA_CPP_PYTHON=1
+
+# Copy the reproduction script and entrypoint
+COPY repro_script.py /opt/repro_script.py
+COPY run_test_entrypoint.sh /usr/local/bin/run_test_entrypoint.sh
+RUN chmod +x /usr/local/bin/run_test_entrypoint.sh
+
+ENTRYPOINT ["/usr/local/bin/run_test_entrypoint.sh"]
+CMD ["help"]

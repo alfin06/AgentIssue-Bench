@@ -175,10 +175,10 @@ def run_test(version):
         if version == "buggy":
             # For buggy version, telemetry should be active (bug = telemetry still works despite setting flag)
             if bug_detected:
-                print("\n✅ BUG CONFIRMED: Telemetry activities observed despite OTEL_SDK_DISABLED=true")
+                print("\n❌ BUG: Telemetry activities observed despite OTEL_SDK_DISABLED=true")
                 return 0  # Success for buggy version - bug reproduced
             else:
-                print("\n❌ BUG NOT REPRODUCED: Telemetry was disabled correctly (unexpected in buggy version)")
+                print("\n✅ NO BUG: Telemetry was disabled correctly")
                 return 1  # Failure for buggy version - bug not reproduced
         else:
             # For fixed version, telemetry should be disabled

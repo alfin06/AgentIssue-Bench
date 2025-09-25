@@ -1,9 +1,8 @@
 #!/bin/bash
-# filepath: d:\Projects\AgentIssue-Bench\reproduction_workspace\failure_triggering_tests\crewai_1532\run_test_entrypoint.sh
 set -eo pipefail
 
 # Define paths for test script
-REPRO_SCRIPT_PY="/opt/repro_script.py"
+REPRO_SCRIPT_PY="/opt/reproduce.py"
 
 run_test() {
     local version=$1

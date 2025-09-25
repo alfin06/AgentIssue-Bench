@@ -1,7 +1,11 @@
 #!/bin/bash
+# filepath: d:\Projects\AgentIssue-Bench\reproduction_workspace\failure_triggering_tests\agixt_1026\run_test_entrypoint.sh
 set -eo pipefail
 
-# Function to test the bug with AttributeError on bool.lower()
+# Define paths for test script
+REPRO_SCRIPT_PY="/opt/reproduce.py"
+
+# Function to test a specific version (buggy or fixed)
 test_version() {
   local version=$1
   local commit_var="${version^^}_COMMIT"  # Convert to uppercase for env var
@@ -43,79 +47,153 @@ test_version() {
     
     cd /app
   fi
-  
-  # Prepare the directory for voice_chat.py examination
-  mkdir -p /tmp/voice_chat_test
-  cp -f "$source_dir/agixt/extensions/voice_chat.py" /tmp/voice_chat_test/
-  cd /tmp/voice_chat_test
-  
-  # Create a simplified test script that focuses on just the bug
-  cat << 'EOF' > test_bug.py
-import sys
 
-class voice_chat:
-    def __init__(self, **kwargs):
-        print(f"Initializing voice_chat with kwargs: {kwargs}")
-        # This is the line that has the bug in the original code
-        if "USE_STREAMLABS_TTS" in kwargs and kwargs["USE_STREAMLABS_TTS"] is not None:
-            try:
-                # The bug is here - calling .lower() on a boolean
-                if kwargs["USE_STREAMLABS_TTS"].lower() == "true":
-                    print("Would set up Streamlabs TTS")
-            except AttributeError as e:
-                print(f"BUG TRIGGERED: {e}")
-                if "'bool' object has no attribute 'lower'" in str(e):
-                    sys.exit(0)  # Bug reproduced
-                else:
-                    sys.exit(1)  # Wrong error
-        
-        print("Initialization completed without errors")
-        sys.exit(1)  # Bug not reproduced
+  # Set PYTHONPATH to include the source directory
+  export PYTHONPATH="$source_dir:$PYTHONPATH"
 
-# Test with a boolean value (triggers the bug)
-voice_chat(USE_STREAMLABS_TTS=False)
-EOF
-  
-  # Run the simplified test
-  echo "Running simplified test for $version version..."
-  python test_bug.py
-  local exit_code=$?
-  
-  # Interpretation of exit code
-  if [ $exit_code -eq 0 ]; then
-    if [ "$version" == "buggy" ]; then
-      echo "✅ BUG CONFIRMED: The buggy version has the AttributeError on bool.lower()"
+  # Execute the Python test script with the version parameter
+  if [ -f "${REPRO_SCRIPT_PY}" ]; then
+    echo "Running reproduction script for $version version..."
+    python "${REPRO_SCRIPT_PY}" "$version"
+    local exit_code=$?
+    
+    # Interpretation of exit code
+    if [ $exit_code -eq 0 ]; then
+      if [ "$version" == "buggy" ]; then
+        echo "✅ BUG REPRODUCED: The buggy version has the AttributeError on bool.lower()"
+      else
+        echo "✅ FIX CONFIRMED: The fixed version properly handles boolean values"
+      fi
     else
-      echo "❌ FIX FAILED: The bug still exists in the fixed version"
+      if [ "$version" == "buggy" ]; then
+        echo "❌ BUG NOT REPRODUCED: The buggy version does not exhibit the expected AttributeError"
+      else
+        echo "❌ FIX NOT WORKING: The bug still exists in the fixed version"
+      fi
     fi
+    
+    return $exit_code
   else
-    if [ "$version" == "buggy" ]; then
-      echo "❌ BUG NOT FOUND: The buggy version does not exhibit the expected AttributeError"
-    else
-      echo "✅ FIX CONFIRMED: The fixed version properly handles boolean values"
-    fi
+    echo "--- FATAL ERROR: No reproduction script found! ---"
+    echo "Looked for ${REPRO_SCRIPT_PY}"
+    exit 127
+  fi
+}
+
+# Function to apply a patch to the buggy version
+apply_patch() {
+  local patch_file=$1
+  
+  if [ ! -f "$patch_file" ]; then
+    echo "Error: Patch file not found at $patch_file"
+    exit 1
   fi
   
-  return $exit_code
+  echo "Applying patch to buggy version..."
+  
+  # Make sure the buggy version is cloned
+  local source_dir="/app/source_code_buggy"
+  if [ ! -d "$source_dir" ]; then
+    echo "Cloning repository for buggy version first..."
+    test_version "buggy" > /dev/null || true
+  fi
+  
+  # Apply the patch
+  cd "$source_dir"
+  echo "Applying patch from $patch_file..."
+  patch -p1 < "$patch_file"
+  
+  if [ $? -eq 0 ]; then
+    echo "✅ Patch applied successfully"
+    
+    # Reinstall if needed
+    echo "Reinstalling the patched package..."
+    pip install --no-deps -e .
+    
+    echo "You can now test your patched version with: docker run ... test_patched"
+  else
+    echo "❌ Failed to apply patch"
+    exit 1
+  fi
+}
+
+# Function to test the patched version
+test_patched() {
+  echo "Testing PATCHED version (based on buggy with applied patch)"
+  
+  # Set the source dir to the buggy version which should have the patch applied
+  local source_dir="/app/source_code_buggy"
+  
+  if [ ! -d "$source_dir" ]; then
+    echo "Error: Patched source directory not found. Run 'apply_patch' first."
+    exit 1
+  fi
+
+  # Set PYTHONPATH to include the source directory
+  export PYTHONPATH="$source_dir:$PYTHONPATH"
+  
+  # Execute the Python test script with the "patched" parameter
+  if [ -f "${REPRO_SCRIPT_PY}" ]; then
+    echo "Running reproduction script for patched version..."
+    python "${REPRO_SCRIPT_PY}" "patched"
+    local exit_code=$?
+    
+    # Interpretation of exit code
+    if [ $exit_code -eq 0 ]; then
+      echo "✅ PATCH SUCCEEDED: The patched version properly handles boolean values"
+    else
+      echo "❌ PATCH FAILED: The bug still exists in the patched version"
+    fi
+    
+    return $exit_code
+  else
+    echo "--- FATAL ERROR: No reproduction script found! ---"
+    echo "Looked for ${REPRO_SCRIPT_PY}"
+    exit 127
+  fi
 }
 
 # Main execution
-if [ "$1" = "test_buggy" ]; then
-  test_version "buggy"
-  exit $?
-elif [ "$1" = "test_fixed" ]; then
-  test_version "fixed"
-  exit $?
-elif [ "$1" = "help" ]; then
-  echo "Usage: docker run [OPTIONS] IMAGE [COMMAND]"
-  echo ""
-  echo "Commands:"
-  echo "  test_buggy     Test if the bug exists in the buggy version"
-  echo "  test_fixed     Test if the fix works in the fixed version"
-  echo "  help           Show this help message"
-  exit 0
-else
-  echo "Unknown command: $1"
-  echo "Use 'help' to see available commands"
-  exit 1
-fi
+case "$1" in
+  test_buggy)
+    test_version "buggy"
+    ;;
+  test_fixed)
+    test_version "fixed"
+    ;;
+  apply_patch)
+    if [ -z "$2" ]; then
+      echo "Error: Patch file path required"
+      echo "Usage: docker run -v \$(pwd):/patches IMAGE apply_patch /patches/my_patch.patch"
+      exit 1
+    fi
+    apply_patch "$2"
+    ;;
+  test_patched)
+    test_patched
+    ;;
+  show_diff)
+    echo "=== Diff between BUGGY and FIXED versions ==="
+    diff -u /app/source_code_buggy/agixt/extensions/voice_chat.py /app/source_code_fixed/agixt/extensions/voice_chat.py || true
+    ;;
+  bash)
+    echo "Starting bash shell..."
+    exec /bin/bash
+    ;;
+  help|*)
+    echo "Usage: docker run [OPTIONS] IMAGE [COMMAND]"
+    echo ""
+    echo "Commands:"
+    echo "  test_buggy      Test if the bug exists in the buggy version"
+    echo "  test_fixed      Test if the fix works in the fixed version"
+    echo "  apply_patch     Apply a patch file to the buggy version (requires mounted volume)"
+    echo "                  Example: docker run -v \$(pwd):/patches IMAGE apply_patch /patches/fix.patch"
+    echo "  test_patched    Test the buggy version with your applied patch"
+    echo "  show_diff       Show the diff between buggy and fixed versions"
+    echo "  bash            Start a bash shell"
+    echo "  help            Show this help message"
+    if [ "$1" != "help" ] && [ ! -z "$1" ]; then exit 1; fi
+    ;;
+esac
+
+exit $?

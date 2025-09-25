@@ -23,7 +23,7 @@ ENV BUGGY_COMMIT=${BUGGY_COMMIT} FIXED_COMMIT=${FIXED_COMMIT}
 ENV SKIP_LLAMA_CPP_PYTHON=1
 
 # Copy the reproduction script and entrypoint
-COPY repro_script.py /opt/repro_script.py
+COPY reproduce.py /opt/reproduce.py
 COPY run_test_entrypoint.sh /usr/local/bin/run_test_entrypoint.sh
 RUN chmod +x /usr/local/bin/run_test_entrypoint.sh
 

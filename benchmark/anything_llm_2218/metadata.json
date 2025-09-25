@@ -1,0 +1,9 @@
+{
+    "issue_github_url": "https://github.com/Mintplex-Labs/anything-llm/issues/2218",
+    "repo_url": "https://github.com/Mintplex-Labs/anything-llm.git",
+    "buggy_commit": "5c40419a27bcc258943b78a966388efcd385d032",
+    "fixed_commit": "7594841dacf6b97ee8ed00b8af5c13299fa0d641",
+    "build_command_example": "docker build --build-arg BUGGY_COMMIT=\"5c40419a27bcc258943b78a966388efcd385d032\" --build-arg FIXED_COMMIT=\"7594841dacf6b97ee8ed00b8af5c13299fa0d641\" -t \"alfin06/agent-issue-bench:anything_llm_2218\" -f Dockerfile.benchmark .",
+    "run_command_example": "docker run --rm -it \"alfin06/agent-issue-bench:anything_llm_2218\" test_buggy",
+    "target_dockerhub_image": "alfin06/agent-issue-bench:anything_llm_2218"
+}

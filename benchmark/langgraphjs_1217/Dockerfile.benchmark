@@ -1,0 +1,45 @@
+# Use a standard Node.js 20 base image, as specified in the bug report
+FROM node:20-slim
+
+# Install git, which is required by the entrypoint script to checkout different commits
+RUN apt-get update && apt-get install -y git --no-install-recommends && rm -rf /var/lib/apt/lists/*
+
+# Arguments that will be passed during the 'docker build' command
+ARG BUGGY_COMMIT
+ARG FIXED_COMMIT
+
+# Set them as environment variables to be accessible by the entrypoint script
+ENV BUGGY_COMMIT=${BUGGY_COMMIT}
+ENV FIXED_COMMIT=${FIXED_COMMIT}
+
+# Create a directory for the test setup
+WORKDIR /opt/test-env
+
+# Copy test configuration, test script, and the entrypoint script
+COPY ./package.json ./package-lock.json* ./
+COPY ./jest.config.js ./
+COPY ./repro_script.ts ./
+COPY ./run_test_entrypoint.sh ./
+RUN chmod +x ./run_test_entrypoint.sh
+
+# Install the specific versions of packages needed for the test
+RUN npm install
+
+# Copy the local source code repository into the image.
+COPY ./source_code_buggy /app/source_code_buggy
+
+# --- Build Step ---
+# Set the working directory to the cloned repository
+WORKDIR /app/source_code_buggy
+
+# This project uses yarn. Install dependencies using yarn.
+RUN yarn install
+
+# Build the entire project to ensure all internal dependencies are resolved.
+RUN yarn build
+
+# Set the entrypoint to our custom script
+ENTRYPOINT ["/opt/test-env/run_test_entrypoint.sh"]
+
+# Default command to run if none is provided is 'help'
+CMD ["help"]

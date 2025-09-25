@@ -1,0 +1,14 @@
+FROM python:3.11-slim
+RUN apt-get update && apt-get install -y --no-install-recommends git && rm -rf /var/lib/apt/lists/*
+ARG BUGGY_COMMIT FIXED_COMMIT
+ENV BUGGY_COMMIT=${BUGGY_COMMIT} FIXED_COMMIT=${FIXED_COMMIT}
+ENV PYTHONPATH="/app"
+COPY repro_script.py /opt/repro_script.py
+COPY run_test_entrypoint.sh /usr/local/bin/run_test_entrypoint.sh
+RUN chmod +x /usr/local/bin/run_test_entrypoint.sh
+COPY ./source_code_buggy /app/source_code_buggy
+WORKDIR /app/source_code_buggy
+RUN pip install -e .
+RUN pip install --no-cache-dir python-dotenv langchain-google-genai crewai-tools
+ENTRYPOINT ["/usr/local/bin/run_test_entrypoint.sh"]
+CMD ["help"]

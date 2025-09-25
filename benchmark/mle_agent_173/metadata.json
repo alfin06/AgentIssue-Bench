@@ -1,0 +1,9 @@
+{
+    "issue_github_url": "https://github.com/MLSysOps/MLE-agent/issues/173",
+    "repo_url": "https://github.com/MLSysOps/MLE-agent.git",
+    "buggy_commit": "8109d8b905bb4aac4de6258516a966abaf2147f5",
+    "fixed_commit": "50bca754461dd5afbe052e823a0fafae631a1663",
+    "build_command_example": "docker build --build-arg BUGGY_COMMIT=\"8109d8b905bb4aac4de6258516a966abaf2147f5\" --build-arg FIXED_COMMIT=\"50bca754461dd5afbe052e823a0fafae631a1663\" -t \"alfin06/agentissue-bench:mle_agent_173\" -f Dockerfile.benchmark .",
+    "run_command_example": "docker run --rm -it \"alfin06/agentissue-bench:mle_agent_173\" test_buggy",
+    "target_dockerhub_image": "alfin06/agentissue-bench:mle_agent_173"
+}

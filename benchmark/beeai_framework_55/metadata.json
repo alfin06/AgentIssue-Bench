@@ -1,0 +1,9 @@
+{
+    "issue_github_url": "https://github.com/i-am-bee/beeai-framework/issues/55",
+    "repo_url": "https://github.com/i-am-bee/beeai-framework.git",
+    "buggy_commit": "c68bc4f0067f7e8d7d7a96fd25623f03784e2a71",
+    "fixed_commit": "c2355227a86bd2ad9017506f8592f3f03d0e952a",
+    "build_command_example": "docker build --build-arg BUGGY_COMMIT=\"c68bc4f0067f7e8d7d7a96fd25623f03784e2a71\" --build-arg FIXED_COMMIT=\"c2355227a86bd2ad9017506f8592f3f03d0e952a\" -t \"alfin06/agentissue-bench:beeai_framework_55\" -f Dockerfile.benchmark .",
+    "run_command_example": "docker run --rm -it \"alfin06/agentissue-bench:beeai_framework_55\" test_buggy",
+    "target_dockerhub_image": "alfin06/agentissue-bench:beeai_framework_55"
+}

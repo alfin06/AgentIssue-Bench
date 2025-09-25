@@ -1,0 +1,9 @@
+{
+    "issue_github_url": "https://github.com/deepset-ai/haystack/issues/9523",
+    "repo_url": "https://github.com/deepset-ai/haystack.git",
+    "buggy_commit": "67a8f1249be45422662d9e661bb558a9adde5e8c",
+    "fixed_commit": "3784889e5d62513fe4088b2269ad6dc87fc43933",
+    "build_command_example": "docker build --build-arg BUGGY_COMMIT=\"67a8f1249be45422662d9e661bb558a9adde5e8c\" --build-arg FIXED_COMMIT=\"3784889e5d62513fe4088b2269ad6dc87fc43933\" -t \"alfin06/agentissue-bench:haystack_9523\" -f Dockerfile.benchmark .",
+    "run_command_example": "docker run --rm -it \"alfin06/agentissue-bench:haystack_9523\" test_buggy",
+    "target_dockerhub_image": "alfin06/agentissue-bench:haystack_9523"
+}

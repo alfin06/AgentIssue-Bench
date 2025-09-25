@@ -1,0 +1,9 @@
+{
+    "issue_github_url": "https://github.com/mastra-ai/mastra/issues/4331",
+    "repo_url": "https://github.com/mastra-ai/mastra.git",
+    "buggy_commit": "a0ebc3ff9844f035c4fb2eca6bfd2480ba7e9039",
+    "fixed_commit": "ab5adbeec9306fd12f41af58125c2c78cfdb7f6b",
+    "build_command_example": "docker build --build-arg BUGGY_COMMIT=\"a0ebc3ff9844f035c4fb2eca6bfd2480ba7e9039\" --build-arg FIXED_COMMIT=\"ab5adbeec9306fd12f41af58125c2c78cfdb7f6b\" -t \"alfin06/agentissue-bench:mastra_4331\" -f Dockerfile.benchmark .",
+    "run_command_example": "docker run --rm -it \"alfin06/agentissue-bench:mastra_4331\" test_buggy",
+    "target_dockerhub_image": "alfin06/agentissue-bench:mastra_4331"
+}

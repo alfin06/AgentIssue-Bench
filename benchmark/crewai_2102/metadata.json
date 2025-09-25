@@ -1,0 +1,9 @@
+{
+    "issue_github_url": "https://github.com/crewAIInc/crewAI/issues/2102",
+    "repo_url": "https://github.com/crewAIInc/crewAI.git",
+    "buggy_commit": "47818f4f41b6d7dbe31c4fab3e312870bec79709",
+    "fixed_commit": "db34516b18af0ff1f5d9f0fabd5703cb7af72c15",
+    "build_command_example": "docker build --build-arg BUGGY_COMMIT=\"47818f4f41b6d7dbe31c4fab3e312870bec79709\" --build-arg FIXED_COMMIT=\"db34516b18af0ff1f5d9f0fabd5703cb7af72c15\" -t \"llmagents/agentissue-bench:crewai_2102\" -f Dockerfile.benchmark .",
+    "run_command_example": "docker run --rm -it \"llmagents/agentissue-bench:crewai_2102\" test_buggy",
+    "target_dockerhub_image": "llmagents/agentissue-bench:crewai_2102"
+}

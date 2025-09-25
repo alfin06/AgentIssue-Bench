@@ -1,0 +1,29 @@
+FROM node:18.20.5-bullseye-slim
+
+# --- SETUP SECTION ---
+# 1. Install git for checking out commits and pnpm for building the project.
+RUN apt-get update && apt-get install -y --no-install-recommends git && rm -rf /var/lib/apt/lists/*
+RUN npm install -g pnpm
+
+# 2. Set arguments that will be passed during the build
+ARG BUGGY_COMMIT FIXED_COMMIT
+ENV BUGGY_COMMIT=${BUGGY_COMMIT} FIXED_COMMIT=${FIXED_COMMIT}
+
+# 3. Copy the local source code into the container.
+COPY ./source_code_buggy /app/source_code_buggy
+
+# 4. Copy the test scripts into a separate, fixed location
+COPY repro_script.js /opt/repro_script.js
+COPY run_test_entrypoint.sh /usr/local/bin/run_test_entrypoint.sh
+RUN chmod +x /usr/local/bin/run_test_entrypoint.sh
+
+# --- REMOVED BUILD STEPS ---
+# The pnpm install and build commands are now handled by the entrypoint script
+# to ensure the correct version of the code is built at runtime.
+
+# Set the working directory for the test run.
+WORKDIR /app/source_code_buggy
+
+# Set the entrypoint for the container
+ENTRYPOINT ["/usr/local/bin/run_test_entrypoint.sh"]
+CMD ["help"]

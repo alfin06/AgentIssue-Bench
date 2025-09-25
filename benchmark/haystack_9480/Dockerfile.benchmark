@@ -1,0 +1,34 @@
+FROM python:3.11-slim
+
+# Install git, which is required by the entrypoint script
+RUN apt-get update && apt-get install -y --no-install-recommends git && rm -rf /var/lib/apt/lists/*
+
+# Set arguments that will be passed during the build
+ARG BUGGY_COMMIT FIXED_COMMIT
+ENV BUGGY_COMMIT=${BUGGY_COMMIT} FIXED_COMMIT=${FIXED_COMMIT}
+
+# Copy the scripts into the container
+COPY repro_script.py /opt/repro_script.py
+COPY run_test_entrypoint.sh /usr/local/bin/run_test_entrypoint.sh
+RUN chmod +x /usr/local/bin/run_test_entrypoint.sh
+
+# Copy the source code to be tested
+COPY ./source_code_buggy /app/source_code_buggy
+
+# --- FINAL CORRECTED SECTION ---
+# 1. Set the working directory
+WORKDIR /app/source_code_buggy
+
+# 2. Add the source code directory to Python's import path.
+#    This allows `from haystack...` to work.
+ENV PYTHONPATH="/app/source_code_buggy"
+
+# 3. Install the dependencies specified in the project's requirements file.
+RUN pip install --no-cache-dir -r requirements.txt
+
+# 4. Install the additional dependencies required specifically by our test script.
+RUN pip install --no-cache-dir mcp mcp-haystack
+
+# Set the entrypoint for the container.
+ENTRYPOINT ["/usr/local/bin/run_test_entrypoint.sh"]
+CMD ["help"]

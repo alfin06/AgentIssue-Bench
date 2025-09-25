@@ -1,0 +1,20 @@
+{
+  "name": "langgraph-repro-1217",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@langchain/core": "0.3.57",
+    "@langchain/langgraph": "0.2.73",
+    "@langchain/langgraph-supervisor": "0.0.12",
+    "@langchain/openai": "0.5.11",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.12",
+    "@types/node": "^20.11.24",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.2",
+    "typescript": "^5.3.3"
+  }
+}

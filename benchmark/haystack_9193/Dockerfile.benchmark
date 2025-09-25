@@ -1,0 +1,35 @@
+FROM python:3.11-slim
+
+# Install git, which is required by the entrypoint script to checkout commits
+RUN apt-get update && apt-get install -y --no-install-recommends git && rm -rf /var/lib/apt/lists/*
+
+# Set arguments that will be passed during the build
+ARG BUGGY_COMMIT FIXED_COMMIT
+ENV BUGGY_COMMIT=${BUGGY_COMMIT} FIXED_COMMIT=${FIXED_COMMIT}
+
+# Copy the scripts into the container
+COPY repro_script.py /opt/repro_script.py
+COPY run_test_entrypoint.sh /usr/local/bin/run_test_entrypoint.sh
+RUN chmod +x /usr/local/bin/run_test_entrypoint.sh
+
+# Copy the project source code into the container
+COPY ./source_code_buggy /app/source_code_buggy
+
+# --- CORRECTED INSTALLATION SECTION ---
+# 1. Set the working directory to the root of the project source.
+#    This is the directory that contains pyproject.toml.
+WORKDIR /app/source_code_buggy
+
+# 2. Install the haystack package itself from the local source code.
+#    - The '-e' flag installs it in "editable" mode.
+#    - The '[all]' flag ensures all optional dependencies (for tools, integrations, etc.)
+#      defined in pyproject.toml are also installed.
+RUN pip install -e '.[all]'
+
+# 3. Add any extra dependencies required for the test script to run successfully.
+#    This was missing and caused the ImportError.
+RUN pip install --no-cache-dir docstring-parser
+
+# Set the entrypoint for the container
+ENTRYPOINT ["/usr/local/bin/run_test_entrypoint.sh"]
+CMD ["help"]

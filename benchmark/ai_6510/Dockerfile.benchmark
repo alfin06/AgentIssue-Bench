@@ -1,0 +1,49 @@
+FROM node:18.20.5-bullseye-slim
+
+# --- SETUP SECTION ---
+# 1. Install git, which is required by the entrypoint script to checkout commits.
+RUN apt-get update && \
+    for i in 1 2 3; do \
+        apt-get install -y --no-install-recommends git && \
+        break; \
+    done; \
+    rm -rf /var/lib/apt/lists/*
+RUN npm install -g pnpm
+
+# 2. Set arguments that will be passed during the build
+ARG BUGGY_COMMIT FIXED_COMMIT
+ENV BUGGY_COMMIT=${BUGGY_COMMIT} FIXED_COMMIT=${FIXED_COMMIT}
+
+# 3. Create the directory for the source code and copy it.
+#    (Note: The test script itself doesn't use this source code, but the
+#    entrypoint script expects this directory to exist.)
+RUN mkdir -p /app/source_code_buggy
+WORKDIR /app/source_code_buggy
+COPY ./source_code_buggy /app/source_code_buggy
+RUN pnpm install
+RUN pnpm build
+
+# --- INSTALLATION SECTION ---
+# 4. Copy the test scripts into a separate, fixed location
+COPY repro_script.js /opt/repro_script.js
+COPY run_test_entrypoint.sh /usr/local/bin/run_test_entrypoint.sh
+RUN chmod +x /usr/local/bin/run_test_entrypoint.sh
+
+# 5. Set the working directory for the npm install command.
+WORKDIR /opt
+
+# 6. --- CORRECTED SECTION ---
+#    Create a package.json file to enable ES Module support for Node.js.
+#    This resolves the "Cannot use import statement outside a module" error.
+RUN echo '{"type": "module"}' > /opt/package.json
+
+# 7. Install the specific npm packages required by the test script.
+#    npm will read the new package.json and set up the environment correctly.
+RUN npm install ai zod
+
+# Set the final working directory back to the source code for the test run
+WORKDIR /app/source_code_buggy
+
+# Set the entrypoint for the container
+ENTRYPOINT ["/usr/local/bin/run_test_entrypoint.sh"]
+CMD ["help"]

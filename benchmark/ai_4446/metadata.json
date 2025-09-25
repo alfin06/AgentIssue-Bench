@@ -1,0 +1,9 @@
+{
+    "issue_github_url": "https://github.com/vercel/ai/issues/4446",
+    "repo_url": "https://github.com/vercel/ai.git",
+    "buggy_commit": "2c08fe1a8fba0075531ec5ea5a8578556840fa60",
+    "fixed_commit": "11fe0ffb5d6a67443314a7291e30bd891b94d3e7",
+    "build_command_example": "docker build --build-arg BUGGY_COMMIT=\"2c08fe1a8fba0075531ec5ea5a8578556840fa60\" --build-arg FIXED_COMMIT=\"11fe0ffb5d6a67443314a7291e30bd891b94d3e7\" -t \"alfin06/agentissue-bench:ai_4446\" -f Dockerfile.benchmark .",
+    "run_command_example": "docker run --rm -it \"alfin06/agentissue-bench:ai_4446\" test_buggy",
+    "target_dockerhub_image": "alfin06/agentissue-bench:ai_4446"
+}

@@ -1,0 +1,20 @@
+[tool.poetry]
+name = "mle-agent-repro-173"
+version = "0.1.0"
+description = "A test environment for reproducing an MLE-agent bug."
+authors = ["Your Name <you@example.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = ">=3.11,<3.12"
+# Add dependencies required by the MLE-agent
+pandas = "^2.2.2"
+python-dotenv = "^1.0.1"
+openai = "^1.35.13"
+litellm = "^1.43.30"
+rich = "^13.7.1"
+numpy = "^1.26.4"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

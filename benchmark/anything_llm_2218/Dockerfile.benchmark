@@ -1,0 +1,27 @@
+FROM python:3.11-bookworm
+
+# Install git, which is required by the entrypoint script
+RUN apt-get update && apt-get install -y --no-install-recommends git && rm -rf /var/lib/apt/lists/*
+
+# Set arguments that will be passed during the build
+ARG BUGGY_COMMIT FIXED_COMMIT
+ENV BUGGY_COMMIT=${BUGGY_COMMIT} FIXED_COMMIT=${FIXED_COMMIT}
+
+# Copy the scripts into the container
+COPY repro_script.py /opt/repro_script.py
+COPY run_test_entrypoint.sh /usr/local/bin/run_test_entrypoint.sh
+RUN chmod +x /usr/local/bin/run_test_entrypoint.sh
+
+# Copy the source code of the agent into the container
+COPY ./source_code_buggy /app/source_code_buggy
+WORKDIR /app/source_code_buggy
+
+# --- ADDED SECTION ---
+# Install the necessary library for OpenAPI spec validation.
+# Note: We don't need to install the project itself (`pip install -e .`)
+# because we are only validating a static JSON file.
+RUN pip install --no-cache-dir "openapi-spec-validator<5" "jsonschema<5"
+
+# Set the entrypoint for the container
+ENTRYPOINT ["/usr/local/bin/run_test_entrypoint.sh"]
+CMD ["help"]

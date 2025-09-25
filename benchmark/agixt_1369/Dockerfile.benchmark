@@ -1,0 +1,33 @@
+FROM python:3.10-slim
+
+WORKDIR /app
+
+# Install git and curl
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    git \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Accept build arguments for commits
+ARG BUGGY_COMMIT
+ARG FIXED_COMMIT
+
+# Clone the repository
+RUN git clone https://github.com/Josh-XT/AGiXT.git source_code_buggy && \
+    cd source_code_buggy && \
+    git checkout ${BUGGY_COMMIT}
+
+# Make a copy for the fixed version
+RUN cp -r source_code_buggy source_code_fixed && \
+    cd source_code_fixed && \
+    git checkout ${FIXED_COMMIT}
+
+# Copy our test script and entrypoint
+COPY repro_script.py /app/
+COPY run_test_entrypoint.sh /app/
+
+# Make the entrypoint executable
+RUN chmod +x /app/run_test_entrypoint.sh
+
+ENTRYPOINT ["/bin/bash", "/app/run_test_entrypoint.sh"]

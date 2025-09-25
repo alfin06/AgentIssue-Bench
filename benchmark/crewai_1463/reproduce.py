@@ -183,10 +183,10 @@ except Exception as e:
         if version == "buggy":
             # For buggy version, we expect non-zero exit code (steps didn't execute)
             if result != 0:
-                print("\n✅ BUG REPRODUCED: and_() functions in @listen didn't execute as expected")
+                print("\n❌ BUG: and_() functions in @listen didn't execute as expected")
                 return 0  # Success for buggy version - bug reproduced
             else:
-                print("\n❌ BUG NOT REPRODUCED: and_() functions in @listen executed correctly (unexpected)")
+                print("\n✅ NO BUG: and_() functions in @listen executed correctly (unexpected)")
                 return 1  # Failure for buggy version - bug not reproduced
         else:
             # For fixed version, we expect exit code 0 (steps executed)

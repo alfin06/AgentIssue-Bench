@@ -1,9 +1,8 @@
 #!/bin/bash
-# filepath: d:\Projects\AgentIssue-Bench\reproduction_workspace\failure_triggering_tests\crewai_1463\run_test_entrypoint.sh
 set -eo pipefail
 
 # Define paths for test script
-REPRO_SCRIPT_PY="/opt/repro_script.py"
+REPRO_SCRIPT_PY="/opt/reproduce.py"
 
 run_test() {
     local version=$1
@@ -27,7 +26,7 @@ run_test() {
     
     # Execute the Python test script with the version parameter
     if [ -f "${REPRO_SCRIPT_PY}" ]; then
-        echo "Found repro_script.py. Executing with python..."
+        echo "Found reproduce.py. Executing with python..."
         python "${REPRO_SCRIPT_PY}" "$version"
         local exit_code=$?
         

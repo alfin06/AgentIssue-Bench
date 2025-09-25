@@ -1,0 +1,43 @@
+FROM python:3.10-slim
+
+WORKDIR /app
+
+# Install git and required dependencies
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    git \
+    build-essential \
+    python3-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Accept build arguments for commits
+ARG BUGGY_COMMIT
+ARG FIXED_COMMIT
+ENV BUGGY_COMMIT=${BUGGY_COMMIT} FIXED_COMMIT=${FIXED_COMMIT}
+
+# Clone the repository and set up both buggy and fixed versions
+RUN git clone https://github.com/crewAIInc/crewAI.git source_code_buggy && \
+    cd source_code_buggy && \
+    git fetch --all && \
+    echo "Checking out buggy commit: ${BUGGY_COMMIT}" && \
+    git checkout ${BUGGY_COMMIT} && \
+    pip install -e . && \
+    cd /app && \
+    cp -r source_code_buggy source_code_fixed && \
+    cd source_code_fixed && \
+    echo "Checking out fixed commit: ${FIXED_COMMIT}" && \
+    git checkout ${FIXED_COMMIT}
+
+# Install additional dependencies for testing
+RUN pip install pytest opentelemetry-api opentelemetry-sdk opentelemetry-exporter-otlp-proto-http
+
+# Copy test files
+COPY repro_script.py /opt/repro_script.py
+COPY run_test_entrypoint.sh /usr/local/bin/run_test_entrypoint.sh
+COPY metadata.json /opt/metadata.json
+
+# Make entrypoint executable
+RUN chmod +x /usr/local/bin/run_test_entrypoint.sh
+
+ENTRYPOINT ["/usr/local/bin/run_test_entrypoint.sh"]
+CMD ["help"]

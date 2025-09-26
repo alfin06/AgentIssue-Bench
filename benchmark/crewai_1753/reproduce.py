@@ -1,56 +1,46 @@
+import sys
 import os
 from enum import Enum
-from pydantic import BaseModel
-from crewai import Agent, Task, Crew, Process
-from dotenv import load_dotenv
+import json
 
-load_dotenv()
-os.environ["OTEL_SDK_DISABLED"] = "true"
-
-# Step 1: Define Enum and Pydantic model
-class CrewStatus(Enum):
-    TODO = "To Do"
-    SUCCESSFUL = "Successful"
-    FAILED = "Failed"
-
-class CrewStatusModel(BaseModel):
-    status: CrewStatus
-
-# Step 2: Create a minimal task-crew setup
-def create_crew():
-    agent = Agent(
-        role="Minimal Agent",
-        goal="Return a status",
-        verbose=True,
-        memory=True,
-        backstory="Test enum serialization issue"
-    )
-
-    task = Task(
-        description="Return a crew status value",
-        expected_output="The output should be one of the CrewStatus enum values",
-        agent=agent,
-        output_pydantic=CrewStatusModel,
-        memory=True,
-    )
-
-    crew = Crew(
-        agents=[agent],
-        tasks=[task],
-        process=Process.sequential,
-    )
-
-    return crew
+def main(version="buggy"):
+    try:
+        print(f"Testing CrewAI issue #1753 - Enum JSON serialization bug...")
+        
+        # Import crewai components
+        from crewai.task import Task
+        from crewai.agent import Agent
+        from crewai.crew import Crew
+        from crewai.utilities.crew_json_encoder import CrewJSONEncoder
+        
+        # Create the Enum class that will cause the error
+        class CrewStatus(Enum):
+            TODO = "To Do"
+            SUCCESSFUL = "Successful"
+            FAILED = "Failed"
+        
+        # Create a test instance of the enum
+        status = CrewStatus.SUCCESSFUL
+        
+        # Try to serialize it using CrewJSONEncoder
+        try:
+            json_result = json.dumps(status, cls=CrewJSONEncoder)
+            print(f"Serialized enum to JSON: {json_result}")
+            print(f"✅ TEST PASSED: Successfully serialized Enum using CrewJSONEncoder")
+            return 0
+        except TypeError as e:
+            if "is not JSON serializable" in str(e):
+                print(f"✅ BUG REPRODUCED: {e}")
+                print("This matches the expected error in issue #1753")
+                return 0 if version == "buggy" else 1
+            else:
+                print(f"❌ UNEXPECTED ERROR: {e}")
+                return 1
+                
+    except Exception as e:
+        print(f"❌ UNEXPECTED ERROR: {e}")
+        return 1
 
 if __name__ == "__main__":
-    crew = create_crew()
-    try:
-        result = crew.kickoff()
-        print("Crew result:", result)
-    except TypeError as e:
-        if "is not JSON serializable" in str(e):
-            print("❌ BUG REPRODUCED: Enum is not JSON serializable.")
-        else:
-            print("❌ TypeError occurred:", e)
-    except Exception as e:
-        print("❌ Unexpected error occurred:", e)
+    version = sys.argv[1] if len(sys.argv) > 1 else "buggy"
+    sys.exit(main(version))

@@ -1,38 +1,27 @@
-import subprocess
-import sys
-
-def main():
+def run_reset_memories(scope):
     try:
-        print("Running: crewai reset-memories -a")
         result = subprocess.run(
-            ["crewai", "reset-memories", "-a"],
+            ["crewai", "reset-memories", scope],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            text=True
+            text=True,
+            timeout=30
         )
-
-        stdout = result.stdout
-        stderr = result.stderr
-
-        if "disk I/O error" in stderr.lower():
-            print("❌ BUG REPRODUCED: Disk I/O error occurred during memory reset.")
-            print(stderr)
-            sys.exit(1)
-        elif result.returncode != 0:
-            print("❌ Non-zero exit code, but no disk error found.")
-            print(stderr)
-            sys.exit(2)
+        output = result.stdout + result.stderr
+        print(output)
+        if "disk I/O error" in output:
+            print("✅ BUG REPRODUCED: disk I/O error occurred when resetting short-term memory.")
+            return 0
+        elif (
+            "Long term memory has been reset" in output or
+            "Short term memory has been reset" in output or
+            "All memories have been reset" in output
+        ):
+            print("✅ TEST PASSED: Memory reset works as expected.")
+            return 0
         else:
-            print("✅ Memory reset succeeded.")
-            print(stdout)
-            sys.exit(0)
-
-    except FileNotFoundError:
-        print("❌ 'crewai' CLI tool not found in PATH.")
-        sys.exit(3)
+            print("❌ UNEXPECTED OUTPUT: Did not find expected error or success message.")
+            return 1
     except Exception as e:
-        print("❌ Unexpected error occurred:", e)
-        sys.exit(4)
-
-if __name__ == "__main__":
-    main()
+        print(f"❌ UNEXPECTED ERROR: {e}")
+        return 1

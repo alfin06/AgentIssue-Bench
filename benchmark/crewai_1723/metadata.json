@@ -1,0 +1,11 @@
+{
+  "issue_github_url": "https://github.com/crewAIInc/crewAI/issues/1723",
+  "repo_url": "https://github.com/crewAIInc/crewAI",
+  "buggy_commit": "c4f7eaf2599c5709260d660d48e810aae7a8c124",
+  "fixed_commit": "6b87d22a7084897d243f47da5a9218786994d72f",
+  "build_command_example": "docker build --build-arg BUGGY_COMMIT=c4f7eaf2599c5709260d660d48e810aae7a8c124 --build-arg FIXED_COMMIT=6b87d22a7084897d243f47da5a9218786994d72f -t alfin06/agentissue-bench:crewai_1723 -f Dockerfile.benchmark .",
+  "run_command_example": "docker run --rm -it alfin06/agentissue-bench:crewai_1723 test_buggy",
+  "target_dockerhub_image": "alfin06/agentissue-bench:crewai_1723",
+  "title": "[BUG] error resetting short-term memory",
+  "description": "A disk I/O error occurs when resetting short-term memory using `crewai reset-memories -s` or `crewai reset-memories -a`. This test triggers the bug by running the CLI command and checking for the disk I/O error."
+}

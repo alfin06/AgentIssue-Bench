@@ -1,1 +1,0 @@
-ls -al build/lib/sweagent/

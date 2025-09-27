@@ -1,0 +1,11 @@
+{
+  "issue_github_url": "https://github.com/Pythagora-io/pythagora/issues/55",
+  "repo_url": "https://github.com/Pythagora-io/pythagora",
+  "buggy_commit": "7334780f7ee9812e4207dde8397ef14850ac4c3f",
+  "fixed_commit": "5a6c6a28ebfdb1f781370c26e616e82edef66501",
+  "build_command_example": "docker build --build-arg BUGGY_COMMIT=\"7334780f7ee9812e4207dde8397ef14850ac4c3f\" --build-arg FIXED_COMMIT=\"5a6c6a28ebfdb1f781370c26e616e82edef66501\" -t \"alfin06/agentissue-bench:pythagora_55\" -f Dockerfile.benchmark .",
+  "run_command_example": "docker run --rm -it \"alfin06/agentissue-bench:pythagora_55\" test_buggy",
+  "target_dockerhub_image": "alfin06/agentissue-bench:pythagora_55",
+  "title": "Error on log dumping due to invalid path - directory not found",
+  "description": "This test reproduces a bug where Pythagora crashes with ENOENT when trying to write error logs but the directory doesn't exist."
+}

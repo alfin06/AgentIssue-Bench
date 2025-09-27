@@ -1,9 +1,9 @@
 {
     "issue_github_url": "https://github.com/Josh-XT/AGiXT/issues/1026",
     "repo_url": "https://github.com/Josh-XT/AGiXT.git",
-    "buggy_commit": "55a7024ab99af73b9d04a09580040cf4aacb5f48",
+    "buggy_commit": "1c99cc6192dc7210a21ced270a3d79d8e0231350",
     "fixed_commit": "76aa9ee7165c16c95323ad6c3a017f47597e29bd",
-    "build_command_example": "docker build --build-arg BUGGY_COMMIT=\"55a7024ab99af73b9d04a09580040cf4aacb5f48\" --build-arg FIXED_COMMIT=\"76aa9ee7165c16c95323ad6c3a017f47597e29bd\" -t \"alfin06/agentissue-bench:agixt_1026\" -f Dockerfile.benchmark .",
+    "build_command_example": "docker build --build-arg BUGGY_COMMIT=\"1c99cc6192dc7210a21ced270a3d79d8e0231350\" --build-arg FIXED_COMMIT=\"76aa9ee7165c16c95323ad6c3a017f47597e29bd\" -t \"alfin06/agentissue-bench:agixt_1026\" -f Dockerfile.benchmark .",
     "run_command_example": "docker run --rm -it alfin06/agentissue-bench:agixt_1026 test_buggy",
     "target_dockerhub_image": "alfin06/agentissue-bench:agixt_1026",
     "title": "Check for kwargs[\"USE_STREAMLABS_TTS\"].lower() doesn't work as bool object does not have lower",

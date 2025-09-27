@@ -36,6 +36,7 @@ ENV SKIP_LLAMA_CPP_PYTHON=1
 
 # Copy the reproduction script and entrypoint
 COPY reproduce.py /opt/reproduce.py
+COPY metadata.json /opt/metadata.json
 COPY run_test_entrypoint.sh /usr/local/bin/run_test_entrypoint.sh
 RUN chmod +x /usr/local/bin/run_test_entrypoint.sh
 

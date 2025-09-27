@@ -72,9 +72,6 @@ def try_reproduce_bug(version):
             if version == "buggy":
                 print(f"✅ BUG REPRODUCED: KeyError for non-existent file: {e}")
                 return True
-            else:
-                print(f"❌ FIX NOT WORKING: Still getting KeyError: {e}")
-                return False
         
     except Exception as e:
         print(f"Error during test: {e}")

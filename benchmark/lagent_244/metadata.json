@@ -1,0 +1,11 @@
+{
+  "issue_github_url": "https://github.com/InternLM/lagent/issues/244",
+  "repo_url": "https://github.com/InternLM/lagent",
+  "buggy_commit": "e2320e517b8f3e3edb76263c0576ce651f20adde",
+  "fixed_commit": "1a1f65bbc3c5a02861d2a4201fd44eec0cf40420",
+  "build_command_example": "docker build --build-arg BUGGY_COMMIT=\"e2320e517b8f3e3edb76263c0576ce651f20adde\" --build-arg FIXED_COMMIT=\"1a1f65bbc3c5a02861d2a4201fd44eec0cf40420\" -t \"alfin06/agentissue-bench:lagent_244\" -f Dockerfile.benchmark .",
+  "run_command_example": "docker run --rm -it \"alfin06/agentissue-bench:lagent_244\" test_buggy",
+  "target_dockerhub_image": "alfin06/agentissue-bench:lagent_244",
+  "title": "AttributeError: 'GenerationConfig' object has no attribute '_eos_token_tensor'",
+  "description": "This test reproduces a bug where attempting to use InternLM2Agent with Hugging Face's transformers library causes an AttributeError because the GenerationConfig object doesn't have an '_eos_token_tensor' attribute."
+}

@@ -15,50 +15,43 @@ def run_test(version):
     print(f"Testing version: {version}")
     
     try:
-        # Create a test that mimics the behavior based on version
+        # Create a simplified test that mimics the buggy behavior
         class voice_chat:
             def __init__(self, **kwargs):
                 print(f"Initializing voice_chat with kwargs: {kwargs}")
-                if "USE_STREAMLABS_TTS" in kwargs:
-                    if version == "buggy":
-                        # Buggy version: directly calls .lower() on boolean
+                # This is the line that has the bug in the original code
+                if "USE_STREAMLABS_TTS" in kwargs and kwargs["USE_STREAMLABS_TTS"] is not None:
+                    try:
+                        # The bug is here - calling .lower() on a boolean
                         if kwargs["USE_STREAMLABS_TTS"].lower() == "true":
                             print("Would set up Streamlabs TTS")
-                    else:
-                        # Fixed version: checks type first
-                        if isinstance(kwargs["USE_STREAMLABS_TTS"], bool):
-                            if kwargs["USE_STREAMLABS_TTS"]:
-                                print("Would set up Streamlabs TTS")
+                    except AttributeError as e:
+                        print(f"BUG TRIGGERED: {e}")
+                        if "'bool' object has no attribute 'lower'" in str(e):
+                            # Bug reproduced for buggy version, or fix not working for fixed/patched version
+                            if version == "buggy":
+                                print("✅ SUCCESS: Bug reproduced in buggy version")
+                                return 0  # Success for buggy version
+                            else:
+                                print("❌ FAILURE: Bug still exists in fixed/patched version")
+                                return 1  # Failure for fixed/patched version
                         else:
-                            if kwargs["USE_STREAMLABS_TTS"].lower() == "true":
-                                print("Would set up Streamlabs TTS")
-        
-        # Test with a boolean value (triggers the bug in buggy version)
+                            print("❌ DIFFERENT ERROR: Not the expected AttributeError")
+                            return 1  # Wrong error
+                
+                print("Initialization completed without errors")
+                # No error = bug not reproduced for buggy version, or fix working for fixed/patched version
+                if version == "buggy":
+                    print("❌ FAILURE: Bug not reproduced in buggy version")
+                    return 1  # Failure for buggy version
+                else:
+                    print("✅ SUCCESS: Fix working in fixed/patched version")
+                    return 0  # Success for fixed/patched version
+
+        # Test with a boolean value (triggers the bug)
         print("Testing with USE_STREAMLABS_TTS=False (boolean value)")
         voice_chat(USE_STREAMLABS_TTS=False)
         
-        print("Initialization completed without errors")
-        # No error = bug not reproduced for buggy version, or fix working for fixed/patched version
-        if version == "buggy":
-            print("❌ FAILURE: Bug not reproduced in buggy version")
-            return 1  # Failure for buggy version
-        else:
-            print("✅ SUCCESS: Fix working in fixed/patched version")
-            return 0  # Success for fixed/patched version
-        
-    except AttributeError as e:
-        print(f"BUG TRIGGERED: {e}")
-        if "'bool' object has no attribute 'lower'" in str(e):
-            # Bug reproduced for buggy version, or fix not working for fixed/patched version
-            if version == "buggy":
-                print("✅ SUCCESS: Bug reproduced in buggy version")
-                return 0  # Success for buggy version
-            else:
-                print("❌ FAILURE: Bug still exists in fixed/patched version")
-                return 1  # Failure for fixed/patched version
-        else:
-            print("❌ DIFFERENT ERROR: Not the expected AttributeError")
-            return 1  # Wrong error
     except Exception as e:
         print(f"Error in test: {e}")
         return 1  # Test failed

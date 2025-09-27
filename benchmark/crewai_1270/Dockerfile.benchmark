@@ -1,0 +1,39 @@
+FROM python:3.12
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git patch ca-certificates \
+    build-essential \
+    python3-dev \
+    gcc \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
+
+ARG BUGGY_COMMIT
+ARG FIXED_COMMIT
+ENV BUGGY_COMMIT=${BUGGY_COMMIT}
+ENV FIXED_COMMIT=${FIXED_COMMIT}
+WORKDIR /app/source_code_buggy
+
+# Clone buggy version
+WORKDIR /app/source_code_buggy
+RUN git clone https://github.com/crewAIInc/crewAI.git . && \
+    git checkout ${BUGGY_COMMIT}
+
+# Clone fixed version
+WORKDIR /app/source_code_fixed
+RUN git clone https://github.com/crewAIInc/crewAI.git . && \
+    git checkout ${FIXED_COMMIT}
+
+ENV PYTHONPATH="/app/source_code_buggy:/app/source_code_fixed"
+
+RUN pip install --no-cache-dir setuptools && \
+    pip install --no-cache-dir -e . && \
+    pip install --no-cache-dir PyYAML chardet
+
+COPY reproduce.py /opt/reproduce.py
+COPY metadata.json /opt/metadata.json
+COPY run_test_entrypoint.sh /usr/local/bin/run_test_entrypoint.sh
+RUN chmod +x /usr/local/bin/run_test_entrypoint.sh
+
+ENTRYPOINT ["/usr/local/bin/run_test_entrypoint.sh"]
+CMD ["help"]

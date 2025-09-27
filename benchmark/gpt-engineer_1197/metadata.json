@@ -1,0 +1,11 @@
+{
+  "issue_github_url": "https://github.com/gpt-engineer-org/gpt-engineer/issues/1197",
+  "repo_url": "https://github.com/gpt-engineer-org/gpt-engineer",
+  "buggy_commit": "c1f4a9da5dd0abed15b91f6d1c60464cad84ce6c",
+  "fixed_commit": "3ca14356a89aef9bf7b1151eafe40124c5e42542",
+  "build_command_example": "docker build --build-arg BUGGY_COMMIT=\"c1f4a9da5dd0abed15b91f6d1c60464cad84ce6c\" --build-arg FIXED_COMMIT=\"3ca14356a89aef9bf7b1151eafe40124c5e42542\" -t \"alfin06/agentissue-bench:gpt_engineer_1197\" -f Dockerfile.benchmark .",
+  "run_command_example": "docker run --rm -it \"alfin06/agentissue-bench:gpt_engineer_1197\" test_buggy",
+  "target_dockerhub_image": "alfin06/agentissue-bench:gpt_engineer_1197",
+  "title": "Failed to update new codes from gpte",
+  "description": "This test reproduces a bug in gpt-engineer where attempting to improve a project with non-existent files referenced in diffs causes a KeyError. The bug occurs in the salvage_correct_hunks function when it tries to access a file that doesn't exist in the project, specifically when trying to separate environment configurations in a Spring Boot application."
+}

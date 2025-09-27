@@ -16,9 +16,9 @@ test_version() {
   # Clone the repository if it doesn't exist
   if [ ! -d "$source_dir" ]; then
     echo "Cloning repository for $version version..."
-    git clone "https://github.com/SWE-agent/SWE-agent.git" "$source_dir"
+    git clone "https://github.com/FoundationAgents/MetaGPT.git" "$source_dir"
     cd "$source_dir"
-    ls "$source_dir"
+    git fetch origin "$commit_hash"
     git checkout "$commit_hash"
     
     # Create a modified setup.py or requirements.txt to skip problematic dependencies
@@ -38,8 +38,9 @@ test_version() {
       sed -i "s/'llama-cpp-python[^']*'[,]*//" setup.py
     fi
     
-    # Install AGiXT without llama-cpp-python
-    pip install --no-deps -e .
+
+    
+    python -m pip install --upgrade pip && pip install --editable .
     
     # Install only required dependencies
     pip install requests
@@ -194,5 +195,5 @@ case "$1" in
     if [ "$1" != "help" ] && [ ! -z "$1" ]; then exit 1; fi
     ;;
 esac
-exec /bin/bash
+
 exit $?

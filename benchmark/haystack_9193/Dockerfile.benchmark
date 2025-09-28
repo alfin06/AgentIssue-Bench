@@ -1,34 +1,51 @@
+# Use the Python version specified in the bug report
 FROM python:3.11-slim
 
-# Install git, which is required by the entrypoint script to checkout commits
-RUN apt-get update && apt-get install -y --no-install-recommends git && rm -rf /var/lib/apt/lists/*
+# Install git with a retry loop for robustness
+RUN apt-get update && \
+    SUCCESS=false && \
+    for i in 1 2 3; do \
+        if apt-get install -y --no-install-recommends git patch; then \
+            SUCCESS=true; \
+            break; \
+        fi; \
+        echo "apt-get install failed. Retrying in 5 seconds..." >&2; \
+        sleep 5; \
+    done; \
+    if [ "$SUCCESS" = "false" ]; then \
+        echo "Failed to install packages after multiple retries." >&2; \
+        exit 1; \
+    fi && \
+    rm -rf /var/lib/apt/lists/*
 
-# Set arguments that will be passed during the build
-ARG BUGGY_COMMIT FIXED_COMMIT
-ENV BUGGY_COMMIT=${BUGGY_COMMIT} FIXED_COMMIT=${FIXED_COMMIT}
+# Set arguments that will be passed during the build for commit hashes
+ARG BUGGY_COMMIT
+ARG FIXED_COMMIT
+ENV BUGGY_COMMIT=${BUGGY_COMMIT}
+ENV FIXED_COMMIT=${FIXED_COMMIT}
 
-# Copy the scripts into the container
-COPY repro_script.py /opt/repro_script.py
-COPY run_test_entrypoint.sh /usr/local/bin/run_test_entrypoint.sh
-RUN chmod +x /usr/local/bin/run_test_entrypoint.sh
-
-# Copy the project source code into the container
+# Clone the buggy version of the repository
 COPY ./source_code_buggy /app/source_code_buggy
 
-# --- CORRECTED INSTALLATION SECTION ---
-# 1. Set the working directory to the root of the project source.
-#    This is the directory that contains pyproject.toml.
+# Clone the fixed version of the repository
+COPY ./source_code_buggy /app/source_code_fixed
+WORKDIR /app/source_code_fixed
+RUN git checkout ${FIXED_COMMIT}
+
+# Install dependencies for the buggy version from its source
 WORKDIR /app/source_code_buggy
-
-# 2. Install the haystack package itself from the local source code.
-#    - The '-e' flag installs it in "editable" mode.
-#    - The '[all]' flag ensures all optional dependencies (for tools, integrations, etc.)
-#      defined in pyproject.toml are also installed.
+# The '[all]' ensures all optional dependencies required by various components are installed.
 RUN pip install -e '.[all]'
-
-# 3. Add any extra dependencies required for the test script to run successfully.
-#    This was missing and caused the ImportError.
 RUN pip install --no-cache-dir docstring-parser
+
+# Copy test scripts and metadata into standard locations
+COPY reproduce.py /opt/reproduce.py
+COPY run_test_entrypoint.sh /usr/local/bin/run_test_entrypoint.sh
+COPY metadata.json /opt/metadata.json
+RUN chmod +x /usr/local/bin/run_test_entrypoint.sh
+
+# Set the default working directory for when the container starts
+WORKDIR /app/source_code_buggy
 
 # Set the entrypoint for the container
 ENTRYPOINT ["/usr/local/bin/run_test_entrypoint.sh"]

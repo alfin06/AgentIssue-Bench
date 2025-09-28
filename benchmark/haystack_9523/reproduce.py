@@ -1,79 +1,88 @@
 import os
+import sys
 from unittest.mock import patch, MagicMock
+from test_helpers import doc_to_string, MockChatGenerator
 
-from haystack.components.agents import Agent
-from haystack.dataclasses import ChatMessage
-from haystack.components.generators.chat import OpenAIChatGenerator
-from haystack import Pipeline
-from haystack.tools import ComponentTool
-from haystack.components.websearch import SerperDevWebSearch
 
-# --- Setup ---
-os.environ["OPENAI_API_KEY"] = input("Please enter an OpenAI API key: ")
-os.environ["SERPERDEV_API_KEY"] = input("Please enter a SerperDev API key: ")
+def test_deserialization_bug(version: str) -> int:
+    """
+    Tests for a DeserializationError when loading a Pipeline with an Agent.
+    - The 'buggy' version is expected to raise a DeserializationError.
+    - The 'fixed' version is expected to load successfully.
+    """
+    print(f"--- Running test for '{version}' version ---")
 
-def mock_print_streaming_chunk(chunk):
-    pass
+    # --- Dynamic Imports ---
+    from haystack.components.agents import Agent
+    from haystack.dataclasses import ChatMessage
+    from haystack.components.generators.chat import OpenAIChatGenerator
+    from haystack import Pipeline
+    from haystack.tools import ComponentTool
+    from haystack.components.websearch import SerperDevWebSearch
 
-class MockChatGenerator:
-    """A mock chat generator that satisfies the Agent's validation."""
-    def run(self, messages, tools=None, **kwargs):
-        """This method's signature includes the 'tools' parameter."""
-        return {"replies": [ChatMessage.from_assistant("Mocked final answer.")]}
+    # --- Common Setup for both versions ---
+    print("--- Setting up pipeline with the agent and tools ---")
+    with patch("haystack.components.websearch.SerperDevWebSearch", new=MagicMock()):
+        web_search = ComponentTool(
+            component=SerperDevWebSearch(),
+            name="web_search",
+            description="Search the web",
+            outputs_to_string={"source": "documents", "handler": doc_to_string},
+        )
+        wiki_search = ComponentTool(
+            component=SerperDevWebSearch(),
+            name="wiki_search",
+            description="Search Wikipedia",
+            outputs_to_string={"source": "documents", "handler": doc_to_string},
+        )
 
-def doc_to_string(documents) -> str:
-    """Handles the tool output before conversion to ChatMessage."""
-    return "documents processed"
-
-with patch("haystack.components.websearch.SerperDevWebSearch", new=MagicMock()):
-    web_search = ComponentTool(
-        component=SerperDevWebSearch(),
-        name="web_search",
-        description="Search the web",
-        outputs_to_string={"source": "documents", "handler": doc_to_string},
+    research_agent = Agent(
+        chat_generator=MockChatGenerator(),
+        system_prompt="You are a research agent.",
+        tools=[web_search, wiki_search],
     )
-    wiki_search = ComponentTool(
-        component=SerperDevWebSearch(),
-        name="wiki_search",
-        description="Search Wikipedia",
-        outputs_to_string={"source": "documents", "handler": doc_to_string},
-    )
 
-mock_chat_generator = MockChatGenerator()
+    pipeline = Pipeline()
+    pipeline.add_component("research_agent", research_agent)
 
-research_agent = Agent(
-    chat_generator=mock_chat_generator,
-    system_prompt="You are a research agent.",
-    tools=[web_search, wiki_search],
-    streaming_callback=mock_print_streaming_chunk,
-)
+    print("--- Serializing the pipeline using .dumps() ---")
+    pipeline_dumps = pipeline.dumps()
+    print("Pipeline serialized successfully.")
 
-# --- Verification Logic ---
-print("--- Setting up pipeline with the agent and tools ---")
-pipeline = Pipeline()
-pipeline.add_component("research_agent", research_agent)
+    # --- Version-Specific Verification ---
+    try:
+        print("\n--- Attempting to deserialize the pipeline using .loads() ---")
+        Pipeline.loads(pipeline_dumps)
+        
+        # --- Analysis for when NO error is raised ---
+        if version == "buggy":
+            print("\n❌ BUG NOT REPRODUCED: Pipeline loaded successfully, but it was expected to fail.")
+            return 1
+        else: # version == "fixed"
+            print("\n✅ FIX CONFIRMED: Pipeline loaded successfully, as expected for the fixed version.")
+            return 0
 
-print("--- Serializing the pipeline using .dumps() ---")
-pipeline_dumps = pipeline.dumps()
-print("Pipeline serialized successfully.")
+    except Exception as e:
+        # --- Analysis for when a DeserializationError IS raised ---
+        if version == "buggy":
+            print(f"   Error: {e}")
+            print(f"\n✅ BUG REPRODUCED: Caught the expected DeserializationError, which confirms the bug.")
+            return 0
+        else: # version == "fixed"
+            print(f"   Error: {e}")
+            print(f"\n❌ FIX NOT CONFIRMED: A DeserializationError was raised unexpectedly in the fixed version.")
+            return 1
 
-print("\n--- Attempting to deserialize the pipeline using .loads() ---")
-print("--- This is the step that is expected to fail. ---")
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print("Usage: python reproduce.py [buggy|fixed]", file=sys.stderr)
+        sys.exit(1)
+    
+    version_arg = sys.argv[1]
+    if version_arg not in ["buggy", "fixed"]:
+        print(f"Invalid argument: '{version_arg}'. Please use 'buggy' or 'fixed'.", file=sys.stderr)
+        sys.exit(1)
 
-try:
-    load_pipeline = Pipeline.loads(pipeline_dumps)
-    print("\n--- SCRIPT FINISHED UNEXPECTEDLY ---")
-    print("FAILURE: The bug was NOT reproduced. The pipeline was loaded successfully.")
-    exit(0)
-
-except Exception as e:
-    print(f"\nSUCCESS: The script failed with an error as expected.")
-    print(f"Error Type: {type(e).__name__}")
-    print(f"Error Message: {e}")
-
-    if type(e).__name__ == "DeserializationError":
-        print("\nVerification successful: A DeserializationError was caught, which confirms the bug.")
-        exit(1)
-    else:
-        print("\nVerification failed: The error caught was not the expected DeserializationError.")
-        exit(0)
+    # The exit code determines the success (0) or failure (1) of the test run.
+    exit_code = test_deserialization_bug(version_arg)
+    sys.exit(exit_code)

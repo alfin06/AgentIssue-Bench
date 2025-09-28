@@ -1,28 +1,51 @@
+# Use the Python version specified in the bug report
 FROM python:3.11-slim
 
-# Install git, which is required by the entrypoint script
-RUN apt-get update && apt-get install -y --no-install-recommends git && rm -rf /var/lib/apt/lists/*
+# Install git with a retry loop for robustness
+RUN apt-get update && \
+    SUCCESS=false && \
+    for i in 1 2 3; do \
+        if apt-get install -y --no-install-recommends git patch; then \
+            SUCCESS=true; \
+            break; \
+        fi; \
+        echo "apt-get install failed. Retrying in 5 seconds..." >&2; \
+        sleep 5; \
+    done; \
+    if [ "$SUCCESS" = "false" ]; then \
+        echo "Failed to install packages after multiple retries." >&2; \
+        exit 1; \
+    fi && \
+    rm -rf /var/lib/apt/lists/*
 
-# Set arguments that will be passed during the build
-ARG BUGGY_COMMIT FIXED_COMMIT
-ENV BUGGY_COMMIT=${BUGGY_COMMIT} FIXED_COMMIT=${FIXED_COMMIT}
+# Set arguments that will be passed during the build for commit hashes
+ARG BUGGY_COMMIT
+ARG FIXED_COMMIT
+ENV BUGGY_COMMIT=${BUGGY_COMMIT}
+ENV FIXED_COMMIT=${FIXED_COMMIT}
 
-# Set the Python path
-ENV PYTHONPATH="/app/source_code_buggy"
-
-# Copy the scripts into the container
-COPY repro_script.py /opt/repro_script.py
-COPY run_test_entrypoint.sh /usr/local/bin/run_test_entrypoint.sh
-RUN chmod +x /usr/local/bin/run_test_entrypoint.sh
-
-# Copy the source code to be tested
+# Clone the buggy version of the repository
 COPY ./source_code_buggy /app/source_code_buggy
-WORKDIR /app/source_code_buggy
 
-# --- CORRECTED SECTION ---
-# Install the haystack library itself in editable mode from the local source code.
+# Clone the fixed version of the repository
+COPY ./source_code_buggy /app/source_code_fixed
+WORKDIR /app/source_code_fixed
+RUN git checkout ${FIXED_COMMIT}
+
+# Install dependencies for the buggy version from its source
+WORKDIR /app/source_code_buggy
 # The '[all]' ensures all optional dependencies required by various components are installed.
 RUN pip install -e '.[all]'
+
+# Copy test scripts and metadata into standard locations
+COPY reproduce.py /opt/reproduce.py
+COPY run_test_entrypoint.sh /usr/local/bin/run_test_entrypoint.sh
+COPY metadata.json /opt/metadata.json
+COPY test_helpers.py /opt/test_helpers.py
+RUN chmod +x /usr/local/bin/run_test_entrypoint.sh
+
+# Set the default working directory for when the container starts
+WORKDIR /app/source_code_buggy
 
 # Set the entrypoint for the container
 ENTRYPOINT ["/usr/local/bin/run_test_entrypoint.sh"]

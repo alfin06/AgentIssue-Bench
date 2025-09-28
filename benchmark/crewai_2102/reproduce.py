@@ -1,89 +1,102 @@
+import os
+import sys
+import io
+from contextlib import redirect_stdout, redirect_stderr
+from unittest.mock import patch, MagicMock
+
+# --- Environment Setup ---
+# This setup is crucial for triggering the bug correctly.
+os.environ["CREWAI_TRACING_ENABLED"] = "false"
+os.environ["AGENTOPS_API_KEY"] = "DUMMY_KEY" # Activates the buggy agentops integration
+
+if not os.getenv("GOOGLE_API_KEY"):
+    print("FATAL: GOOGLE_API_KEY environment variable not set.")
+    sys.exit(1)
+if not os.getenv("SERPER_API_KEY"):
+    print("FATAL: SERPER_API_KEY environment variable not set.")
+    sys.exit(1)
+
+# --- Imports ---
 from crewai import Agent, LLM, Task, Crew, Process
-from crewai_tools import SerperDevTool
+from crewai.tools.base_tool import BaseTool
 from dotenv import load_dotenv
 load_dotenv()
 
-from langchain_google_genai import ChatGoogleGenerativeAI
-import os
+# --- Dummy Tool for Self-Contained Test ---
+class DummyTool(BaseTool):
+    name: str = "Dummy Search Tool"
+    description: str = "A simple tool that does nothing."
+    def _run(self) -> str:
+        return "This is a dummy tool."
 
-# Initialize the Gemini LLM using CrewAI's LLM wrapper
+# --- Test Setup ---
+print("--- Setting up an Agent with a Gemini LLM wrapper. ---")
+
 my_llm = LLM(
     api_key=os.getenv("GOOGLE_API_KEY"),
     model="gemini/gemini-1.5-flash",
-    temperature=0.5,
-    verbose=True
 )
+tool = DummyTool() 
 
-# Also initialize the ChatGoogleGenerativeAI (though note that my_llm is used in agents)
-llm = ChatGoogleGenerativeAI(
-    model="gemini-1.5-flash",
-    verbose=True,
-    temperature=0.5,
-    google_api_key=os.getenv("GOOGLE_API_KEY")
-)
-
-# Initialize a tool
-tool = SerperDevTool()
-
-# Define agents
-news_researcher = Agent(
-    role="Senior Researcher",
-    goal="Uncover ground breaking tech in {topic}",
-    verbose=True,
-    memory=True,
-    backstory=(
-        "Driven by curiosity, you're at the forefront of innovation, eager to explore and share the knowledge with the world."
-    ),
+test_agent = Agent(
+    role="Test Agent",
+    goal="Trigger the AttributeError during cleanup.",
+    backstory="An agent designed to test a specific bug.",
     tools=[tool],
     llm=my_llm,
-    allow_delegation=True
-)
-
-news_writer = Agent(
-    role="Writer",
-    goal="Narrate compelling tech stories about {topic}",
     verbose=True,
-    memory=True,
-    backstory=(
-        "With a flair for simplifying complex topics, you craft engaging narratives that captivate and educate, bringing new discoveries to light."
-    ),
-    tools=[tool],
-    llm=my_llm,
-    allow_delegation=False
+    allow_delegation=False,
+    max_iter=1 
 )
 
-# Define tasks
-researcher_task = Task(
-    description=(
-        "Identify the next big trend in {topic}."
-        "Focus on identifying pros and cons and the overall narrative."
-        "Your final report should clearly articulate the key points, its market opportunities and potential risks."
-    ),
-    expected_output='A comprehensive 3 paragraphs long report on the latest AI trends',
-    tools=[tool],
-    agent=news_researcher
+test_task = Task(
+    description="Run a simple task to trigger the crew kickoff and subsequent cleanup.",
+    expected_output="A successful run, which will then log an error during cleanup.",
+    agent=test_agent
 )
 
-writer_task = Task(
-    description=(
-        "Compose an insightful article on {topic}."
-        "Focus on the latest trends and how it's impacting the industry."
-        "This article should be easy to understand, engaging, and positive."
-        "Provide compelling examples and statistics to keep the reader interested."
-    ),
-    expected_output='A 4 paragraph article on {topic} advancements formatted as markdown.',
-    tools=[tool],
-    agent=news_writer,
-    async_execution=False,
-    output_file='new-blog-post.md'
-)
-
-# Create and run the crew
 crew = Crew(
-    agents=[news_researcher, news_writer],
-    tasks=[researcher_task, writer_task],
+    agents=[test_agent],
+    tasks=[test_task],
     process=Process.sequential,
 )
 
-result = crew.kickoff(inputs={'topic': 'AI in automotive'})
-print(result)
+# --- Verification Logic ---
+print("\n--- Running crew.kickoff(). This is expected to LOG an AttributeError during cleanup. ---")
+
+# Capture all console output to check for the logged error.
+output_capture = io.StringIO()
+with redirect_stdout(output_capture), redirect_stderr(output_capture):
+    try:
+        mock_response = MagicMock()
+        mock_choice = MagicMock()
+        mock_message = MagicMock()
+        mock_message.content = "This is the agent's mock final answer."
+        mock_choice.message = mock_message
+        mock_response.choices = [mock_choice]
+
+        with patch('litellm.completion', return_value=mock_response):
+            result = crew.kickoff(inputs={'topic': 'AI in automotive'})
+    except Exception as e:
+        print(f"\n--- Script crashed unexpectedly ---")
+        print(f"ERROR: {type(e).__name__}: {e}")
+
+# Get all the text that was printed to the console.
+console_output = output_capture.getvalue()
+
+print("\n--- Verifying the console output for the expected error log ---")
+
+expected_error_text = "'NoneType' object has no attribute 'skip_auto_end_session'"
+
+if expected_error_text in console_output:
+    print(f"\nSUCCESS: The bug is reproduced.")
+    print(f"The expected error message was found in the application's logs.")
+    sys.exit(0)
+else:
+    print(f"\nFAILURE: The bug was NOT reproduced.")
+    print(f"The expected error message was not found in the output.")
+    print("\n--- Full Console Output ---")
+    print(console_output)
+    print("--------------------------")
+    sys.exit(1)
+

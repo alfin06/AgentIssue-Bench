@@ -1,27 +1,31 @@
-FROM python:3.11-bookworm
+FROM python:3.12-slim
 
-# Install git, which is required by the entrypoint script
 RUN apt-get update && apt-get install -y --no-install-recommends git && rm -rf /var/lib/apt/lists/*
 
-# Set arguments that will be passed during the build
 ARG BUGGY_COMMIT FIXED_COMMIT
-ENV BUGGY_COMMIT=${BUGGY_COMMIT} FIXED_COMMIT=${FIXED_COMMIT}
+ENV BUGGY_COMMIT=${BUGGY_COMMIT} FIXED_COMMIT=${FIXED_COMMIT} REPO_URL=https://github.com/crewAIInc/crewAI.git
 
-# Copy the scripts into the container
-COPY repro_script.py /opt/repro_script.py
+RUN git clone "${REPO_URL}" /app/source_code_buggy
+WORKDIR /app/source_code_buggy
+RUN git checkout "${BUGGY_COMMIT}"
+
+RUN git clone "${REPO_URL}" /app/source_code_fixed
+WORKDIR /app/source_code_fixed
+RUN git checkout "${FIXED_COMMIT}"
+
+WORKDIR /app/source_code_buggy
+RUN pip install -e .
+
+WORKDIR /app/source_code_fixed
+RUN pip install -e .
+
+RUN pip install --no-cache-dir python-dotenv langchain-google-genai "crewai-tools<0.2.0"
+
+COPY reproduce.py /opt/reproduce.py
+COPY metadata.json /opt/metadata.json
 COPY run_test_entrypoint.sh /usr/local/bin/run_test_entrypoint.sh
 RUN chmod +x /usr/local/bin/run_test_entrypoint.sh
 
-# Copy the source code of the agent into the container
-COPY ./source_code_buggy /app/source_code_buggy
-WORKDIR /app/source_code_buggy
-
-# --- CORRECTED SECTION ---
-# Install the project's own dependencies first, then the specific ones needed by the test script.
-# This ensures all required libraries are available.
-RUN pip install -e .
-RUN pip install --no-cache-dir python-dotenv langchain-google-genai crewai-tools
-
-# Set the entrypoint for the container
+# Set the default entrypoint for the container.
 ENTRYPOINT ["/usr/local/bin/run_test_entrypoint.sh"]
 CMD ["help"]

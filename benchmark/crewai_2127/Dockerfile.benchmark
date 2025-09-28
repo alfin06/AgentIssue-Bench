@@ -1,30 +1,49 @@
-# Use the Python version specified in the bug report
-FROM python:3.11-bookworm
+FROM python:3.11-slim
 
-# Install git, which is required by the entrypoint script to switch between commits
-RUN apt-get update && apt-get install -y --no-install-recommends git && rm -rf /var/lib/apt/lists/*
+# Install system dependencies, including Chrome and ChromeDriver for Selenium
+RUN apt-get update && \
+    SUCCESS=false && \
+    for i in 1 2 3; do \
+        if apt-get install -y --no-install-recommends \
+            git patch build-essential python3-dev gcc g++ ca-certificates \
+            wget gnupg curl unzip; then \
+            SUCCESS=true; \
+            break; \
+        fi; \
+        echo "apt-get install failed. Retrying in 5 seconds..." >&2; \
+        sleep 5; \
+    done; \
+    if [ "$SUCCESS" = "false" ]; then \
+        echo "Failed to install packages after multiple retries." >&2; \
+        exit 1; \
+    fi && \
+    rm -rf /var/lib/apt/lists/*
 
-# Set arguments that will be passed during the build
-ARG BUGGY_COMMIT FIXED_COMMIT
-ENV BUGGY_COMMIT=${BUGGY_COMMIT} FIXED_COMMIT=${FIXED_COMMIT}
+ARG BUGGY_COMMIT
+ARG FIXED_COMMIT
+ENV BUGGY_COMMIT=${BUGGY_COMMIT}
+ENV FIXED_COMMIT=${FIXED_COMMIT}
 
-# Copy the scripts into the container
-COPY repro_script.py /opt/repro_script.py
+# Clone buggy crewAI-tools version
+WORKDIR /app/source_code_buggy
+RUN git clone https://github.com/crewAIInc/crewAI-tools.git . && \
+    git checkout ${BUGGY_COMMIT}
+
+# Clone fixed crewAI-tools version
+WORKDIR /app/source_code_fixed
+RUN git clone https://github.com/crewAIInc/crewAI-tools.git . && \
+    git checkout ${FIXED_COMMIT}
+
+# Install dependencies for the buggy version
+WORKDIR /app/source_code_buggy
+RUN pip install --no-cache-dir selenium && \
+    pip install --no-cache-dir -e . 
+
+# Copy test scripts and metadata
+COPY reproduce.py /opt/reproduce.py
 COPY run_test_entrypoint.sh /usr/local/bin/run_test_entrypoint.sh
+COPY metadata.json /opt/metadata.json
 RUN chmod +x /usr/local/bin/run_test_entrypoint.sh
 
-# Copy the source code of the agent into the container
-COPY ./source_code_buggy /app/source_code_buggy
-WORKDIR /app/source_code_buggy
-
-# Install the project from source and its direct dependencies.
-RUN pip install -e .
-RUN pip install --no-cache-dir selenium
-
-# --- CORRECTED: Add an environment variable to tell the script what's being run ---
-# The entrypoint script will set this variable before executing the python script.
-ENV BUG_TEST_TYPE=""
-
-# Set the entrypoint for the container
 ENTRYPOINT ["/usr/local/bin/run_test_entrypoint.sh"]
 CMD ["help"]

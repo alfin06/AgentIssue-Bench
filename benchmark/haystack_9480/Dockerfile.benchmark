@@ -1,34 +1,55 @@
+# Use the Python version specified in the bug report
 FROM python:3.11-slim
 
-# Install git, which is required by the entrypoint script
-RUN apt-get update && apt-get install -y --no-install-recommends git && rm -rf /var/lib/apt/lists/*
+# Install git with a retry loop for robustness
+RUN apt-get update && \
+    SUCCESS=false && \
+    for i in 1 2 3; do \
+        if apt-get install -y --no-install-recommends git patch; then \
+            SUCCESS=true; \
+            break; \
+        fi; \
+        echo "apt-get install failed. Retrying in 5 seconds..." >&2; \
+        sleep 5; \
+    done; \
+    if [ "$SUCCESS" = "false" ]; then \
+        echo "Failed to install packages after multiple retries." >&2; \
+        exit 1; \
+    fi && \
+    rm -rf /var/lib/apt/lists/*
 
-# Set arguments that will be passed during the build
-ARG BUGGY_COMMIT FIXED_COMMIT
-ENV BUGGY_COMMIT=${BUGGY_COMMIT} FIXED_COMMIT=${FIXED_COMMIT}
+# Set arguments that will be passed during the build for commit hashes
+ARG BUGGY_COMMIT
+ARG FIXED_COMMIT
+ENV BUGGY_COMMIT=${BUGGY_COMMIT}
+ENV FIXED_COMMIT=${FIXED_COMMIT}
 
-# Copy the scripts into the container
-COPY repro_script.py /opt/repro_script.py
+# Clone the buggy version of the repository
+COPY ./source_code_buggy /app/source_code_buggy
+WORKDIR /app/source_code_buggy
+RUN git checkout ${BUGGY_COMMIT}
+
+# Clone the fixed version of the repository
+WORKDIR /app/source_code_fixed
+RUN git clone https://github.com/deepset-ai/haystack.git . && git checkout ${FIXED_COMMIT}
+
+# Install dependencies for the buggy version from its source
+ENV PYTHONPATH="/app/source_code_buggy"
+RUN pip install --upgrade pip
+RUN pip install -e '.[all]'
+RUN pip install --no-cache-dir docstring-parser
+RUN pip install --no-cache-dir mcp mcp-haystack
+RUN pip install --no-cache-dir haystack-ai[anthropic]
+
+# Copy test scripts and metadata into standard locations
+COPY reproduce.py /opt/reproduce.py
 COPY run_test_entrypoint.sh /usr/local/bin/run_test_entrypoint.sh
+COPY metadata.json /opt/metadata.json
 RUN chmod +x /usr/local/bin/run_test_entrypoint.sh
 
-# Copy the source code to be tested
-COPY ./source_code_buggy /app/source_code_buggy
-
-# --- FINAL CORRECTED SECTION ---
-# 1. Set the working directory
+# Set the default working directory for when the container starts
 WORKDIR /app/source_code_buggy
 
-# 2. Add the source code directory to Python's import path.
-#    This allows `from haystack...` to work.
-ENV PYTHONPATH="/app/source_code_buggy"
-
-# 3. Install the dependencies specified in the project's requirements file.
-RUN pip install --no-cache-dir -r requirements.txt
-
-# 4. Install the additional dependencies required specifically by our test script.
-RUN pip install --no-cache-dir mcp mcp-haystack
-
-# Set the entrypoint for the container.
+# Set the entrypoint for the container
 ENTRYPOINT ["/usr/local/bin/run_test_entrypoint.sh"]
 CMD ["help"]

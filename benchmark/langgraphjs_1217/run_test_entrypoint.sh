@@ -29,11 +29,11 @@ case "$1" in
         # repro_script.ts is designed to catch the specific error.
         if run_test; then
             echo
-            echo "✅ ✅ ✅ REPRODUCTION SUCCESSFUL ✅ ✅ ✅"
+            echo "✅ REPRODUCTION SUCCESSFUL"
             echo "The test suite PASSED, which correctly indicates that the expected 'bindTools' error was successfully caught and verified."
         else
             echo
-            echo "❌ ❌ ❌ REPRODUCTION FAILED ❌ ❌ ❌"
+            echo "❌ REPRODUCTION FAILED"
             echo "The test suite FAILED. This is unexpected and means either the bug was not triggered or a different error occurred."
         fi
         ;;
@@ -51,11 +51,11 @@ case "$1" in
         # and its 'fail()' call will be triggered.
         if run_test; then
             echo
-            echo "❌ ❌ ❌ VERIFICATION FAILED ❌ ❌ ❌"
+            echo "❌ VERIFICATION FAILED"
             echo "The test suite PASSED. This is unexpected for the fixed version and may indicate the bug is still present."
         else
             echo
-            echo "✅ ✅ ✅ VERIFICATION SUCCESSFUL ✅ ✅ ✅"
+            echo "✅ VERIFICATION SUCCESSFUL"
             echo "The test suite FAILED as expected for the fixed version, because the 'bindTools' error was no longer thrown."
         fi
         ;;

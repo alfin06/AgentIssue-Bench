@@ -18,7 +18,8 @@ WORKDIR /opt/test-env
 # Copy test configuration, test script, and the entrypoint script
 COPY ./package.json ./package-lock.json* ./
 COPY ./jest.config.js ./
-COPY ./repro_script.ts ./
+COPY ./reproduce.ts ./
+COPY ./metadata.json ./
 COPY ./run_test_entrypoint.sh ./
 RUN chmod +x ./run_test_entrypoint.sh
 

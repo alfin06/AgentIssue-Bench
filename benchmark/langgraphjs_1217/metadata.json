@@ -1,9 +1,9 @@
 {
     "issue_github_url": "https://github.com/langchain-ai/langgraphjs/issues/1217",
     "repo_url": "https://github.com/langchain-ai/langgraphjs.git",
-    "buggy_commit": "4acdd4757c8e975d9a84c7f614e2ff2ef17850ad",
-    "fixed_commit": "2ad988f993f134f21aaf1c8a3cdde042fa1010a9",
-    "build_command_example": "docker build --build-arg BUGGY_COMMIT=\"4acdd4757c8e975d9a84c7f614e2ff2ef17850ad\" --build-arg FIXED_COMMIT=\"2ad988f993f134f21aaf1c8a3cdde042fa1010a9\" -t \"alfin06/agentissue-bench:langgraphjs_1217\" -f Dockerfile.benchmark .",
+    "buggy_commit": "f9874455fa310b75e8aaf34456fe567166118617",
+    "fixed_commit": "35455a8acd86aceba5f2ad5761e041a9c89a15cc",
+    "build_command_example": "docker build --build-arg BUGGY_COMMIT=\"f9874455fa310b75e8aaf34456fe567166118617\" --build-arg FIXED_COMMIT=\"35455a8acd86aceba5f2ad5761e041a9c89a15cc\" -t \"alfin06/agentissue-bench:langgraphjs_1217\" -f Dockerfile.benchmark .",
     "run_command_example": "docker run --rm -it \"alfin06/agentissue-bench:langgraphjs_1217\" test_buggy",
     "target_dockerhub_image": "alfin06/agentissue-bench:langgraphjs_1217"
 }

@@ -2,9 +2,9 @@
 export default {
   preset: 'ts-jest/presets/default-esm',
   testEnvironment: 'node',
-  // Explicitly tell Jest to run our repro_script.ts file as a test.
+  // Explicitly tell Jest to run our reproduce.ts file as a test.
   testMatch: [
-    "**/repro_script.ts"
+    "**/reproduce.ts"
   ],
   // Required for handling ESM modules correctly with Jest
   transform: {

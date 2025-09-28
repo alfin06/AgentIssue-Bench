@@ -1,0 +1,11 @@
+{
+    "issue_github_url": "https://github.com/camel-ai/camel/issues/88",
+    "repo_url": "https://github.com/camel-ai/camel.git",
+    "buggy_commit": "ba3ec7603ebc735600e32379df235e627c4141c8",
+    "fixed_commit": "52938a71cc2bf4df03c49ad1a8ef80a46382b5e3",
+    "build_command_example": "docker build --build-arg BUGGY_COMMIT=ba3ec7603ebc735600e32379df235e627c4141c8 --build-arg FIXED_COMMIT=52938a71cc2bf4df03c49ad1a8ef80a46382b5e3 -t alfin06/agentissue-bench:camel_88 -f Dockerfile.benchmark .",
+    "run_command_example": "docker run --rm -it -e OPENAI_API_KEY='your-key' alfin06/agentissue-bench:camel_88 test_buggy",
+    "target_dockerhub_image": "alfin06/agentissue-bench:camel_88",
+    "title": "Fix hard coded `self.update_messages(output_messages[0])`",
+    "description": "https://github.com/lightaime/camel/blob/ba3ec7603ebc735600e32379df235e627c4141c8/camel/agents/chat_agent.py#L93"
+}

@@ -1,0 +1,11 @@
+{
+    "issue_github_url": "https://github.com/camel-ai/camel/issues/1614",
+    "repo_url": "https://github.com/camel-ai/camel.git",
+    "buggy_commit": "5d1296ca5f892274fd970807b46dfdb8cfbebb5d",
+    "fixed_commit": "0e849571b20377354fcf8b96513ca72dd3783825",
+    "build_command_example": "docker build --build-arg BUGGY_COMMIT=5d1296ca5f892274fd970807b46dfdb8cfbebb5d --build-arg FIXED_COMMIT=0e849571b20377354fcf8b96513ca72dd3783825 -t alfin06/agentissue-bench:camel_1614 -f Dockerfile.benchmark .",
+    "run_command_example": "docker run --rm -it -e OPENAI_API_KEY='your-key' alfin06/agentissue-bench:camel_1614 test_buggy",
+    "target_dockerhub_image": "alfin06/agentissue-bench:camel_1614",
+    "title": "[BUG] Remove <think> in request to model",
+    "description": "### Required prerequisites\n\n- [x] I have read the documentation <https://camel-ai.github.io/camel/camel.html>.\n- [x] I have searched the [Issue Tracker](https://github.com/camel-ai/camel/issues) and [Discussions](https://github.com/camel-ai/camel/discussions) that this hasn't already been reported. (+1 or comment there if it has.)\n- [ ] Consider asking first in a [Discussion](https://github.com/camel-ai/camel/discussions/new).\n\n### What version of camel are you using?\n\n0.2.21\n\n### System information\n\n/\n\n### Problem description\n\nfor various model platforms support deepseek r1, we need to remove the <think> content in request to model \n\n### Reproducible example code\n\nThe Python snippets:\n\n```python\n\n```\n\nCommand lines:\n\n```bash\n\n```\n\nExtra dependencies:\n\n```text\n\n```\n\nSteps to reproduce:\n\n1.\n2.\n3.\n\n\n### Traceback\n\n```pytb\n\n```\n\n### Expected behavior\n\n_No response_\n\n### Additional context\n\n_No response_"
+}

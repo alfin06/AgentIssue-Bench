@@ -20,7 +20,7 @@ test_version() {
     cd "$source_dir"
     git fetch --depth 1 origin "$commit_hash"
     git checkout "$commit_hash"
-    
+
     # Create a modified setup.py or requirements.txt to skip problematic dependencies
     echo "Creating modified requirements to skip llama-cpp-python..."
     
@@ -40,6 +40,7 @@ test_version() {
     
 
     pip install 'camel-ai[web_tools]'
+    
     python -m pip install --upgrade pip && pip install --editable .
     
     # Install only required dependencies
@@ -54,6 +55,9 @@ test_version() {
   # Execute the Python test script with the version parameter
   if [ -f "${REPRO_SCRIPT_PY}" ]; then
     echo "Running reproduction script for $version version..."
+    cd "$source_dir"
+    pip install requests_oauthlib pandas
+    
     python "${REPRO_SCRIPT_PY}" "$version"
     local exit_code=$?
     

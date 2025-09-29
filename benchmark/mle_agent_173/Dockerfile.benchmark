@@ -1,41 +1,59 @@
-# Benchmark Dockerfile for issue: https://github.com/MLSysOps/MLE-agent/issues/173
-#
-# This Dockerfile creates a reproducible Python environment to test the bug.
-
-# Use a Python 3.11 base image as specified in the bug report's stack trace
+# Use the Python version specified in the bug report
 FROM python:3.11-slim
 
-# Install git, which is required by the entrypoint script to checkout different commits
-RUN apt-get update && apt-get install -y git --no-install-recommends && rm -rf /var/lib/apt/lists/*
+# Install git with a retry loop for robustness
+RUN apt-get update && \
+    SUCCESS=false && \
+    for i in 1 2 3; do \
+        if apt-get install -y --no-install-recommends git patch; then \
+            SUCCESS=true; \
+            break; \
+        fi; \
+        echo "apt-get install failed. Retrying in 5 seconds..." >&2; \
+        sleep 5; \
+    done; \
+    if [ "$SUCCESS" = "false" ]; then \
+        echo "Failed to install packages after multiple retries." >&2; \
+        exit 1; \
+    fi && \
+    rm -rf /var/lib/apt/lists/*
 
-# Arguments that will be passed during the 'docker build' command
+# Set arguments for commit hashes that will be passed during the build
 ARG BUGGY_COMMIT
 ARG FIXED_COMMIT
-
-# Set them as environment variables to be accessible by the entrypoint script
 ENV BUGGY_COMMIT=${BUGGY_COMMIT}
 ENV FIXED_COMMIT=${FIXED_COMMIT}
 
-# Set the main working directory for the project
-WORKDIR /app
+# Clone the buggy version of the repository
+# <<< Note: Replace with the correct repository URL for the new issue >>>
+WORKDIR /app/source_code_buggy
+RUN git clone https://github.com//MLSysOps/MLE-agent.git . && \
+    git checkout ${BUGGY_COMMIT}
 
-# Copy the local source code repository into the image's working directory.
-COPY ./source_code_buggy .
+# Clone the fixed version of the repository
+# <<< Note: Replace with the correct repository URL for the new issue >>>
+WORKDIR /app/source_code_fixed
+RUN git clone https://github.com//MLSysOps/MLE-agent.git . && \
+    git checkout ${FIXED_COMMIT}
 
-# Copy the failure-triggering test script and the entrypoint script into the image
-COPY ./repro_script.py /opt/repro_script.py
-COPY ./run_test_entrypoint.sh /usr/local/bin/run_test_entrypoint.sh
-RUN chmod +x /usr/local/bin/run_test_entrypoint.sh
-
-# Install the project dependencies using pip and the requirements.txt file.
+# Install dependencies for the buggy version from its source
+WORKDIR /app/source_code_buggy
+# This command assumes the project has a setup.py or pyproject.toml
 RUN pip install -r requirements.txt
 
 # This is a key step: Install the MLE-agent package itself from the source code.
 # This makes it available as a standard library for the test script to import.
 RUN pip install .
 
-# Set the entrypoint to our custom script
-ENTRYPOINT ["/usr/local/bin/run_test_entrypoint.sh"]
+# Copy test scripts and metadata into standard locations
+COPY reproduce.py /opt/reproduce.py
+COPY run_test_entrypoint.sh /usr/local/bin/run_test_entrypoint.sh
+COPY metadata.json /opt/metadata.json
+RUN chmod +x /usr/local/bin/run_test_entrypoint.sh
 
-# Default command to run if none is provided is 'help'
+# Set the default working directory for when the container starts
+WORKDIR /app/source_code_buggy
+
+# Set the entrypoint for the container
+ENTRYPOINT ["/usr/local/bin/run_test_entrypoint.sh"]
 CMD ["help"]

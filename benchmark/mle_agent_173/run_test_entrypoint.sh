@@ -1,72 +1,133 @@
 #!/bin/bash
-set -ex
+set -eo pipefail
 
-# The code repository is located at /app
-CODE_DIR="/app"
-# The test script is at /opt/repro_script.py
-REPRO_SCRIPT_PATH="/opt/repro_script.py"
+REPRODUCE_PY="/opt/reproduce.py"
+METADATA_FILE="/opt/metadata.json"
 
-# This function runs the test.
+# Load commit hashes from the metadata file
+if [ -f "$METADATA_FILE" ]; then
+    export BUGGY_COMMIT=$(python -c "import json; print(json.load(open('$METADATA_FILE'))['buggy_commit'])")
+    export FIXED_COMMIT=$(python -c "import json; print(json.load(open('$METADATA_FILE'))['fixed_commit'])")
+else
+    echo "FATAL: metadata.json not found!"
+    exit 1
+fi
+
 run_test() {
-    echo "--- Running Test ---"
-    
-    # This is the key fix: Move to a neutral directory before running the test.
-    # This ensures Python uses the globally installed 'mle' package from site-packages
-    # instead of the local source files in /app, which resolves the import error.
-    cd /
-    
-    # Execute the script using the system's python.
-    python "${REPRO_SCRIPT_PATH}"
+    local version=$1
+    echo "--- Running Test for ${version} version ---"
+
+    local CODE_DIR
+    if [ "$version" == "buggy" ] || [ "$version" == "patched" ]; then
+        CODE_DIR="/app/source_code_buggy"
+        export PYTHONPATH="${CODE_DIR}:${PYTHONPATH}"
+        cd "${CODE_DIR}"
+    else
+        CODE_DIR="/app/source_code_fixed"
+        cd "${CODE_DIR}"
+        # Re-install the package for the fixed version to ensure all changes are applied
+        echo "Installing fixed version dependencies..."
+        pip install -e . > /dev/null
+        export PYTHONPATH="${CODE_DIR}:${PYTHONPATH}"
+    fi
+
+    if [ -f "${REPRODUCE_PY}" ]; then
+        echo "Executing reproduction script: python ${REPRODUCE_PY} $version"
+        # The python script returns 0 for a successful test run and 1 for a failure.
+        python "${REPRODUCE_PY}" "$version"
+        local exit_code=$?
+
+        # Interpret the exit code in the context of the test being run.
+        if [ $exit_code -eq 0 ]; then
+            if [ "$version" == "buggy" ]; then
+                echo "✅ BUG SUCCESSFULLY REPRODUCED: The script behaved as expected for the buggy version."
+            else # fixed or patched
+                echo "✅ FIX CONFIRMED / PATCH SUCCEEDED: The script behaved as expected for the fixed version."
+            fi
+            return 0
+        else
+            if [ "$version" == "buggy" ]; then
+                echo "❌ BUG NOT REPRODUCED: The script did not behave as expected for the buggy version."
+            else # fixed or patched
+                echo "❌ FIX NOT CONFIRMED / PATCH FAILED: The script did not behave as expected for the fixed version."
+            fi
+            return 1
+        fi
+    else
+        echo "--- FATAL ERROR: Reproduction script not found at ${REPRODUCE_PY}! ---"
+        exit 127
+    fi
 }
 
-# Main control flow
+apply_patch() {
+    local patch_file=$1
+    if [ ! -f "$patch_file" ]; then
+        echo "Error: Patch file not found at $patch_file"
+        exit 1
+    fi
+    echo "Applying patch to buggy version..."
+    local source_dir="/app/source_code_buggy"
+    cd "${source_dir}"
+    patch -p1 < "$patch_file"
+    if [ $? -eq 0 ]; then
+        echo "✅ Patch applied successfully. Re-installing dependencies..."
+        pip install -e .
+    else
+        echo "❌ Failed to apply patch."
+        exit 1
+    fi
+}
+
 case "$1" in
     test_buggy)
         echo "=== Testing BUGGY Version (Commit: ${BUGGY_COMMIT}) ==="
-        cd "${CODE_DIR}"
-        git -c advice.detachedHead=false checkout "${BUGGY_COMMIT}" --force
-        
-        # Re-install dependencies and the project itself in case they changed between commits
-        pip install -r requirements.txt
-        pip install .
-        
-        # In the buggy version, we EXPECT the test to pass (exit code 0),
-        # which means the JSONDecodeError was successfully caught.
-        if run_test; then
-            echo
-            echo "✅ REPRODUCTION SUCCESSFUL"
-            echo "The bug was reproduced, which correctly indicates that the expected JSONDecodeError was caught."
-        else
-            echo
-            echo "❌ REPRODUCTION FAILED"
-            echo "The bug was not reproduced. This means the bug was not triggered as expected."
-        fi
+        run_test "buggy"
         ;;
     test_fixed)
-        if [ -z "${FIXED_COMMIT}" ]; then
-            echo "ERROR: FIXED_COMMIT not set." >&2; exit 1;
-        fi
         echo "=== Testing FIXED Version (Commit: ${FIXED_COMMIT}) ==="
-        cd "${CODE_DIR}"
-        git -c advice.detachedHead=false checkout "${FIXED_COMMIT}" --force
-        
-        # Re-install dependencies and the project itself
-        pip install -r requirements.txt
-        pip install .
-        
-        # In the fixed version, we EXPECT the test to fail (exit code 1),
-        # because the JSONDecodeError will no longer be raised.
-        if run_test; then
-            echo
-            echo "❌ VERIFICATION FAILED"
-            echo "The test suite PASSED. This is unexpected for the fixed version and may indicate the bug is still present."
-        else
-            echo
-            echo "✅ VERIFICATION SUCCESSFUL"
-            echo "The test suite FAILED as expected for the fixed version, because the JSONDecodeError was no longer thrown."
-        fi
+        run_test "fixed"
         ;;
-    *)
-        echo "Usage: docker run <image_name> [test_buggy|test_fixed]"
+    apply_patch)
+        if [ -z "$2" ]; then
+            echo "Usage: docker run -v \$(pwd):/patches IMAGE apply_patch /patches/my_patch.patch"
+            exit 1
+        fi
+        apply_patch "$2"
+        ;;
+    test_patched)
+        echo "=== Testing PATCHED Version (Buggy + Your Patch) ==="
+        run_test "patched"
+        ;;
+    show_diff)
+        echo "=== Diff between BUGGY (${BUGGY_COMMIT}) and FIXED (${FIXED_COMMIT}) ==="
+        cd /app/source_code_buggy
+        git diff "${BUGGY_COMMIT}" "${FIXED_COMMIT}"
+        ;;
+    inspect_buggy)
+        echo "Entering buggy environment (commit: ${BUGGY_COMMIT}). Use 'docker exec' to connect."
+        cd /app/source_code_buggy
+        export PYTHONPATH="/app/source_code_buggy:${PYTHONPATH}"
+        tail -f /dev/null
+        ;;
+    bash)
+        echo "Entering bash shell. Buggy code at /app/source_code_buggy, Fixed at /app/source_code_fixed"
+        /bin/bash
+        ;;
+    help|*)
+        echo "Usage: docker run [OPTIONS] IMAGE [COMMAND]"
+        echo ""
+        echo "Commands:"
+        echo "  test_buggy       Test if the bug exists in the buggy version"
+        echo "  test_fixed       Test if the fix works in the fixed version"
+        echo "  apply_patch      Apply a patch file to the buggy version"
+        echo "  test_patched     Test the buggy version with your applied patch"
+        echo "  show_diff        Show the git diff between buggy and fixed versions"
+        echo "  inspect_buggy    Keep container running for inspection of the buggy version"
+        echo "  bash             Start a bash shell"
+        echo "  help             Show this help message"
+        echo ""
+        if [ "$1" != "help" ] && [ ! -z "$1" ]; then exit 1; fi
         ;;
 esac
+
+exit $?

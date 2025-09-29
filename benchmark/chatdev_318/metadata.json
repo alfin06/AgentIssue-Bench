@@ -1,0 +1,11 @@
+{
+    "issue_github_url": "https://github.com/OpenBMB/ChatDev/issues/318",
+    "repo_url": "https://github.com/OpenBMB/ChatDev.git",
+    "buggy_commit": "94a723fa121bc444af86463ccba319170d688059",
+    "fixed_commit": "ec536d5",
+    "build_command_example": "docker build --build-arg BUGGY_COMMIT=94a723fa121bc444af86463ccba319170d688059 --build-arg FIXED_COMMIT=ec536d5 -t alfin06/agentissue-bench:chatdev_318 -f Dockerfile.benchmark .",
+    "run_command_example": "docker run --rm -it -e OPENAI_API_KEY='your-key' alfin06/agentissue-bench:chatdev_318 test_buggy",
+    "target_dockerhub_image": "alfin06/agentissue-bench:chatdev_318",
+    "title": "KeyError: 'web_spider'    when trying to run run.py",
+    "description": "I get this when I run run.py\r\n\r\nI've reinstalled all the modules, used conda, nothing is helping.\r\n```\r\nTraceback (most recent call last):\r\n  File \"/Users/djbritt/Downloads/ai/gamedev/update_12.31.23/ChatDev/run.py\", line 102, in <module>\r\n    chat_chain = ChatChain(config_path=config_path,\r\n  File \"/Users/djbritt/Downloads/ai/gamedev/update_12.31.23/ChatDev/chatdev/chat_chain.py\", line 66, in __init__\r\n    self.web_spider = self.config[\"web_spider\"]\r\nKeyError: 'web_spider'\r\n```"
+}

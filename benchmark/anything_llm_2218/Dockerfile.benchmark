@@ -1,26 +1,56 @@
-FROM python:3.11-bookworm
+# Use a modern, slim Node.js base image suitable for the project
+FROM node:20-slim
 
-# Install git, which is required by the entrypoint script
-RUN apt-get update && apt-get install -y --no-install-recommends git && rm -rf /var/lib/apt/lists/*
+# Install git with a retry loop for robustness
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends ca-certificates && \
+    SUCCESS=false && \
+    for i in 1 2 3; do \
+        if apt-get install -y --no-install-recommends git; then \
+            SUCCESS=true; \
+            break; \
+        fi; \
+        echo "apt-get install failed. Retrying in 5 seconds..." >&2; \
+        sleep 5; \
+    done; \
+    if [ "$SUCCESS" = "false" ]; then \
+        echo "Failed to install packages after multiple retries." >&2; \
+        exit 1; \
+    fi && \
+    rm -rf /var/lib/apt/lists/*
 
-# Set arguments that will be passed during the build
-ARG BUGGY_COMMIT FIXED_COMMIT
-ENV BUGGY_COMMIT=${BUGGY_COMMIT} FIXED_COMMIT=${FIXED_COMMIT}
+# Set arguments for commit hashes that will be passed during the build
+ARG BUGGY_COMMIT
+ARG FIXED_COMMIT
+ENV BUGGY_COMMIT=${BUGGY_COMMIT}
+ENV FIXED_COMMIT=${FIXED_COMMIT}
 
-# Copy the scripts into the container
-COPY repro_script.py /opt/repro_script.py
+# Clone the buggy version of the repository
+WORKDIR /app/source_code_buggy
+RUN git clone https://github.com/Mintplex-Labs/anything-llm.git . && \
+    git checkout ${BUGGY_COMMIT}
+
+# Clone the fixed version of the repository
+WORKDIR /app/source_code_fixed
+RUN git clone https://github.com/Mintplex-Labs/anything-llm.git . && \
+    git checkout ${FIXED_COMMIT}
+
+# Install dependencies for the buggy version.
+# This project uses npm workspaces, so a single install in the root is sufficient.
+WORKDIR /app/source_code_buggy
+RUN npm install
+
+# Install tools needed for the reproduction script: a TypeScript runner and an OpenAPI validator.
+RUN npm install tsx @redocly/cli
+
+# Copy test scripts and metadata into standard locations
+COPY reproduce.ts /opt/reproduce.ts
 COPY run_test_entrypoint.sh /usr/local/bin/run_test_entrypoint.sh
+COPY metadata.json /opt/metadata.json
 RUN chmod +x /usr/local/bin/run_test_entrypoint.sh
 
-# Copy the source code of the agent into the container
-COPY ./source_code_buggy /app/source_code_buggy
+# Set the default working directory for when the container starts
 WORKDIR /app/source_code_buggy
-
-# --- ADDED SECTION ---
-# Install the necessary library for OpenAPI spec validation.
-# Note: We don't need to install the project itself (`pip install -e .`)
-# because we are only validating a static JSON file.
-RUN pip install --no-cache-dir "openapi-spec-validator<5" "jsonschema<5"
 
 # Set the entrypoint for the container
 ENTRYPOINT ["/usr/local/bin/run_test_entrypoint.sh"]

@@ -2,14 +2,18 @@
 set -eo pipefail
 
 # Define paths for test script
-REPRO_SCRIPT_PY="/opt/reproduce.py"
+reproduce_PY="/opt/reproduce.py"
 
 run_test() {
     local version=$1
     echo "--- Running Test for ${version} version ---"
     
-    # Install setuptools for pkg_resources
-    pip install setuptools
+    # Check if OpenAI API key is provided
+    if [ -z "${OPENAI_API_KEY}" ]; then
+        echo "ERROR: OPENAI_API_KEY environment variable must be set"
+        echo "Usage: docker run --rm -it -e OPENAI_API_KEY=\"sk-your-key\" <image_name> test_buggy|test_fixed|test_patched"
+        return 1
+    fi
     
     if [ "$version" == "buggy" ] || [ "$version" == "patched" ]; then
         CODE_DIR="/app/source_code_buggy"
@@ -25,37 +29,37 @@ run_test() {
     cd "${CODE_DIR}"
     
     # Execute the Python test script with the version parameter
-    if [ -f "${REPRO_SCRIPT_PY}" ]; then
+    if [ -f "${reproduce_PY}" ]; then
         echo "Found reproduce.py. Executing with python..."
-        python "${REPRO_SCRIPT_PY}" "$version"
+        python "${reproduce_PY}" "$version"
         local exit_code=$?
         
         if [ $exit_code -eq 0 ]; then
             if [ "$version" == "buggy" ]; then
-                echo "✅ BUG SUCCESSFULLY REPRODUCED: Flow @listen with and_() does not execute"
+                echo "✅ BUG SUCCESSFULLY REPRODUCED: 'stop' parameter error"
                 return 0
             elif [ "$version" == "patched" ]; then
-                echo "✅ PATCH SUCCEEDED: Flow @listen with and_() now executes correctly with your patch"
+                echo "✅ PATCH SUCCEEDED: working correctly with your patch"
                 return 0
             else
-                echo "✅ FIX CONFIRMED: Flow @listen with and_() executes correctly"
+                echo "✅ FIX CONFIRMED: working correctly without 'stop' parameter error"
                 return 0
             fi
         else
             if [ "$version" == "buggy" ]; then
-                echo "❌ BUG NOT REPRODUCED: Flow @listen with and_() executes correctly"
+                echo "❌ BUG NOT REPRODUCED: worked correctly (unexpected)"
                 return 1
             elif [ "$version" == "patched" ]; then
-                echo "❌ PATCH FAILED: Flow @listen with and_() still doesn't execute with your patch"
+                echo "❌ PATCH FAILED: still failing with 'stop' parameter error"
                 return 1
             else
-                echo "❌ FIX NOT CONFIRMED: Flow @listen with and_() still doesn't execute"
+                echo "❌ FIX NOT CONFIRMED: still failing with 'stop' parameter error"
                 return 1
             fi
         fi
     else
         echo "--- FATAL ERROR: No reproduction script found! ---"
-        echo "Looked for ${REPRO_SCRIPT_PY}"
+        echo "Looked for ${reproduce_PY}"
         exit 127
     fi
 }
@@ -85,7 +89,7 @@ apply_patch() {
         echo "Reinstalling the patched package..."
         pip install -e .
         
-        echo "You can now test your patched version with: docker run ... test_patched"
+        echo "You can now test your patched version with: docker run -e OPENAI_API_KEY=\"sk-your-key\" ... test_patched"
     else
         echo "❌ Failed to apply patch"
         exit 1
@@ -123,7 +127,7 @@ case "$1" in
     show_diff)
         echo "=== Diff between BUGGY (${BUGGY_COMMIT}) and FIXED (${FIXED_COMMIT}) ==="
         cd /app/source_code_buggy
-        git diff "${BUGGY_COMMIT}" "${FIXED_COMMIT}" -- "crewai/flow/"
+        git diff "${BUGGY_COMMIT}" "${FIXED_COMMIT}"
         ;;
     inspect_buggy)
         echo "Entering buggy environment (commit: ${BUGGY_COMMIT})..."
@@ -149,6 +153,9 @@ case "$1" in
         echo "  inspect_buggy   Keep container running for inspection of the buggy version"
         echo "  bash            Start a bash shell"
         echo "  help            Show this help message"
+        echo ""
+        echo "Note: OPENAI_API_KEY environment variable must be set for testing"
+        echo "Example: docker run --rm -it -e OPENAI_API_KEY=\"sk-your-key\" IMAGE test_buggy"
         if [ "$1" != "help" ] && [ ! -z "$1" ]; then exit 1; fi
         ;;
 esac

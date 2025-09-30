@@ -1,7 +1,6 @@
 import os
 import sys
 import tempfile
-from pathlib import Path
 
 def run_test(version):
     print(f"\n--- Testing CrewAI Issue #1463 - Flow @listen with _and error ---")
@@ -57,14 +56,32 @@ print(f"_router_paths {flow._router_paths}")
 
 # Run the flow
 async def main():
-    result = await flow.kickoff()
+    result = await flow.kickoff_async()
     return result
 
-try:
-    asyncio.run(main())
-except Exception as e:
-    print(f"Error running flow: {e}")
-    
+def run_async():
+    import asyncio
+    try:
+        asyncio.run(main())
+    except RuntimeError as e:
+        if "asyncio.run() cannot be called from a running event loop" in str(e) or \
+           "no current event loop" in str(e) or \
+           "There is no current event loop" in str(e):
+            try:
+                loop = asyncio.get_event_loop()
+            except RuntimeError:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+            loop.run_until_complete(main())
+        else:
+            print(f"Error running flow: {e}")
+            sys.exit(1)
+    except Exception as e:
+        print(f"Error running flow: {e}")
+        sys.exit(1)
+
+run_async()
+
 # In buggy version, we expect steps 4_1 and 4_2 to NOT be executed
 # Check the output to see if STEP_4_1_EXECUTED and STEP_4_2_EXECUTED exist
 # Since we're in the buggy version, not seeing these strings means success
@@ -73,12 +90,10 @@ sys.exit(1)  # Exit with error code for buggy version (bug reproduced)
     else:
         # For fixed version, use a simpler approach that's more like the actual issue
         test_script = """
-import asyncio
 import sys
 
 from crewai.flow.flow import Flow, and_, listen, start
 
-# Flag to track execution
 step_4_1_attempted = False
 step_4_2_attempted = False
 
@@ -112,7 +127,6 @@ class DummyFlow(Flow):
         print("STEP_4_1_EXECUTED")
         return "output from step_4_1"
 
-    # THIS MATCHES THE ORIGINAL ISSUE - no arguments defined
     @listen(and_("step_1_1", "step_3"))
     def step_4_2(self):
         global step_4_2_attempted
@@ -123,99 +137,98 @@ class DummyFlow(Flow):
 
 print("Running flow in fixed version...")
 
-# Monkey patch Flow's error handling to detect attempted executions
+import asyncio
+
 original_execute_single_listener = Flow._execute_single_listener
 
-async def patched_execute_single_listener(self, method_name):
+async def patched_execute_single_listener(self, method_name, *args, **kwargs):
     try:
-        return await original_execute_single_listener(self, method_name)
+        return await original_execute_single_listener(self, method_name, *args, **kwargs)
     except Exception as e:
-        # Instead of silent failure, we'll print and continue
-        print(f"Error in {{method_name}}: {{e}}")
-        # If this was one of our target methods, we'll still count it as attempted
+        print(f"Error in {method_name}: {e}")
+        global step_4_1_attempted, step_4_2_attempted
         if method_name == "step_4_1":
-            global step_4_1_attempted
             step_4_1_attempted = True
         elif method_name == "step_4_2":
-            global step_4_2_attempted  
             step_4_2_attempted = True
         return None
 
-# Apply the patch
 Flow._execute_single_listener = patched_execute_single_listener
 
 async def main():
     flow = DummyFlow()
-    await flow.kickoff()
-    
-    # Check if both steps were at least attempted
-    print(f"\\nStep 4_1 execution attempted: {{step_4_1_attempted}}")
-    print(f"Step 4_2 execution attempted: {{step_4_2_attempted}}")
-    
+    await flow.kickoff_async()
+    print(f"\\nStep 4_1 execution attempted: {step_4_1_attempted}")
+    print(f"Step 4_2 execution attempted: {step_4_2_attempted}")
     if step_4_1_attempted and step_4_2_attempted:
         print("SUCCESS: Both step_4_1 and step_4_2 execution was attempted!")
         print("Even though they failed due to argument mismatch, the flow now correctly triggers AND listeners")
-        sys.exit(0)  # Success - the bug is fixed (steps are attempted even if they fail due to args)
+        sys.exit(0)
     else:
         print("FAILURE: AND listeners were not triggered at all")
-        sys.exit(1)  # Failure - steps weren't even attempted
+        sys.exit(1)
 
-# Run the main function
-try:
-    asyncio.run(main())
-except Exception as e:
-    print(f"Error running main: {{e}}")
-    sys.exit(1)
+def run_async():
+    try:
+        asyncio.run(main())
+    except RuntimeError as e:
+        if "asyncio.run() cannot be called from a running event loop" in str(e) or \
+           "no current event loop" in str(e) or \
+           "There is no current event loop" in str(e):
+            try:
+                loop = asyncio.get_event_loop()
+            except RuntimeError:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+            loop.run_until_complete(main())
+        else:
+            print(f"Error running main: {e}")
+            sys.exit(1)
+    except Exception as e:
+        print(f"Error running main: {e}")
+        sys.exit(1)
+
+run_async()
 """
-    
+
     # Create a temporary file with the reproduction script
     fd, path = tempfile.mkstemp(suffix='.py')
-    
     try:
         with os.fdopen(fd, 'w') as f:
             f.write(test_script)
-        
-        # Run the reproduction script
         print("\nRunning the reproduction script...")
         result = os.system(f"python {path}")
-        
         # Check the result (0 means success, non-zero means failure)
         if version == "buggy":
-            # For buggy version, we expect non-zero exit code (steps didn't execute)
             if result != 0:
-                print("\n❌ BUG: and_() functions in @listen didn't execute as expected")
-                return 0  # Success for buggy version - bug reproduced
+                print("\n✅  BUG: and_() functions in @listen didn't execute as expected")
+                return 0
             else:
-                print("\n✅ NO BUG: and_() functions in @listen executed correctly (unexpected)")
-                return 1  # Failure for buggy version - bug not reproduced
+                print("\n❌ NO BUG: and_() functions in @listen executed correctly (unexpected)")
+                return 1
         else:
-            # For fixed version, we expect exit code 0 (steps executed)
             if result == 0:
                 print("\n✅ FIX CONFIRMED: and_() functions in @listen now execute correctly")
-                return 0  # Success for fixed version - bug fixed
+                return 0
             else:
                 print("\n❌ FIX NOT CONFIRMED: and_() functions in @listen still don't execute correctly")
-                return 1  # Failure for fixed version - bug still present
-        
+                return 1
     except Exception as e:
         print(f"\nError during test: {e}")
-        return 2  # Error during testing
+        return 2
     finally:
-        # Clean up
         try:
             os.unlink(path)
-        except:
+        except Exception:
             pass
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("Usage: python repro_script.py [buggy|fixed]")
+        print("Usage: python reproduce.py [buggy|fixed]")
         sys.exit(2)
-    
     version = sys.argv[1]
     if version not in ["buggy", "fixed"]:
         print(f"Invalid version: {version}")
         sys.exit(2)
-    
     exit_code = run_test(version)
     sys.exit(exit_code)

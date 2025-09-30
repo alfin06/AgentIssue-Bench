@@ -102,7 +102,7 @@ def check_chain_validation(version):
     
     if version == "buggy":
         if not validation_found:
-            print("\nBUG CONFIRMED: No validation for empty chain name in buggy version")
+            print("\n✅ BUG REPRODUCED: No validation for empty chain name in buggy version")
             print("This allows empty chain names to be created, causing validation errors later.")
             return 1  # Confirm bug exists
         else:
@@ -111,7 +111,7 @@ def check_chain_validation(version):
             return 0
     else:  # fixed version
         if validation_found:
-            print("\nFIX CONFIRMED: Found validation for empty chain name in fixed version")
+            print("\n✅ FIX CONFIRMED: Found validation for empty chain name in fixed version")
             print("The code now properly validates that chain names are not empty.")
             return 0  # Confirm fix works
         else:
@@ -291,7 +291,7 @@ def check_differences():
                         validation_changes = True
                 
                 if chain_name_changes and validation_changes:
-                    print("\nFOUND FIX: Changes related to chain_name validation were added")
+                    print("\n✅ FOUND FIX: Changes related to chain_name validation were added")
                     return True
                 elif chain_name_changes:
                     print("\nPossible fix found: Changes to chain_name handling were added")
@@ -319,14 +319,14 @@ if __name__ == "__main__":
     print("\n=== Test Summary ===")
     if exit_code == 1:
         if version == "buggy":
-            print("✓ Bug successfully reproduced: Empty chain names are accepted")
+            print("✅ Bug successfully reproduced: Empty chain names are accepted")
         else:
-            print("✗ Fix verification failed: Empty chain names are still accepted")
+            print("❌ Fix verification failed: Empty chain names are still accepted")
     elif exit_code == 0:
         if version == "buggy":
-            print("✗ Bug not reproduced: Chain names appear to be validated")
+            print("❌ Bug not reproduced: Chain names appear to be validated")
         else:
-            print("✓ Fix successfully verified: Empty chain names are now rejected")
+            print("✅ Fix successfully verified: Empty chain names are now rejected")
     else:
         print("! Test inconclusive: Could not determine validation status")
         

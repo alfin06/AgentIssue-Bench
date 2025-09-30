@@ -1,54 +1,36 @@
-# Use a modern, slim Node.js base image
-FROM node:18.20.5-bullseye-slim
+# Use a modern, slim Node.js LTS base image
+FROM node:20-slim
 
-# --- SETUP SECTION ---
-# 1. Install git for checking out commits and pnpm for building the project.
-RUN apt-get update && apt-get install -y --no-install-recommends git && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && apt-get install -y --no-install-recommends git && rm -rf /var/lib/apt/lists/*
 RUN npm install -g pnpm
 
-# 2. Set arguments that will be passed during the build
 ARG BUGGY_COMMIT FIXED_COMMIT
 ENV BUGGY_COMMIT=${BUGGY_COMMIT} FIXED_COMMIT=${FIXED_COMMIT}
 
-# 3. Copy the local source code into the container
-COPY ./source_code_buggy /app/source_code_buggy
+RUN git clone https://github.com/mastra-ai/mastra.git /app/source_code
 
-# 4. Set the working directory to the root of the source code
-WORKDIR /app/source_code_buggy
+WORKDIR /app/source_code
 
-# 5. Install project dependencies and build the packages from source.
+RUN git checkout ${BUGGY_COMMIT}
+
 RUN pnpm install
-
-# 6. --- CORRECTED SECTION ---
-#    Increase the memory available to Node.js to prevent "out of memory" errors
-#    during the compilation of large packages.
 ENV NODE_OPTIONS="--max-old-space-size=4096"
 RUN pnpm build
 
-# --- TEST SCRIPT SETUP ---
-# 7. Copy the test scripts into a separate, fixed location
-COPY repro_script.js /opt/repro_script.js
+COPY reproduce.js /opt/reproduce.js
 COPY run_test_entrypoint.sh /usr/local/bin/run_test_entrypoint.sh
 RUN chmod +x /usr/local/bin/run_test_entrypoint.sh
 
-# 8. Set the working directory for the test script's dependencies
 WORKDIR /opt
 
-# 9. Create a package.json to enable ES Module support
 RUN echo '{"type": "module"}' > /opt/package.json
 
-# 10. Install the dependencies for our test script.
-#     This links the test script to the locally built Mastra packages.
-RUN npm install zod ai /app/source_code_buggy/packages/core /app/source_code_buggy/packages/memory
+RUN npm install /app/source_code/packages/core /app/source_code/packages/memory
 
-# 11. Unset NODE_OPTIONS so it doesn't affect the test run itself.
 ENV NODE_OPTIONS=""
 ENV NODE_PATH="/opt/node_modules"
 
-# Set the final working directory back to the source code for the test run.
-RUN mkdir -p /app/source_code_buggy
-WORKDIR /app/source_code_buggy
+WORKDIR /app/source_code
 
-# Set the entrypoint for the container
 ENTRYPOINT ["/usr/local/bin/run_test_entrypoint.sh"]
 CMD ["help"]

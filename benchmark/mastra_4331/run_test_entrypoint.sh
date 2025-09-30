@@ -1,19 +1,10 @@
 #!/bin/bash
 set -eo pipefail
 
-# This script is the universal test runner for a benchmark image.
-# It intelligently runs a .sh, .py, or .js test script.
-
-CODE_DIR="/app/source_code_buggy"
-PYTHON_CMD="${PYTHON_CMD:-python}"
+CODE_DIR="/app/source_code"
 NODE_CMD="${NODE_CMD:-node}"
+REPRO_SCRIPT_JS="/opt/reproduce.js"
 
-# Define paths for potential test scripts inside the container
-REPRO_COMMAND_SH="/opt/repro_command.sh"
-REPRO_SCRIPT_PY="/opt/repro_script.py"
-REPRO_SCRIPT_JS="/opt/repro_script.js" # Added path for JS scripts
-
-# Ensure the code directory exists before trying to cd into it
 if [ ! -d "${CODE_DIR}" ]; then
     echo "--- FATAL ERROR: Source code directory ${CODE_DIR} not found! ---"
     exit 1
@@ -23,64 +14,59 @@ cd "${CODE_DIR}"
 
 run_test() {
     echo "--- Running Test ---"
-    
-    # Check for shell, python, or javascript script to run
-    if [ -f "${REPRO_COMMAND_SH}" ]; then
-        echo "Found repro_command.sh. Executing with bash..."
-        chmod +x "${REPRO_COMMAND_SH}"
-        if bash "${REPRO_COMMAND_SH}"; then
+    if [ -f "${REPRO_SCRIPT_JS}" ]; then
+        echo "Found reproduce.js. Executing with node..."
+        if ${NODE_CMD} "${REPRO_SCRIPT_JS}" "$1"; then
             echo "--- Test script executed successfully (exit code 0) ---"
         else
-            echo "--- Test script failed (exit code $?) ---"
-        fi
-    elif [ -f "${REPRO_SCRIPT_PY}" ]; then
-        echo "Found repro_script.py. Executing with python..."
-        if ${PYTHON_CMD} "${REPRO_SCRIPT_PY}"; then
-            echo "--- Test script executed successfully (exit code 0) ---"
-        else
-            echo "--- Test script failed (exit code $?) ---"
-        fi
-    elif [ -f "${REPRO_SCRIPT_JS}" ]; then
-        echo "Found repro_script.js. Executing with node..."
-        if ${NODE_CMD} "${REPRO_SCRIPT_JS}"; then
-            echo "--- Test script executed successfully (exit code 0) ---"
-        else
-            echo "--- Test script failed (exit code $?) ---"
+            echo "--- Test script failed as expected (exit code $?) ---"
         fi
     else
-        echo "--- FATAL ERROR: No reproduction script found! ---"
-        echo "Looked for ${REPRO_COMMAND_SH}, ${REPRO_SCRIPT_PY}, and ${REPRO_SCRIPT_JS}"
+        echo "--- FATAL ERROR: No reproduce.js script found! ---"
         exit 127
     fi
+}
+
+# Function to apply a git patch
+apply_patch() {
+    PATCH_FILE="$1"
+    if [ -z "$PATCH_FILE" ] || [ ! -f "$PATCH_FILE" ]; then
+        echo "ERROR: Patch file not found: $PATCH_FILE" >&2
+        exit 1
+    fi
+    echo "Applying patch to buggy version..."
+    git -c advice.detachedHead=false checkout "${BUGGY_COMMIT}" --force
+    git apply "$PATCH_FILE"
+    echo "Patch applied."
 }
 
 case "$1" in
     test_buggy)
         echo "=== Testing BUGGY Version (Commit: ${BUGGY_COMMIT}) ==="
-        echo "Checking out buggy commit..."
         git -c advice.detachedHead=false checkout "${BUGGY_COMMIT}" --force
-        run_test
+        run_test "$1"
         ;;
     test_fixed)
         if [ -z "${FIXED_COMMIT}" ] || [ "${FIXED_COMMIT}" == "N/A" ]; then
-            echo "ERROR: FIXED_COMMIT not set." >&2; exit 1;
+            echo "ERROR: FIXED_COMMIT not set. Provide it during 'docker build'." >&2; exit 1;
         fi
         echo "=== Testing FIXED Version (Commit: ${FIXED_COMMIT}) ==="
         git -c advice.detachedHead=false checkout "${FIXED_COMMIT}" --force
+        run_test "$1"
+        ;;
+    apply_patch)
+        apply_patch "$2"
+        ;;
+    test_patched)
+        echo "=== Testing PATCHED Version (BUGGY + PATCH) ==="
         run_test
         ;;
     show_diff)
         if [ -z "${FIXED_COMMIT}" ] || [ "${FIXED_COMMIT}" == "N/A" ]; then
-                echo "ERROR: FIXED_COMMIT not set." >&2; exit 1;
+            echo "ERROR: FIXED_COMMIT not set." >&2; exit 1;
         fi
         echo "=== Diff between BUGGY (${BUGGY_COMMIT}) and FIXED (${FIXED_COMMIT}) ==="
         git diff "${BUGGY_COMMIT}" "${FIXED_COMMIT}" --
-        ;;
-    inspect_buggy)
-        echo "Setting up BUGGY environment (commit: ${BUGGY_COMMIT})..."
-        git -c advice.detachedHead=false checkout "${BUGGY_COMMIT}" --force
-        echo "Use 'docker exec -it <container_id> bash' to explore."
-        tail -f /dev/null
         ;;
     bash)
         echo "Entering bash shell. Defaulting to BUGGY commit (${BUGGY_COMMIT})."
@@ -88,7 +74,8 @@ case "$1" in
         /bin/bash
         ;;
     help|*)
-        echo "Usage: docker run <image_name> [test_buggy|test_fixed|show_diff|inspect_buggy|bash|help]"
+        echo "Usage: docker run <image_name> [test_buggy|test_fixed|apply_patch <patchfile>|test_patched|show_diff|bash|help]"
         if [ "$1" != "help" ] && [ ! -z "$1" ]; then exit 1; fi
         ;;
 esac
+

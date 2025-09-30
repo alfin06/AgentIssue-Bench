@@ -1,27 +1,22 @@
-FROM python:3.11-bookworm
+FROM python:3.12-slim
 
-# Install git, which is required by the entrypoint script
-RUN apt-get update && apt-get install -y --no-install-recommends git && rm -rf /var/lib/apt/lists/*
+RUN for i in 1 2 3 4 5; do \
+      apt-get update && \
+      apt-get install -y --no-install-recommends git build-essential --fix-missing && \
+      rm -rf /var/lib/apt/lists/* && break || sleep 5; \
+   done
 
-# Set arguments that will be passed during the build
-ARG BUGGY_COMMIT FIXED_COMMIT
-ENV BUGGY_COMMIT=${BUGGY_COMMIT} FIXED_COMMIT=${FIXED_COMMIT}
+ARG REPO_URL=https://github.com/crewAIInc/crewAI.git
+ARG BUGGY_COMMIT
+ARG FIXED_COMMIT
 
-# Copy the scripts into the container
-COPY repro_script.py /opt/repro_script.py
+WORKDIR /app/source_code
+RUN git clone ${REPO_URL} . 
+
+COPY reproduce.py /opt/reproduce.py
 COPY run_test_entrypoint.sh /usr/local/bin/run_test_entrypoint.sh
+COPY metadata.json /opt/metadata.json
 RUN chmod +x /usr/local/bin/run_test_entrypoint.sh
 
-# Copy the source code of the agent into the container
-COPY ./source_code_buggy /app/source_code_buggy
-WORKDIR /app/source_code_buggy
-
-# --- CORRECTED SECTION ---
-# Install the project's own dependencies first, then the specific ones needed by the test script.
-# This ensures all required libraries are available.
-RUN pip install -e .
-RUN pip install --no-cache-dir crewai-tools pydantic
-
-# Set the entrypoint for the container
 ENTRYPOINT ["/usr/local/bin/run_test_entrypoint.sh"]
 CMD ["help"]

@@ -1,9 +1,9 @@
 {
     "issue_github_url": "https://github.com/crewAIInc/crewAI/issues/2237",
     "repo_url": "https://github.com/crewAIInc/crewAI.git",
-    "buggy_commit": "34d299345677c7ce26b1368f240c559596526fa7",
-    "fixed_commit": "06d922f4529eb53654df4d0b36e9d17b997e2bef",
-    "build_command_example": "docker build --build-arg BUGGY_COMMIT=\"34d299345677c7ce26b1368f240c559596526fa7\" --build-arg FIXED_COMMIT=\"06d922f4529eb53654df4d0b36e9d17b997e2bef\" -t \"alfin06/agent-issue-bench:crewai_2237\" -f Dockerfile.benchmark .",
-    "run_command_example": "docker run --rm -it \"alfin06/agent-issue-bench:crewai_2237\" test_buggy",
+    "buggy_commit": "66c66e3d84fbd319f1d1a3a3bb3963e3aa95159a",
+    "fixed_commit": "3343c1f827587f36e454f4267ba25dfd5e107be9",
+    "build_command_example": "docker build --build-arg BUGGY_COMMIT=\"66c66e3d84fbd319f1d1a3a3bb3963e3aa95159a\" --build-arg FIXED_COMMIT=\"3343c1f827587f36e454f4267ba25dfd5e107be9\" -t \"alfin06/agent-issue-bench:crewai_2237\" -f Dockerfile.benchmark .",
+    "run_command_example": "docker run --rm -it -e OPENAI_API_KEY=key -e OPENAI_API_BASE=key \"alfin06/agent-issue-bench:crewai_2237\" test_buggy",
     "target_dockerhub_image": "alfin06/agent-issue-bench:crewai_2237"
 }

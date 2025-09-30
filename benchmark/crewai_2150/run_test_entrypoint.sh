@@ -1,9 +1,6 @@
 #!/bin/bash
 set -eo pipefail
 
-# This is the standard entrypoint script for Python-based test packages.
-# It correctly handles checking out commits and running the test script.
-
 CODE_DIR="/app/source_code_buggy"
 REPRO_SCRIPT_PY="/opt/reproduce.py"
 
@@ -30,6 +27,7 @@ run_test() {
 # Main execution logic
 case "$1" in
     test_buggy)
+        CODE_DIR="/app/source_code_buggy"
         echo "=== Testing BUGGY Version (Commit: ${BUGGY_COMMIT}) ==="
         cd "${CODE_DIR}"
         git -c advice.detachedHead=false checkout "${BUGGY_COMMIT}" --force
@@ -42,11 +40,12 @@ case "$1" in
             exit 1
         else
             echo "--- Test script FAILED (non-zero exit) as expected. ---"
-            echo "✅ SUCCESS: The bug was reproduced."
+            echo "✅ BUG REPRODUCED: The bug was reproduced. APIStatusError.__init__() found. "
             exit 0
         fi
         ;;
     test_fixed)
+        CODE_DIR="/app/source_code_fixed"
         if [ -z "${FIXED_COMMIT}" ] || [ "${FIXED_COMMIT}" == "N/A" ]; then
             echo "ERROR: FIXED_COMMIT not set." >&2; exit 1;
         fi
@@ -58,7 +57,7 @@ case "$1" in
         # For the fixed version, we expect the test script to PASS (exit 0)
         if run_test "fixed"; then
             echo "--- Test script PASSED (exit 0) as expected. ---"
-            echo "✅ SUCCESS: The fix is confirmed."
+            echo "✅ FIX VERIFIED: The fix is confirmed."
             exit 0
         else
             echo "--- Test script FAILED (non-zero exit), but was expected to PASS. ---"

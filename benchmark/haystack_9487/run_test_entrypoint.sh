@@ -26,6 +26,7 @@ run_test() {
         CODE_DIR="/app/source_code_fixed"
         export PYTHONPATH="${CODE_DIR}:${PYTHONPATH}"
         cd "${CODE_DIR}"
+        git checkout "${FIXED_COMMIT}" --force
     fi
 
     if [ -f "${REPRODUCE_PY}" ]; then

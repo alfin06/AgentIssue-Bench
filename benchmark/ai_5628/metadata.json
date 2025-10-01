@@ -5,5 +5,7 @@
     "fixed_commit": "c68931fb58430de2fd87dbbea9753603b27551a1",
     "build_command_example": "docker build --build-arg BUGGY_COMMIT=\"f0e14b2aecbfaa7a172b4d82f53b3e5a19b5f4f4\" --build-arg FIXED_COMMIT=\"c68931fb58430de2fd87dbbea9753603b27551a1\" -t \"alfin06/agentissue-bench:ai_5628\" -f Dockerfile.benchmark .",
     "run_command_example": "docker run --rm -it \"alfin06/agentissue-bench:ai_5628\" test_buggy",
-    "target_dockerhub_image": "alfin06/agentissue-bench:ai_5628"
+    "target_dockerhub_image": "alfin06/agentissue-bench:ai_5628",
+    "title": "Requests to vertex ai fail if `z.record(z.string())` used in tool schema",
+    "description": "### Description\n\nSee the code example below. When using vertex ai if `z.record(z.string())` is used an error occurs because in the generated open api schema `something` becomes `undefined`\n\n### Code example\n\n```ts\nimport { createVertex } from '@ai-sdk/google-vertex'\nimport { CoreMessage, Tool, generateText, tool, LanguageModelV1 } from 'ai'\n\nconst vertex = createVertex({\n  project: ...,\n  location: ...,\n})\n\nconst gemini2Flash: LanguageModelV1 = vertex.languageModel(\n  'gemini-2.0-flash-001',\n)\n\nawait generateText({\n  model: gemini2Flash,\n  prompt: 'Hi',\n  tools: {\n    test: tool({\n      description: 'Test',\n      parameters: z.object({\n        // the issue\n        something: z.record(z.string())\n      }),\n    }\n  }\n})\n```\n\n### AI provider\n\n@ai-sdk/google-vertex 2.2.14\n\n### Additional context\n\nI opened a PR to fix this here: https://github.com/vercel/ai/pull/5626"
 }

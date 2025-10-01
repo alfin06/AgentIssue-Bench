@@ -1,65 +1,74 @@
-import { generateText, tool } from 'ai';
 import { z } from 'zod';
+import * as ai from 'ai';
 
-// --- etup ---
+const version = process.env.VERSION || 'buggy';
+const isBuggyVersion = version === 'buggy' || version === 'patched';
 
-const mockVertexLanguageModel = {
-  customAIProvider: undefined,
+console.log('AI exports:', Object.keys(ai));
+console.log(`Testing ${version} version of AI SDK`);
+console.log('Issue: Vertex AI requests fail when z.record(z.string()) is used in tool schemas');
 
-  doGenerate: async ({ tools }) => {
-    console.log('--- `doGenerate` called. Analyzing generated tools schema. ---');
+// Use the correct tool creation function for the version
+const createTool = ai.createTool || ai.tool || ai.dynamicTool;
 
-    // Isolate the specific part of the schema that is buggy.
-    const testToolSchema = tools?.find(t => t.function.name === 'test');
-    const somethingProperty = testToolSchema?.function.parameters.properties.something;
-
-    console.log('\nGenerated schema for the "something" property:');
-    console.log(JSON.stringify(somethingProperty, null, 2));
-
-    // --- Verification of the Bug ---
-
-    if (!somethingProperty || !('additionalProperties' in somethingProperty)) {
-        console.log("\nSUCCESS: The bug is reproduced.");
-        if (somethingProperty === undefined) {
-            console.log("The generated schema for the 'something' property was 'undefined'.");
-        } else {
-            console.log("The 'additionalProperties' key was NOT found in the generated schema.");
-        }
-        process.exit(1);
-    } else {
-        console.log("\nFAILURE: The bug was NOT reproduced.");
-        console.log("The 'additionalProperties' key was found in the schema, indicating the code is fixed.");
-        process.exit(0);
-    }
-
-    return {
-      toolCalls: [],
-      finishReason: 'stop',
-    };
-  },
-};
-
-
-// --- Main Test Logic ---
-async function runTest() {
-  console.log('--- Calling generateText with a buggy z.record() schema. ---');
-  try {
-    await generateText({
-      model: mockVertexLanguageModel,
-      prompt: 'Hi',
-      tools: {
-        test: tool({
-          description: 'Test',
-          parameters: z.object({
-            something: z.record(z.string()),
-          }),
-        }),
-      },
-    });
-  } catch (error) {
-    console.error("\nFAILURE: The script failed with an unexpected error:", error);
-    process.exit(0);
-  }
+if (typeof createTool !== 'function') {
+  console.error('Error: No createTool, tool, or dynamicTool export found in ai package for this version.');
+  process.exit(2);
 }
 
-runTest();
+function createTestTool() {
+  return createTool({
+    name: 'test-tool',
+    description: 'A test tool that uses z.record(z.string()) in its schema',
+    parameters: z.object({
+      metadata: z.record(z.string()).describe('Metadata as key-value pairs'),
+      name: z.string().describe('A name')
+    }),
+    execute: async ({ metadata, name }) => {
+      return { success: true, metadata, name };
+    }
+  });
+}
+
+(async () => {
+  try {
+    const testTool = createTestTool();
+    const zodSchema = testTool.parameters || testTool.schema || testTool._schema;
+
+    let jsonSchema;
+    if (!isBuggyVersion) {
+      const { zodToJsonSchema } = await import('zod-to-json-schema');
+      jsonSchema = zodToJsonSchema(zodSchema);
+    } else {
+      jsonSchema = zodSchema;
+    }
+
+    console.log('\nGenerated schema:');
+    console.log(JSON.stringify(jsonSchema, null, 2));
+
+    // Check for additionalProperties in metadata
+    const hasAdditionalProps = !isBuggyVersion
+      ? jsonSchema?.properties?.metadata?.additionalProperties !== undefined
+      : false;
+    console.log(`\nCheck: 'additionalProperties' in metadata schema: ${hasAdditionalProps}`);
+
+    if (isBuggyVersion && !hasAdditionalProps) {
+      console.log('✅ BUG REPRODUCED: additionalProperties is missing in z.record(z.string())');
+      process.exit(0);
+    } else if (isBuggyVersion) {
+      console.log('❌ BUG NOT REPRODUCED: additionalProperties is correctly set');
+      process.exit(1);
+    }
+
+    if (!isBuggyVersion && hasAdditionalProps) {
+      console.log('✅ FIX VERIFIED: additionalProperties is correctly set in z.record(z.string())');
+      process.exit(0);
+    } else if (!isBuggyVersion) {
+      console.log('❌ FIX NOT VERIFIED: additionalProperties is still missing');
+      process.exit(1);
+    }
+  } catch (error) {
+    console.error('Error in test:', error);
+    process.exit(2);
+  }
+})();

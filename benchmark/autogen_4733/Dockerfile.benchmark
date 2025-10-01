@@ -1,0 +1,43 @@
+FROM python:3.10-slim
+
+WORKDIR /app
+
+# Install git and required build tools with robust retry logic
+RUN apt-get update && \
+    # Try the installation up to 5 times with increasing delays
+    for i in 1 2 3 4 5; do \
+        echo "Attempt $i of 5" && \
+        apt-get install -y --no-install-recommends \
+            git \
+            build-essential \
+            cmake \
+            gcc \
+            g++ \
+            curl \
+        && break || \
+        if [ $i -lt 5 ]; then \
+            echo "Retrying in $(($i * 5)) seconds..." && \
+            sleep $(($i * 5)); \
+        else \
+            echo "Installation failed after 5 attempts" && \
+            exit 1; \
+        fi; \
+    done && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Accept build arguments for commits
+ARG BUGGY_COMMIT
+ARG FIXED_COMMIT
+ENV BUGGY_COMMIT=${BUGGY_COMMIT} FIXED_COMMIT=${FIXED_COMMIT}
+
+# We'll skip installing llama-cpp-python since it's not needed for our test
+ENV SKIP_LLAMA_CPP_PYTHON=1
+
+# Copy the reproduction script and entrypoint
+COPY reproduce.py /opt/reproduce.py
+COPY run_test_entrypoint.sh /usr/local/bin/run_test_entrypoint.sh
+RUN chmod +x /usr/local/bin/run_test_entrypoint.sh
+
+ENTRYPOINT ["/usr/local/bin/run_test_entrypoint.sh"]
+CMD ["help"]

@@ -1,35 +1,30 @@
-import asyncio
+import sys
 
-from autogen_agentchat.agents import AssistantAgent
-from autogen_agentchat.task import Console, TextMentionTermination
-from autogen_agentchat.teams import RoundRobinGroupChat
-from autogen_ext.models import OpenAIChatCompletionClient
+def run_test(version: str) -> int:
+    try:
+        import grpc
+        grpc_installed = True
+    except ImportError as e:
+        print(f"❌ Reproduction successful: {e}")
+        grpc_installed = False
+    if version == "buggy":
+        return 0 if not grpc_installed else 1
+    elif version in ["fixed", "patched"]:
+        return 0 if grpc_installed else 1
+    else:
+        print(f"Invalid version: {version}")
+        return 2
 
 
-# Define a tool
-async def get_weather(city: str) -> str:
-    return f"The weather in {city} is 73 degrees and Sunny."
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print("Usage: python reproduce.py [buggy|fixed|patched]")
+        sys.exit(2)
 
+    version = sys.argv[1].lower()
+    if version not in ["buggy", "fixed", "patched"]:
+        print(f"Invalid version: {version}")
+        sys.exit(2)
 
-async def main() -> None:
-    # Define an agent
-    weather_agent = AssistantAgent(
-        name="weather_agent",
-        model_client=OpenAIChatCompletionClient(
-            model="gpt-4o-2024-08-06",
-            # api_key="YOUR_API_KEY",
-        ),
-        tools=[get_weather],
-    )
-
-    # Define termination condition
-    termination = TextMentionTermination("TERMINATE")
-
-    # Define a team
-    agent_team = RoundRobinGroupChat([weather_agent], termination_condition=termination)
-
-    # Run the team and stream messages to the console
-    stream = agent_team.run_stream(task="What is the weather in New York?")
-    await Console(stream)
-
-asyncio.run(main())
+    exit_code = run_test(version)
+    sys.exit(exit_code)

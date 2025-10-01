@@ -1,0 +1,11 @@
+{
+    "issue_github_url": "https://github.com/microsoft/autogen/issues/1844",
+    "repo_url": "https://github.com/microsoft/autogen.git",
+    "buggy_commit": "513b0b788445ac4801863430967f52e7142abdc8",
+    "fixed_commit": "afdaa4c7cbc7811877a2420e65252e4aa0c3d54b",
+    "build_command_example": "docker build --build-arg BUGGY_COMMIT=513b0b788445ac4801863430967f52e7142abdc8 --build-arg FIXED_COMMIT=afdaa4c7cbc7811877a2420e65252e4aa0c3d54b -t alfin06/agentissue-bench:autogen_1844 -f Dockerfile.benchmark .",
+    "run_command_example": "docker run --rm -it -e OPENAI_API_KEY='your-key' alfin06/agentissue-bench:autogen_1844 test_buggy",
+    "target_dockerhub_image": "alfin06/agentissue-bench:autogen_1844",
+    "title": "[Bug]: `overlap`  parameter in the  `split_text_to_chunks`  not used.",
+    "description": "### Describe the bug\n\n`overlap`  in the `split_text_to_chunks` function in the `autogen.retrieve_utils.split_text_to_chunks`, I think it's easy to fix it by adding it in the right place [](url)\n\n### Steps to reproduce\n\n1. go to autogen.retrieve_utils file\r\n2. search for the function `split_text_to_chunks`\r\n3. it will be in the parameters but not used with `cnt` indexing\n\n### Model Used\n\n_No response_\n\n### Expected Behavior\n\n_No response_\n\n### Screenshots and logs\n\n_No response_\n\n### Additional Information\n\n_No response_"
+}

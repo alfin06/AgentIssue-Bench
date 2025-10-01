@@ -1,56 +1,67 @@
-from typing import AsyncGenerator, List, Sequence
-
-from autogen_agentchat.agents import BaseChatAgent
-from autogen_agentchat.base import Response
-from autogen_agentchat.messages import AgentMessage, ChatMessage
+import sys
+import json
 import asyncio
+from pathlib import Path
 
+NOTEBOOK_PATH = Path("/app/python/packages/autogen-core/docs/src/user-guide/agentchat-user-guide/tutorial/agents.ipynb")
+TARGET_HEADING = "### CounterDownAgent"
 
-class CountDownAgent(BaseChatAgent):
-    def __init__(self, name: str, count: int = 3):
-        super().__init__(name, "A simple agent that counts down.")
-        self._count = count
+def extract_agent_code(notebook_path: Path) -> str:
+    with notebook_path.open("r", encoding="utf-8") as f:
+        nb = json.load(f)
 
-    @property
-    def produced_message_types(self) -> List[type[ChatMessage]]:
-        return [TextMessage]
+    cells = nb.get("cells", [])
+    capture = False
+    code_to_run = []
 
-    async def on_messages(self, messages: Sequence[ChatMessage], cancellation_token: CancellationToken) -> Response:
-        # Calls the on_messages_stream.
-        response: Response | None = None
-        async for message in self.on_messages_stream(messages, cancellation_token):
-            if isinstance(message, Response):
-                response = message
-        assert response is not None
-        return response
+    for cell in cells:
+        cell_type = cell.get("cell_type")
+        source = "".join(cell.get("source", []))
+        if cell_type == "markdown" and TARGET_HEADING in source:
+            capture = True
+            continue
+        if capture and cell_type == "code":
+            code_to_run.append(source)
+            break  # 只取第一个 code cell
+    if not code_to_run:
+        raise RuntimeError("Could not find code after the target heading")
+    return code_to_run[0]
 
-    async def on_messages_stream(
-        self, messages: Sequence[ChatMessage], cancellation_token: CancellationToken
-    ) -> AsyncGenerator[AgentMessage | Response, None]:
-        inner_messages: List[AgentMessage] = []
-        for i in range(self._count, 0, -1):
-            msg = TextMessage(content=f"{i}...", source=self.name)
-            inner_messages.append(msg)
-            yield msg
-        # The response is returned at the end of the stream.
-        # It contains the final message and all the inner messages.
-        yield Response(chat_message=TextMessage(content="Done!", source=self.name), inner_messages=inner_messages)
-
-    async def on_reset(self, cancellation_token: CancellationToken) -> None:
-        pass
-
-
-async def run_countdown_agent() -> None:
-    # Create a countdown agent.
-    countdown_agent = CountDownAgent("countdown")
-
-    # Run the agent with a given task and stream the response.
-    async for message in countdown_agent.on_messages_stream([], CancellationToken()):
-        if isinstance(message, Response):
-            print(message.chat_message.content)
+def run_test(version: str) -> int:
+    NOTEBOOK_PATH = Path(f"/app/source_code_{version}/python/packages/autogen-core/docs/src/user-guide/agentchat-user-guide/tutorial/agents.ipynb")
+    code = extract_agent_code(NOTEBOOK_PATH)
+    try:
+        local_vars = {}
+        exec(
+            f"import asyncio\n"
+            f"async def _run():\n"
+            + "\n".join([f"    {line}" for line in code.splitlines()])
+            + "\nasyncio.run(_run())",
+            {}, 
+            local_vars
+        )
+    except NameError as e:
+        if "CancellationToken" in str(e):
+            return 1 if version == "buggy" else 0
         else:
-            print(message.content)
+            raise
+    except Exception as e:
+        if version == "buggy":
+            return 0
+        else:
+            return 1
+    else:
+        return 0 if version in ["fixed", "patched"] else 0
 
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print("Usage: python reproduce.py [buggy|fixed|patched]")
+        sys.exit(2)
 
-# Use asyncio.run(run_countdown_agent()) when running in a script.
-asyncio.run(run_countdown_agent())
+    version = sys.argv[1].lower()
+    if version not in ["buggy", "fixed", "patched"]:
+        print(f"Invalid version: {version}")
+        sys.exit(2)
+
+    exit_code = run_test(version)
+    sys.exit(exit_code)

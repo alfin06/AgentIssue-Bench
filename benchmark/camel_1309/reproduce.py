@@ -50,20 +50,20 @@ def run_test(version: str) -> int:
 
         # 如果运行到这里没异常
         if version == "buggy":
-            return 1  # bug 没复现
+            return 1  
         else:
-            return 0  # fix / patch 成功
+            return 0  
     except TypeError as e:
         if "unexpected keyword argument 'proxies'" in str(e):
             if version == "buggy":
-                return 0  #复现成功
+                return 0  
             else:
-                return 1  #修复失败
+                return 1  
         else:
             if version == "buggy":
-                return 1  #复现失败
+                return 1  
             else:
-                return 0  #修复成功
+                return 0  
     except Exception as e:
         if version =="buggy":
             return 1

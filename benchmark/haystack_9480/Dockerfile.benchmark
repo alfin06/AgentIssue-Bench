@@ -1,5 +1,5 @@
 # Use the Python version specified in the bug report
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 # Install git with a retry loop for robustness
 RUN apt-get update && \

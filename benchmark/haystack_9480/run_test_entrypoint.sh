@@ -25,9 +25,10 @@ run_test() {
     else
         CODE_DIR="/app/source_code_fixed"
         cd "${CODE_DIR}"
-        # Re-install the package for the fixed version to ensure all changes are applied
-        echo "Installing fixed version dependencies..."
         export PYTHONPATH="${CODE_DIR}:${PYTHONPATH}"
+        echo "Installing fixed version dependencies..."
+        pip install --upgrade pip
+        pip install -e '.[all]'
     fi
 
     if [ -f "${REPRODUCE_PY}" ]; then

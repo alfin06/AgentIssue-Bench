@@ -40,7 +40,7 @@ def test_mcp_tool_result_bug(version: str) -> int:
         '''get weather'''
         return json.dumps({"today": "sunny", "tomorrow": "sunny"})
 
-    mcptoolset = MCPToolset(SSEServerInfo(base_url="http://localhost:8000"))
+    mcptoolset = MCPToolset(SSEServerInfo(base_url="http://127.0.0.1:8000"))
 
     tool_call = ToolCall(tool_name="get_weather", arguments={})
     message = ChatMessage.from_assistant(tool_calls=[tool_call])
@@ -63,17 +63,17 @@ def test_mcp_tool_result_bug(version: str) -> int:
     if result_standard != result_mcp:
         if version == "buggy":
             print("\n✅ BUG REPRODUCED: The MCPToolset result is different from the standard tool result (bug present).")
-            return 0
-        else:
-            print("\n❌ FIX NOT CONFIRMED: The MCPToolset result is still different from the standard tool result (should be fixed).")
             return 1
+        else:
+            print("\n❌ FIX NOT VERIFIED: The MCPToolset result is still different from the standard tool result (should be fixed).")
+            return 2
     else:
         if version == "fixed":
-            print("\n✅ FIX CONFIRMED: The MCPToolset result matches the standard tool result (bug fixed).")
+            print("\n✅ FIX VERIFIED: The MCPToolset result matches the standard tool result (bug fixed).")
             return 0
         else:
             print("\n❌ BUG NOT REPRODUCED: The MCPToolset result matches the standard tool result (should be buggy).")
-            return 1
+            return 2
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:

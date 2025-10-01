@@ -17,7 +17,6 @@ def run_test(version):
             # 其他 ModuleNotFoundError 也算失败
             success = False
     except Exception as e:
-        print("222")
         # 其他异常也算失败
         success = False
 

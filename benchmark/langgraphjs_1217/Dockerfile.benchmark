@@ -2,7 +2,22 @@
 FROM node:20-slim
 
 # Install git, which is required by the entrypoint script to checkout different commits
-RUN apt-get update && apt-get install -y git --no-install-recommends && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends ca-certificates && \
+    SUCCESS=false && \
+    for i in 1 2 3; do \
+        if apt-get install -y --no-install-recommends git; then \
+            SUCCESS=true; \
+            break; \
+        fi; \
+        echo "apt-get install failed. Retrying in 5 seconds..." >&2; \
+        sleep 5; \
+    done; \
+    if [ "$SUCCESS" = "false" ]; then \
+        echo "Failed to install packages after multiple retries." >&2; \
+        exit 1; \
+    fi && \
+    rm -rf /var/lib/apt/lists/*
 
 # Arguments that will be passed during the 'docker build' command
 ARG BUGGY_COMMIT
@@ -20,14 +35,15 @@ COPY ./package.json ./package-lock.json* ./
 COPY ./jest.config.js ./
 COPY ./reproduce.ts ./
 COPY ./metadata.json ./
-COPY ./run_test_entrypoint.sh ./
-RUN chmod +x ./run_test_entrypoint.sh
+COPY ./run_test_entrypoint.sh /usr/local/bin/run_test_entrypoint.sh
+RUN chmod +x /usr/local/bin/run_test_entrypoint.sh
 
 # Install the specific versions of packages needed for the test
 RUN npm install
 
-# Copy the local source code repository into the image.
-COPY ./source_code_buggy /app/source_code_buggy
+# Clone the repository for both buggy and fixed versions
+WORKDIR /app
+RUN git clone https://github.com/langchain-ai/langgraphjs.git /app/source_code_buggy
 
 # --- Build Step ---
 # Set the working directory to the cloned repository
@@ -40,7 +56,7 @@ RUN yarn install
 RUN yarn build
 
 # Set the entrypoint to our custom script
-ENTRYPOINT ["/opt/test-env/run_test_entrypoint.sh"]
+ENTRYPOINT ["/usr/local/bin/run_test_entrypoint.sh"]
 
 # Default command to run if none is provided is 'help'
 CMD ["help"]

@@ -1,24 +1,40 @@
-from autogen_ext.runtimes.grpc import GrpcWorkerAgentRuntimeHost
+import sys
+from pathlib import Path
 
-# the original code
-def main():
-    host = GrpcWorkerAgentRuntimeHost(address="0.0.0.0:50051")
-    host.start()  # Start a host service in the background.
+def check_tiktoken_in_pyprojects() -> bool:
+    """
+    Returns True if any pyproject.toml contains 'tiktoken', False otherwise.
+    Prints the path of the file if found.
+    """
+    pyprojects = Path("python/packages/autogen-studio/").rglob("pyproject.toml")
+    for pyproject in pyprojects:
+        try:
+            content = pyproject.read_text()
+        except Exception as e:
+            print("Exception:", e)
+            continue
+        if '"tiktoken"' in content:
+            print(f"✅ Found 'tiktoken' in: {pyproject}")
+            return True
+    return False
+
+def run_test(version: str) -> int:
+    tiktoken_found = check_tiktoken_in_pyprojects()
+    print("tiktoken_found:", tiktoken_found)
+    if version == "buggy":
+        return 1 if tiktoken_found else 0
+    else:
+        return 0 if tiktoken_found else 1
 
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) < 2:
+        print("Usage: python reproduce.py [buggy|fixed|patched]")
+        sys.exit(2)
 
-# the repaired code 
-async def main():
-    host = GrpcWorkerAgentRuntimeHost(address="0.0.0.0:50051")
-    host.start()  # Start a host service in the background.
+    version = sys.argv[1].lower()
+    if version not in ["buggy", "fixed", "patched"]:
+        print(f"Invalid version: {version}")
+        sys.exit(2)
 
-    try:
-        print("Service is running. Press Ctrl+C to stop.")
-        # Wait indefinitely (or you can use another condition to stop the service).
-        await asyncio.Event().wait()
-    except KeyboardInterrupt:
-        print("Stopping service...")
-    finally:
-        await host.stop()
-        print("Service stopped.")
+    exit_code = run_test(version)
+    sys.exit(exit_code)

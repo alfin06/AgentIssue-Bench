@@ -18,7 +18,8 @@ test_version() {
     echo "Cloning repository for $version version..."
     git clone --depth 1 --branch master "https://github.com/camel-ai/camel.git" "$source_dir"
     cd "$source_dir"
-    git fetch --depth 1 origin "$commit_hash"
+    git fetch --unshallow
+    # git fetch --depth 1 origin "$commit_hash"
     git checkout "$commit_hash"
     
     # Create a modified setup.py or requirements.txt to skip problematic dependencies

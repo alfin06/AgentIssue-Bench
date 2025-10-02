@@ -22,7 +22,7 @@ def extract_agent_code(notebook_path: Path) -> str:
             continue
         if capture and cell_type == "code":
             code_to_run.append(source)
-            break  # 只取第一个 code cell
+            break
     if not code_to_run:
         raise RuntimeError("Could not find code after the target heading")
     return code_to_run[0]

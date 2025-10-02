@@ -1,7 +1,6 @@
 import sys
 from autogen.retrieve_utils import split_text_to_chunks
 
-# ====== 测试文本设置 ======
 TEXT_LINES = [f"Line{i}" for i in range(20)]
 TEXT = "\n".join(TEXT_LINES)
 MAX_TOKENS = 12
@@ -20,7 +19,6 @@ def run_test(version: str) -> int:
         if prev_overlap == curr_overlap:
             overlap_detected = True
             break
-
 
     if version == "buggy":
         return 1 if overlap_detected else 0

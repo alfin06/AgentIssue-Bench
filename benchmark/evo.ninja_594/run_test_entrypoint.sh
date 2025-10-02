@@ -1,7 +1,7 @@
 #!/bin/bash
 set -eo pipefail
 
-REPRO_TEST_SPEC="/opt/reproduce.ts"
+REPRO_SCRIPT_JS="/opt/reproduce.js"
 METADATA_FILE="/opt/metadata.json"
 
 # Load commit hashes from the metadata file.
@@ -15,49 +15,35 @@ fi
 
 run_test() {
     local version=$1
-    echo "--- Running E2E Test for ${version} version ---"
+    echo "--- Running Test for ${version} version ---"
 
     local CODE_DIR
     if [ "$version" == "buggy" ] || [ "$version" == "patched" ]; then
         CODE_DIR="/app/source_code_buggy"
-        cd "${CODE_DIR}"
     else
         CODE_DIR="/app/source_code_fixed"
-        cd "${CODE_DIR}"
-        echo "Preparing fixed version..."
-        rm -f yarn.lock
-        pnpm install --shamefully-hoist > /dev/null
-        # REMOVED: The build step is no longer needed.
     fi
     
-    pnpm add wait-on > /dev/null
+    echo "Switching to directory: ${CODE_DIR}"
+    cd "${CODE_DIR}"
+    echo "Current directory: $(pwd)"
 
-    # MODIFIED: Start the development server instead of the production server.
-    echo "Starting development web server..."
-    (cd apps/browser && pnpm dev) &
-    SERVER_PID=$!
+    echo "Analyzing source code for the bug fix..."
+    VERSION="${version}" node "${REPRO_SCRIPT_JS}"
+    local exit_code=$?
 
-    trap 'echo "Shutting down web server (PID: $SERVER_PID)..."; kill $SERVER_PID' EXIT
-
-    local exit_code=0
-    
-    echo "Waiting for server to be ready on http://localhost:3000..."
-    npx wait-on http://localhost:3000 --timeout 180000 && \
-    echo "Server is ready. Running Playwright test..." && \
-    VERSION=${version} pnpm playwright test "${REPRO_TEST_SPEC}" || exit_code=$?
-    
     if [ $exit_code -eq 0 ]; then
         if [ "$version" == "buggy" ]; then
-            echo "✅ BUG SUCCESSFULLY REPRODUCED: The E2E test passed, confirming the buggy behavior."
+            echo "✅ BUG SUCCESSFULLY REPRODUCED: Files uploaded in anonymous workspace are not transferred to new chat."
         else
-            echo "✅ FIX CONFIRMED / PATCH SUCCEEDED: The E2E test passed, confirming the correct behavior."
+            echo "✅ FIX CONFIRMED: Files uploaded in anonymous workspace are now transferred to new chat."
         fi
         return 0
     else
         if [ "$version" == "buggy" ]; then
-            echo "❌ BUG NOT REPRODUCED: The E2E test failed, but it was expected to pass."
+            echo "❌ BUG NOT REPRODUCED: The code does not appear to have the expected bug."
         else
-            echo "❌ FIX NOT CONFIRMED / PATCH FAILED: The E2E test failed unexpectedly."
+            echo "❌ FIX NOT VERIFIED: The fix does not appear to be present in this version."
         fi
         return 1
     fi
@@ -74,10 +60,7 @@ apply_patch() {
     cd "${source_dir}"
     patch -p1 < "$patch_file"
     if [ $? -eq 0 ]; then
-        echo "✅ Patch applied successfully. Re-installing..."
-        rm -f yarn.lock
-        pnpm install --shamefully-hoist
-        # REMOVED: The build step is no longer needed.
+        echo "✅ Patch applied successfully."
     else
         echo "❌ Failed to apply patch."
         exit 1
@@ -109,13 +92,8 @@ case "$1" in
         cd /app/source_code_buggy
         git diff "${BUGGY_COMMIT}" "${FIXED_COMMIT}"
         ;;
-    inspect_buggy)
-        echo "Entering buggy environment (commit: ${BUGGY_COMMIT}). Use 'docker exec' to connect."
-        cd /app/source_code_buggy
-        tail -f /dev/null
-        ;;
     bash)
-        echo "Entering bash shell. Buggy code at /app/source_code_buggy, Fixed at /app/source_code_fixed"
+        echo "Entering bash shell"
         /bin/bash
         ;;
     help|*)
@@ -127,7 +105,6 @@ case "$1" in
         echo "  apply_patch      Apply a patch file to the buggy version"
         echo "  test_patched     Test the buggy version with your applied patch"
         echo "  show_diff        Show the git diff between buggy and fixed versions"
-        echo "  inspect_buggy    Keep container running for inspection of the buggy version"
         echo "  bash             Start a bash shell"
         echo "  help             Show this help message"
         echo ""

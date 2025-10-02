@@ -1,65 +1,29 @@
-FROM node:20
+FROM node:20-slim
 
-# Install git and essential build tools for native Node modules, with a retry loop.
 RUN apt-get update && \
-    SUCCESS=false && \
-    for i in 1 2 3; do \
-        if apt-get install -y --no-install-recommends git build-essential python3; then \
-            SUCCESS=true; \
-            break; \
-        fi; \
-        echo "apt-get install failed. Retrying in 5 seconds..." >&2; \
-        sleep 5; \
-    done; \
-    if [ "$SUCCESS" = "false" ]; then \
-        echo "Failed to install packages after multiple retries." >&2; \
-        exit 1; \
-    fi && \
+    apt-get install -y --no-install-recommends git ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
-# Set arguments for commit hashes that will be passed during the build.
 ARG BUGGY_COMMIT
 ARG FIXED_COMMIT
+ARG GITHUB_TOKEN
 ENV BUGGY_COMMIT=${BUGGY_COMMIT}
 ENV FIXED_COMMIT=${FIXED_COMMIT}
 
-# Clone the buggy version of the repository.
-WORKDIR /app/source_code_buggy
-COPY /source_code_buggy /app/source_code_buggy
+WORKDIR /app
+RUN git clone https://${GITHUB_TOKEN}@github.com/agentcoinorg/evo.ninja.git source_code_buggy && \
+    cd source_code_buggy && \
+    git checkout ${BUGGY_COMMIT}
+RUN git clone https://${GITHUB_TOKEN}@github.com/agentcoinorg/evo.ninja.git source_code_fixed && \
+    cd source_code_fixed && \
+    git checkout ${FIXED_COMMIT}
 
-# Clone the fixed version of the repository.
-WORKDIR /app/source_code_fixed
-COPY /source_code_fixed /app/source_code_fixed
-
-
-# Install dependencies for the buggy version using Yarn.
-WORKDIR /app/source_code_buggy
-RUN SUCCESS=false && \
-    for i in 1 2 3; do \
-        if yarn install; then \
-            SUCCESS=true; \
-            break; \
-        fi; \
-        echo "yarn install failed. Retrying in 5 seconds..." >&2; \
-        sleep 5; \
-    done; \
-    if [ "$SUCCESS" = "false" ]; then \
-        echo "Failed to install yarn dependencies after multiple retries." >&2; \
-        exit 1; \
-    fi
-
-# Build only the agent packages and their dependencies to avoid build errors.
-RUN yarn build --filter=@evo-ninja/agents...
-
-# Copy test scripts and metadata into standard locations.
-COPY reproduce.ts /opt/reproduce.ts
+COPY reproduce.js /opt/reproduce.js
 COPY run_test_entrypoint.sh /usr/local/bin/run_test_entrypoint.sh
 COPY metadata.json /opt/metadata.json
 RUN chmod +x /usr/local/bin/run_test_entrypoint.sh
 
-# Set the default working directory for when the container starts.
 WORKDIR /app/source_code_buggy
 
-# Set the entrypoint for the container.
 ENTRYPOINT ["/usr/local/bin/run_test_entrypoint.sh"]
 CMD ["help"]

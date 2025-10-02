@@ -23,7 +23,6 @@ def run_test(version: str) -> int:
     ]
 
     try:
-        # Run the command
         result = subprocess.run(cmd, capture_output=True, text=True, check=False)
         stdout = result.stdout
         stderr = result.stderr

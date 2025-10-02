@@ -47,8 +47,8 @@ test_version() {
 
 
 
-    pip install 'httpx[socks]' pandas azure-core azure-identity azure-keyvault-secrets azure-storage-blob
-
+    pip install 'httpx[socks]' pandas azure-core azure-identity azure-keyvault-secrets azure-storage-blob grpcio grpcio-tools
+    
     
     
     # Install only required dependencies
@@ -64,12 +64,17 @@ test_version() {
   if [ -f "${REPRO_SCRIPT_PY}" ]; then
     echo "Running reproduction script for $version version..."
     cd "$source_dir"
+    pip install -e ./python/packages/autogen-agentchat
+    pip install -e ./python/packages/autogen-ext
 
 
-    pip install python/packages/autogen-ext/.
-    pip install python/packages/autogen-core/.
-    pip install autogen_ext
+
+    # pip install python/packages/autogen-ext/.
+    # pip install python/packages/autogen-core/.
     echo "start python reproduce"
+
+
+
     
 
     python reproduce.py "$version"

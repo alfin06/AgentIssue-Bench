@@ -1,29 +1,41 @@
-FROM node:18.20.5-bullseye-slim
+FROM node:20-slim
 
-# --- SETUP SECTION ---
-# 1. Install git for checking out commits and pnpm for building the project.
-RUN apt-get update && apt-get install -y --no-install-recommends git && rm -rf /var/lib/apt/lists/*
+# Install git and pnpm
+RUN apt-get update && apt-get install -y --no-install-recommends git && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*
 RUN npm install -g pnpm
 
-# 2. Set arguments that will be passed during the build
+# Set build arguments for commit hashes
 ARG BUGGY_COMMIT FIXED_COMMIT
 ENV BUGGY_COMMIT=${BUGGY_COMMIT} FIXED_COMMIT=${FIXED_COMMIT}
 
-# 3. Copy the local source code into the container.
-COPY ./source_code_buggy /app/source_code_buggy
+# Clone the repository for both buggy and fixed versions
+WORKDIR /app
+RUN git clone https://github.com/vercel/ai.git source_code_buggy && \
+    cd source_code_buggy && \
+    git checkout ${BUGGY_COMMIT} && \
+    git clone https://github.com/vercel/ai.git /app/source_code_fixed && \
+    cd /app/source_code_fixed && \
+    git checkout ${FIXED_COMMIT}
 
-# 4. Copy the test scripts into a separate, fixed location
-COPY repro_script.js /opt/repro_script.js
+# Build the buggy version
+WORKDIR /app/source_code_buggy
+RUN pnpm install
+RUN pnpm build
+
+# Build the fixed version
+WORKDIR /app/source_code_fixed
+RUN pnpm install 
+RUN pnpm build
+
+# Setup test environment
+WORKDIR /opt
+COPY reproduce.js /opt/reproduce.js
 COPY run_test_entrypoint.sh /usr/local/bin/run_test_entrypoint.sh
 RUN chmod +x /usr/local/bin/run_test_entrypoint.sh
 
-# --- REMOVED BUILD STEPS ---
-# The pnpm install and build commands are now handled by the entrypoint script
-# to ensure the correct version of the code is built at runtime.
+# Create package.json for ES module support
+RUN echo '{"type": "module"}' > /opt/package.json
 
-# Set the working directory for the test run.
-WORKDIR /app/source_code_buggy
-
-# Set the entrypoint for the container
+# Set the entrypoint
 ENTRYPOINT ["/usr/local/bin/run_test_entrypoint.sh"]
 CMD ["help"]

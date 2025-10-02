@@ -46,19 +46,15 @@ def run_test(version: str) -> int:
     # Interpret results
     if version == "buggy":
         if bug_reproduced:
-            print(f"✅ Bug reproduced in buggy version ({version}) → return 1")
-            return 1
-        else:
-            print(f"❌ Bug NOT reproduced in buggy version ({version}) → return 0")
             return 0
+        else:
+            return 1
 
     else:  # fixed / patched
         if bug_reproduced:
-            print(f"❌ Bug reproduced in {version} → fix not working → return 0")
-            return 0
-        else:
-            print(f"✅ Bug NOT reproduced in {version} → fix confirmed → return 1")
             return 1
+        else:
+            return 0
 
 
 if __name__ == "__main__":

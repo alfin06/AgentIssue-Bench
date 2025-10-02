@@ -37,16 +37,11 @@ def run_test(version: str) -> int:
         # print("bug_occurred = ", bug_occurred)
         
         if version == "buggy":
-            # Buggy: issue should be reproducible
             return 0 if bug_occurred else 1
         elif version in ["fixed", "patched"]:
-            # Fixed/Patched: issue should NOT be reproducible
             return 0 if not bug_occurred else 1
 
-        
-
     except Exception as e:
-        # print("except Exception as e:",)
         if version == "buggy":
             return 1 if bug_occurred else 0
         elif version in ["fixed", "patched"]:
@@ -65,5 +60,4 @@ if __name__ == "__main__":
 
 
     exit_code = run_test(version)
-    # print("exit_code", exit_code)
     sys.exit(exit_code)

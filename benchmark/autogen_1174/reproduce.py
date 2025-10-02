@@ -2,11 +2,8 @@ import sys
 import asyncio
 import importlib.util
 
-# 检测函数
 def check_issue_reproduced():
-
     try:
-        # root = f"/app/source_code_{version}"
         file_path = f"/autogen/agentchat/conversable_agent.py"
         with open(file_path, "r", encoding="utf-8") as f:
             content = f.read()
@@ -19,7 +16,6 @@ def check_issue_reproduced():
         print("check_issue_reproduced exception:", e)
         return False
 
-# 异步测试函数
 async def run_agent_test():
     try:
         from autogen_agentchat.agents import AssistantAgent
@@ -34,13 +30,12 @@ async def run_agent_test():
         print("async def run_agent_test():", e)
         return False
 
-# 主逻辑
+
 def run_test(version: str) -> int:
     issue_found = check_issue_reproduced()
     if version == "buggy":
-        return 1 if issue_found else 0
+        return 0 if issue_found else 1
     elif version in ["fixed", "patched"]:
-
         loop = asyncio.get_event_loop()
         success = loop.run_until_complete(run_agent_test())
         return 0 if success and not issue_found else 1

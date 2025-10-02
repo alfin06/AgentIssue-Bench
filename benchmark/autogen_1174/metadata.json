@@ -1,9 +1,9 @@
 {
     "issue_github_url": "https://github.com/microsoft/autogen/issues/1174",
     "repo_url": "https://github.com/microsoft/autogen.git",
-    "buggy_commit": "4f9383ac219e53a4d438b28d8fcd55529f1638d7",
+    "buggy_commit": "b548e553b606a6efbcb5e0c4d2f786939d313765",
     "fixed_commit": "51b361dfcf8a78343c92bc76e79ce5acb4721b48",
-    "build_command_example": "docker build --build-arg BUGGY_COMMIT=4f9383ac219e53a4d438b28d8fcd55529f1638d7 --build-arg FIXED_COMMIT=51b361dfcf8a78343c92bc76e79ce5acb4721b48 -t alfin06/agentissue-bench:autogen_1174 -f Dockerfile.benchmark .",
+    "build_command_example": "docker build --build-arg BUGGY_COMMIT=b548e553b606a6efbcb5e0c4d2f786939d313765 --build-arg FIXED_COMMIT=51b361dfcf8a78343c92bc76e79ce5acb4721b48 -t alfin06/agentissue-bench:autogen_1174 -f Dockerfile.benchmark .",
     "run_command_example": "docker run --rm -it -e OPENAI_API_KEY='your-key' alfin06/agentissue-bench:autogen_1174 test_buggy",
     "target_dockerhub_image": "alfin06/agentissue-bench:autogen_1174",
     "title": "[Bug]: Async_human_input openai.BadRequestError",

@@ -3,7 +3,6 @@ import sys
 def run_test(version: str) -> int:
     try:
         if version == "buggy":
-            # 模拟 buggy 代码
             from camel.utils import api_keys_required
             from camel.models import ModelFactory
             from camel.types import ModelPlatformType, ModelType

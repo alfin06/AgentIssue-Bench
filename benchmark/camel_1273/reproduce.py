@@ -18,32 +18,29 @@ def run_test(version: str) -> int:
                 def __init__(self, api_key: str):
                     self._api_key = api_key
 
-            # 创建实例，期望触发报错
             dc = DummyClass(api_key="xxxxx")
 
         elif version in ["fixed", "patched"]:
             from camel.utils import api_keys_required
 
             class DummyClass:
-                # 假设在 fixed/patched 版本中，api_keys_required 不会报错
                 @api_keys_required("DUMMY_TOKEN")
                 def __init__(self, api_key: str):
                     self._api_key = api_key
 
             dc = DummyClass(api_key="xxxxx")
 
-        # 如果没有抛出 ValueError
         if version == "buggy":
-            return 1  # bug 没复现
+            return 1
         else:
-            return 0  # fix/patch 成功
+            return 0
 
     except ValueError as e:
         if "DUMMY_TOKEN" in str(e):
             if version == "buggy":
-                return 0  # bug 复现成功
+                return 0
             else:
-                return 1  # fix/patch 失败
+                return 1
         else:
             if version == "buggy":
                 return 1

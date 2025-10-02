@@ -1,45 +1,43 @@
-FROM node:18.20.5-bullseye-slim
-# --- SETUP SECTION ---
-# 1. Install git for checking out commits and pnpm for building the project.
-RUN apt-get update && apt-get install -y --no-install-recommends git && rm -rf /var/lib/apt/lists/*
+FROM node:20-slim
+
+# Install git and pnpm
+RUN apt-get update && apt-get install -y --no-install-recommends git && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*
 RUN npm install -g pnpm
 
-# 2. Set arguments that will be passed during the build
+# Set build arguments for commit hashes
 ARG BUGGY_COMMIT FIXED_COMMIT
 ENV BUGGY_COMMIT=${BUGGY_COMMIT} FIXED_COMMIT=${FIXED_COMMIT}
 
-# 3. Copy the local source code into the container
-COPY ./source_code_buggy /app/source_code_buggy
+# Clone the repository
+WORKDIR /app
+RUN git clone https://github.com/vercel/ai.git source_code_buggy && \
+    cd source_code_buggy && \
+    git checkout ${BUGGY_COMMIT} && \
+    git clone https://github.com/vercel/ai.git /app/source_code_fixed && \
+    cd /app/source_code_fixed && \
+    git checkout ${FIXED_COMMIT}
 
-# 4. Set the working directory to the root of the source code
+# Build the buggy version
 WORKDIR /app/source_code_buggy
+RUN pnpm install && pnpm build
 
-# 5. Install project dependencies and build the packages from source.
-RUN pnpm install
-RUN pnpm build
+# Build the fixed version
+WORKDIR /app/source_code_fixed
+RUN pnpm install && pnpm build
 
-# --- TEST SCRIPT SETUP ---
-# 6. Copy the test scripts into a separate, fixed location
-COPY repro_script.js /opt/repro_script.js
+# Setup test environment
+WORKDIR /opt
+COPY reproduce.js /opt/reproduce.js
 COPY run_test_entrypoint.sh /usr/local/bin/run_test_entrypoint.sh
+COPY metadata.json /opt/metadata.json
 RUN chmod +x /usr/local/bin/run_test_entrypoint.sh
 
-# 7. Set the working directory for the test script's dependencies
-WORKDIR /opt
-
-# 8. Create a package.json to enable ES Module support
+# Create package.json for ES module support
 RUN echo '{"type": "module"}' > /opt/package.json
 
-# 9. Install the dependencies for our test script.
-#    - We install 'zod' from the npm registry.
-#    - We install the 'ai' package from the local path where we just built it.
-#      This links the test script to the code being tested and resolves module errors.
+# Install test dependencies
 RUN npm install ai zod
 
-# Set the final working directory back to the source code for the test run.
-# This allows Node's module resolution to find the locally built packages.
-WORKDIR /app/source_code_buggy
-
-# Set the entrypoint for the container
+# Set the entrypoint
 ENTRYPOINT ["/usr/local/bin/run_test_entrypoint.sh"]
 CMD ["help"]

@@ -1,37 +1,35 @@
-FROM node:18.20.5-bullseye-slim
+FROM node:20-slim
 
-# --- SETUP SECTION ---
-# 1. Install git, which is required by the entrypoint script to checkout commits.
-RUN apt-get update && apt-get install -y --no-install-recommends git && rm -rf /var/lib/apt/lists/*
+# Install git and required dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends git && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*
 
-# 2. Set arguments that will be passed during the build
+# Set build arguments for commit hashes
 ARG BUGGY_COMMIT FIXED_COMMIT
 ENV BUGGY_COMMIT=${BUGGY_COMMIT} FIXED_COMMIT=${FIXED_COMMIT}
 
-# 3. Copy the local source code into the container. This is required so the
-#    entrypoint script has a git repository to run 'git checkout' against,
-#    even though our test script will ignore this code.
-COPY ./source_code_buggy /app/source_code_buggy
+# Clone the repository for both buggy and fixed versions
+WORKDIR /app
+RUN git clone https://github.com/vercel/ai.git source_code_buggy && \
+    cd source_code_buggy && \
+    git checkout ${BUGGY_COMMIT}
 
-# --- TEST SCRIPT SETUP ---
-# 4. Copy the test scripts into a separate, fixed location
-COPY repro_script.js /opt/repro_script.js
+# Clone the fixed version
+RUN git clone https://github.com/vercel/ai.git source_code_fixed && \
+    cd source_code_fixed && \
+    git checkout ${FIXED_COMMIT}
+
+# Set up test scripts
+WORKDIR /opt
+COPY reproduce.js /opt/reproduce.js
 COPY run_test_entrypoint.sh /usr/local/bin/run_test_entrypoint.sh
 RUN chmod +x /usr/local/bin/run_test_entrypoint.sh
 
-# 5. Set the working directory for the test script's dependencies
-WORKDIR /opt
-
-# 6. Create a package.json to enable ES Module support
+# Create package.json for ES module support
 RUN echo '{"type": "module"}' > /opt/package.json
 
-# 7. Install the dependencies for our test script directly from npm.
-#    This is much faster than building the entire 'vercel/ai' monorepo from source.
+# Install dependencies for the test
 RUN npm install ai zod
 
-# Set the final working directory for the test run.
-WORKDIR /app/source_code_buggy
-
-# Set the entrypoint for the container
+# Set the entrypoint
 ENTRYPOINT ["/usr/local/bin/run_test_entrypoint.sh"]
 CMD ["help"]

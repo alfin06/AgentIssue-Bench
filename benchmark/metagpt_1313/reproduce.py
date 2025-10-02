@@ -4,7 +4,6 @@ import subprocess
 import yaml
 
 def update_api_key(api_key, config_path):
-    """更新 YAML 配置文件中的 api_key"""
     with open(config_path, "r") as f:
         config = yaml.safe_load(f)
     config.setdefault("llm", {})
@@ -13,7 +12,6 @@ def update_api_key(api_key, config_path):
         yaml.safe_dump(config, f)
 
 def run_game(game_script):
-    """运行游戏脚本并捕获 ValidationError"""
     try:
         proc = subprocess.Popen(
             ["python", game_script],
@@ -69,20 +67,12 @@ if __name__ == "__main__":
     version = sys.argv[1] if len(sys.argv) > 1 else None
     if version not in ["buggy", "fixed", "patched"]:
         print("Usage: python reproduce.py [buggy|fixed|patched]")
-        # 版本无效直接当作失败，返回 1
         sys.exit(1)
 
     exit_code = run_test(version)
-
-    # 对 buggy / fixed / patched 版本统一逻辑：
-    # buggy: 如果复现成功（exit_code==0），返回1，否则0
-    # fixed / patched: 如果复现成功，返回0，否则1
     if version == "buggy":
-        # 假设 run_test 返回 True/False 或 0/1 表示是否复现成功
-        # 复现成功返回 1，否则 0
         final_code = 1 if exit_code == 0 else 0
     else:
-        # fixed / patched: 复现成功返回0，否则1
         final_code = 0 if exit_code == 0 else 1
 
     sys.exit(final_code)

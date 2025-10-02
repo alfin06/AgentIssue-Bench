@@ -27,15 +27,7 @@ def run_test(version: str) -> int:
         result = subprocess.run(cmd, capture_output=True, text=True, check=False)
         stdout = result.stdout
         stderr = result.stderr
-
-        # print("stdout:",stdout)
-        # print("stderr:", stderr)
-
-        # Check if KeyError: 'web_spider' occurred
         bug_occurred = "an unexpected keyword argument 'audio'" in stderr
-
-        # print("bug_occurred = ", bug_occurred)
-        
         if version == "buggy":
             return 0 if bug_occurred else 1
         elif version in ["fixed", "patched"]:

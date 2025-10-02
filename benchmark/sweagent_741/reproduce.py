@@ -3,24 +3,11 @@ import sys
 import os
 
 def run_test(version: str) -> int:
-    """
-    Run the reproduction test for the given version.
-
-    Returns:
-        buggy:
-            1 if bug is reproduced (utils missing)
-            0 if bug is not reproduced (utils exists)
-        fixed / patched:
-            0 if bug is reproduced (utils missing → fix not working)
-            1 if bug is not reproduced (utils exists → fix confirmed)
-    """
-
     if version == "buggy":
-        # For buggy, only check build/lib/sweagent
         target_dir = os.path.join("build", "lib", "sweagent")
         if not os.path.exists(target_dir):
             print(f"❌ Target directory does not exist: {target_dir}")
-            return 0  # Bug not reproduced (since buggy missing directory)
+            return 0
         
         try:
             result = subprocess.run(

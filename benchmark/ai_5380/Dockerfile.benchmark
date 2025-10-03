@@ -1,29 +1,44 @@
-FROM node:18.20.5-bullseye-slim
+FROM node:20-slim
 
-# --- SETUP SECTION ---
-# 1. Install git for checking out commits and pnpm for building the project.
-RUN apt-get update && apt-get install -y --no-install-recommends git && rm -rf /var/lib/apt/lists/*
+# Install git and pnpm
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends ca-certificates git && \
+    rm -rf /var/lib/apt/lists/*
 RUN npm install -g pnpm
 
-# 2. Set arguments that will be passed during the build
-ARG BUGGY_COMMIT FIXED_COMMIT
-ENV BUGGY_COMMIT=${BUGGY_COMMIT} FIXED_COMMIT=${FIXED_COMMIT}
+ARG BUGGY_COMMIT
+ARG FIXED_COMMIT
+ENV BUGGY_COMMIT=${BUGGY_COMMIT}
+ENV FIXED_COMMIT=${FIXED_COMMIT}
 
-# 3. Copy the local source code into the container.
-COPY ./source_code_buggy /app/source_code_buggy
+WORKDIR /app
 
-# 4. Copy the test scripts into a separate, fixed location
-COPY repro_script.js /opt/repro_script.js
+# Clone and build buggy version
+RUN git clone https://github.com/vercel/ai.git source_code_buggy && \
+    cd source_code_buggy && \
+    git checkout ${BUGGY_COMMIT} && \
+    pnpm install && \
+    pnpm build
+
+# Clone and build fixed version
+RUN git clone https://github.com/vercel/ai.git source_code_fixed && \
+    cd source_code_fixed && \
+    git checkout ${FIXED_COMMIT} && \
+    pnpm install && \
+    pnpm build
+
+# Set up for the test script
+WORKDIR /opt
+RUN echo '{"type": "module"}' > /opt/package.json
+RUN npm install ai zod @vue/reactivity @ai-sdk/openai
+
+# Copy test scripts and metadata
+COPY reproduce.js /opt/reproduce.js
 COPY run_test_entrypoint.sh /usr/local/bin/run_test_entrypoint.sh
+COPY metadata.json /opt/metadata.json
 RUN chmod +x /usr/local/bin/run_test_entrypoint.sh
 
-# --- REMOVED BUILD STEPS ---
-# The pnpm install and build commands are now handled by the entrypoint script
-# to ensure the correct version of the code is built at runtime.
-
-# Set the working directory for the test run.
 WORKDIR /app/source_code_buggy
 
-# Set the entrypoint for the container
 ENTRYPOINT ["/usr/local/bin/run_test_entrypoint.sh"]
 CMD ["help"]

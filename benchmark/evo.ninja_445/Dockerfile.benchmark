@@ -1,0 +1,36 @@
+FROM node:20-slim
+
+# Install git
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends git ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
+
+# Set arguments for commit hashes
+ARG BUGGY_COMMIT
+ARG FIXED_COMMIT
+ENV BUGGY_COMMIT=${BUGGY_COMMIT}
+ENV FIXED_COMMIT=${FIXED_COMMIT}
+
+# Clone the buggy version
+WORKDIR /app
+RUN git clone https://github.com/agentcoinorg/evo.ninja.git source_code_buggy && \
+    cd source_code_buggy && \
+    git checkout ${BUGGY_COMMIT}
+
+# Clone the fixed version
+RUN git clone --depth 1 https://github.com/agentcoinorg/evo.ninja.git source_code_fixed && \
+    cd source_code_fixed && \
+    git checkout ${FIXED_COMMIT}
+
+# Copy test scripts
+COPY reproduce.js /opt/reproduce.js
+COPY run_test_entrypoint.sh /usr/local/bin/run_test_entrypoint.sh
+COPY metadata.json /opt/metadata.json
+RUN chmod +x /usr/local/bin/run_test_entrypoint.sh
+
+# Set the default working directory
+WORKDIR /app/source_code_buggy
+
+# Set the entrypoint
+ENTRYPOINT ["/usr/local/bin/run_test_entrypoint.sh"]
+CMD ["help"]

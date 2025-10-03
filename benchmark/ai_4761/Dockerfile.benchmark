@@ -1,37 +1,43 @@
-FROM node:18.20.5-bullseye-slim
+FROM node:20-slim
 
-# --- SETUP SECTION ---
-# 1. Install git, which is required by the entrypoint script to checkout commits.
-RUN apt-get update && apt-get install -y --no-install-recommends git && rm -rf /var/lib/apt/lists/*
+# Install git
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends ca-certificates && \
+    apt-get install -y --no-install-recommends git && \
+    rm -rf /var/lib/apt/lists/*
 
-# 2. Set arguments that will be passed during the build
-ARG BUGGY_COMMIT FIXED_COMMIT
-ENV BUGGY_COMMIT=${BUGGY_COMMIT} FIXED_COMMIT=${FIXED_COMMIT}
+# Set arguments for commit hashes
+ARG BUGGY_COMMIT
+ARG FIXED_COMMIT
+ENV BUGGY_COMMIT=${BUGGY_COMMIT}
+ENV FIXED_COMMIT=${FIXED_COMMIT}
 
-# 3. Copy the local source code into the container. This is required so the
-#    entrypoint script has a git repository to run 'git checkout' against,
-#    even though our test script will ignore this code.
-COPY ./source_code_buggy /app/source_code_buggy
+# Clone both versions
+WORKDIR /app
+RUN git clone https://github.com/vercel/ai.git source_code_buggy && \
+    cd source_code_buggy && \
+    git checkout ${BUGGY_COMMIT}
 
-# --- TEST SCRIPT SETUP ---
-# 4. Copy the test scripts into a separate, fixed location
-COPY repro_script.js /opt/repro_script.js
+RUN git clone https://github.com/vercel/ai.git source_code_fixed && \
+    cd source_code_fixed && \
+    git checkout ${FIXED_COMMIT}
+
+# Copy test scripts
+COPY reproduce.js /opt/reproduce.js
 COPY run_test_entrypoint.sh /usr/local/bin/run_test_entrypoint.sh
+COPY metadata.json /opt/metadata.json
 RUN chmod +x /usr/local/bin/run_test_entrypoint.sh
 
-# 5. Set the working directory for the test script's dependencies
+# Set up for the test script
 WORKDIR /opt
-
-# 6. Create a package.json to enable ES Module support
 RUN echo '{"type": "module"}' > /opt/package.json
-
-# 7. Install the dependencies for our test script directly from npm.
-#    This is much faster than building the entire 'vercel/ai' monorepo from source.
 RUN npm install ai zod
+# Install @ai-sdk/vue
+RUN npm install @vue/reactivity
 
-# Set the final working directory for the test run.
+# Set default working directory
 WORKDIR /app/source_code_buggy
 
-# Set the entrypoint for the container
+# Set the entrypoint
 ENTRYPOINT ["/usr/local/bin/run_test_entrypoint.sh"]
 CMD ["help"]

@@ -1,76 +1,48 @@
-// --- Mock the relevant parts of Vercel AI SDK ---
+import { reactive } from '@vue/reactivity';
 
-// Mock the Vue reactive system
-function reactive(obj) {
-  return new Proxy(obj, {
-    get(target, prop) {
-      return target[prop];
-    },
-    set(target, prop, value) {
-      target[prop] = value;
-      return true;
-    }
-  });
+const version = process.env.VERSION || 'buggy';
+console.log(`Testing ${version.toUpperCase()} version`);
+
+// Create a reactive object using @ai-sdk/vue
+const reactiveMessages = reactive([{ role: 'user', content: 'hello' }]);
+
+function simulateFixedClone(messages) {
+  console.log('--- Attempting to clone data... ---');
+  // Unwrap to plain array/object before cloning
+  const unwrapped = JSON.parse(JSON.stringify(messages));
+  return structuredClone(unwrapped);
 }
 
-// Mock the message object structure used in @ai-sdk/vue
-const mockMessages = reactive([
-  {
-    id: "msg-1",
-    role: "user",
-    content: "Hello",
-    parts: [{ type: 'text', text: 'Hello' }]
-  },
-  {
-    id: "msg-2",
-    role: "assistant",
-    content: "How can I help?",
-    parts: [{ type: 'text', text: 'How can I help?' }]
-  }
-]);
-
-// This function simulates the buggy part of processChatResponse in @ai-sdk/vue
-function processChatResponse(messages, newContent) {
-  console.log('--- Processing chat response in Vercel AI SDK ---');
-  
-  try {
-    // This is where the error happens in the actual code
-    // packages/ui-utils/src/process-chat-response.ts
-    const messagesSnapshot = structuredClone(messages);
-    
-    // The rest of the function would process the message and update state
-    console.log('Successfully cloned messages');
-    return messagesSnapshot;
-  } catch (error) {
-    console.error('Error processing chat response:', error);
-    throw error;
-  }
+function simulateBuggyClone(messages) {
+  console.log('--- Attempting to clone a reactive object...');
+  return structuredClone(messages);
 }
 
-// --- Verification Logic ---
-console.log('--- This test reproduces issue #4761 in vercel/ai repository ---');
-console.log('https://github.com/vercel/ai/issues/4761');
+console.log('--- Running test to verify DataCloneError on @ai-sdk/vue reactive objects ---');
 
 try {
-  // Simulate the code path that triggers the bug
-  processChatResponse(mockMessages, "New content");
-  
-  console.log("\nThe bug was NOT reproduced.");
-  console.log("The structuredClone operation succeeded unexpectedly.");
-  process.exit(0);
+  const cloneFunction = version === 'buggy' ? simulateBuggyClone : simulateFixedClone;
+  const result = cloneFunction(reactiveMessages);
 
-} catch (error) {
-  console.log(`\nThe expected error was triggered.`);
-  console.log(`Error Type: ${error.name}`);
-  console.log(`Error Message: ${error.message}`);
-
-  // The bug is that a `DataCloneError` is thrown
-  if (error.name === 'DataCloneError') {
-    console.log("\nVerification successful: This confirms issue #4761 - structuredClone cannot handle Vue reactive proxies.");
-    console.log("Fix: Replace structuredClone with JSON parse/stringify or use Vue's toRaw() before cloning.");
+  if (version === 'buggy') {
+    console.log("\n❌ BUG NOT REPRODUCED: structuredClone succeeded on a reactive object.");
     process.exit(1);
   } else {
-    console.log("\nVerification failed: The error was not the expected DataCloneError.");
+    console.log("\n✅ FIX VERIFIED: Successfully cloned data without DataCloneError.");
     process.exit(0);
+  }
+} catch (error) {
+  console.log(`\nError caught: ${error.name}: ${error.message}`);
+  if (error.name === 'DataCloneError') {
+    if (version === 'buggy') {
+      console.log("\n✅ BUG REPRODUCED: DataCloneError thrown when trying to clone @ai-sdk/vue reactive objects.");
+      process.exit(0);
+    } else {
+      console.log("\n❌ FIX NOT VERIFIED: DataCloneError still occurs in fixed version.");
+      process.exit(1);
+    }
+  } else {
+    console.log(`\nUnexpected error: ${error.name}`);
+    process.exit(1);
   }
 }

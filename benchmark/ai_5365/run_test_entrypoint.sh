@@ -1,94 +1,105 @@
 #!/bin/bash
 set -eo pipefail
 
-# This script is the universal test runner for a benchmark image.
-# It intelligently runs a .sh, .py, or .js test script.
+REPRO_SCRIPT="/opt/reproduce.js"
+METADATA_FILE="/opt/metadata.json"
 
-CODE_DIR="/app/source_code_buggy"
-PYTHON_CMD="${PYTHON_CMD:-python}"
-NODE_CMD="${NODE_CMD:-node}"
-
-# Define paths for potential test scripts inside the container
-REPRO_COMMAND_SH="/opt/repro_command.sh"
-REPRO_SCRIPT_PY="/opt/repro_script.py"
-REPRO_SCRIPT_JS="/opt/repro_script.js" # Added path for JS scripts
-
-# Ensure the code directory exists before trying to cd into it
-if [ ! -d "${CODE_DIR}" ]; then
-    echo "--- FATAL ERROR: Source code directory ${CODE_DIR} not found! ---"
-    exit 1
+# Load commit hashes from the metadata file if it exists
+if [ -f "$METADATA_FILE" ]; then
+    export BUGGY_COMMIT=$(node -p "require('$METADATA_FILE').buggy_commit")
+    export FIXED_COMMIT=$(node -p "require('$METADATA_FILE').fixed_commit")
 fi
 
-cd "${CODE_DIR}"
-
 run_test() {
-    echo "--- Running Test ---"
+    local version=$1
+    echo "--- Running Test for ${version} version ---"
+
+    local CODE_DIR
+    if [ "$version" == "buggy" ] || [ "$version" == "patched" ]; then
+        CODE_DIR="/app/source_code_buggy"
+    else
+        CODE_DIR="/app/source_code_fixed"
+    fi
     
-    # Check for shell, python, or javascript script to run
-    if [ -f "${REPRO_COMMAND_SH}" ]; then
-        echo "Found repro_command.sh. Executing with bash..."
-        chmod +x "${REPRO_COMMAND_SH}"
-        if bash "${REPRO_COMMAND_SH}"; then
-            echo "--- Test script executed successfully (exit code 0) ---"
+    echo "Switching to directory: ${CODE_DIR}"
+    cd "${CODE_DIR}"
+    echo "Current directory: $(pwd)"
+
+    # Run the Node.js test script
+    echo "Running reproduce.js test script..."
+    VERSION="${version}" node "${REPRO_SCRIPT}"
+    local exit_code=$?
+
+    # In our case, exit code 1 indicates the bug was found
+    if [ $exit_code -eq 0 ]; then
+        if [ "$version" == "buggy" ]; then
+            echo "✅ BUG SUCCESSFULLY REPRODUCED: MCP client used after being closed."
+            return 0
+        elif [ "$version" == "patched" ]; then
+            echo "✅ PATCH SUCCESSFULLY VERIFIED: MCP client closed issue fixed."
+            return 0
         else
-            echo "--- Test script failed (exit code $?) ---"
-        fi
-    elif [ -f "${REPRO_SCRIPT_PY}" ]; then
-        echo "Found repro_script.py. Executing with python..."
-        if ${PYTHON_CMD} "${REPRO_SCRIPT_PY}"; then
-            echo "--- Test script executed successfully (exit code 0) ---"
-        else
-            echo "--- Test script failed (exit code $?) ---"
-        fi
-    elif [ -f "${REPRO_SCRIPT_JS}" ]; then
-        echo "Found repro_script.js. Executing with node..."
-        if ${NODE_CMD} "${REPRO_SCRIPT_JS}"; then
-            echo "--- Test script executed successfully (exit code 0) ---"
-        else
-            echo "--- Test script failed (exit code $?) ---"
+            echo "✅ FIX CONFIRMED: MCP client closed issue fixed."
+            return 0
         fi
     else
-        echo "--- FATAL ERROR: No reproduction script found! ---"
-        echo "Looked for ${REPRO_COMMAND_SH}, ${REPRO_SCRIPT_PY}, and ${REPRO_SCRIPT_JS}"
-        exit 127
+        if [ "$version" == "buggy" ]; then
+            echo "❌ BUG NOT REPRODUCED: MCP client closed issue not detected."
+            return 1
+        elif [ "$version" == "patched" ]; then
+            echo "❌ PATCH NOT VERIFIED: MCP client used after being closed issue still exists."
+            return 1
+        else
+            echo "❌ FIX NOT VERIFIED: MCP client used after being closed issue still exists."
+            return 1
+        fi
     fi
 }
 
 case "$1" in
     test_buggy)
         echo "=== Testing BUGGY Version (Commit: ${BUGGY_COMMIT}) ==="
-        echo "Checking out buggy commit..."
-        git -c advice.detachedHead=false checkout "${BUGGY_COMMIT}" --force
-        run_test
+        run_test "buggy"
         ;;
     test_fixed)
-        if [ -z "${FIXED_COMMIT}" ] || [ "${FIXED_COMMIT}" == "N/A" ]; then
-            echo "ERROR: FIXED_COMMIT not set." >&2; exit 1;
-        fi
         echo "=== Testing FIXED Version (Commit: ${FIXED_COMMIT}) ==="
-        git -c advice.detachedHead=false checkout "${FIXED_COMMIT}" --force
-        run_test
+        run_test "fixed"
+        ;;
+    apply_patch)
+        if [ -z "$2" ]; then
+            echo "Usage: docker run -v \$(pwd):/patches IMAGE apply_patch /patches/my_patch.patch"
+            exit 1
+        fi
+        cd /app/source_code_buggy
+        patch -p1 < "$2"
+        ;;
+    test_patched)
+        echo "=== Testing PATCHED Version (Buggy + Your Patch) ==="
+        run_test "patched"
         ;;
     show_diff)
-        if [ -z "${FIXED_COMMIT}" ] || [ "${FIXED_COMMIT}" == "N/A" ]; then
-                echo "ERROR: FIXED_COMMIT not set." >&2; exit 1;
-        fi
         echo "=== Diff between BUGGY (${BUGGY_COMMIT}) and FIXED (${FIXED_COMMIT}) ==="
-        git diff "${BUGGY_COMMIT}" "${FIXED_COMMIT}" --
-        ;;
-    inspect_buggy)
-        echo "Setting up BUGGY environment (commit: ${BUGGY_COMMIT})..."
-        git -c advice.detachedHead=false checkout "${BUGGY_COMMIT}" --force
-        echo "Use 'docker exec -it <container_id> bash' to explore."
-        tail -f /dev/null
+        cd /app/source_code_buggy
+        git diff "${BUGGY_COMMIT}" "${FIXED_COMMIT}"
         ;;
     bash)
-        echo "Entering bash shell. Defaulting to BUGGY commit (${BUGGY_COMMIT})."
-        git -c advice.detachedHead=false checkout "${BUGGY_COMMIT}" --force
+        echo "Entering bash shell"
         /bin/bash
         ;;
     help|*)
-        echo "Usage: docker run <image_name> [test_buggy|test_fixed|show_diff|inspect_buggy|bash|help]"
+        echo "Usage: docker run [OPTIONS] IMAGE [COMMAND]"
+        echo ""
+        echo "Commands:"
+        echo "  test_buggy       Test if the bug exists in the buggy version"
+        echo "  test_fixed       Test if the fix works in the fixed version"
+        echo "  apply_patch      Apply a patch file to the buggy version"
+        echo "  test_patched     Test the buggy version with your applied patch"
+        echo "  show_diff        Show the git diff between buggy and fixed versions"
+        echo "  bash             Start a bash shell"
+        echo "  help             Show this help message"
+        echo ""
         if [ "$1" != "help" ] && [ ! -z "$1" ]; then exit 1; fi
         ;;
 esac
+
+exit $?

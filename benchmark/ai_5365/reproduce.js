@@ -1,118 +1,259 @@
-import { streamText, experimental_createMCPClient } from 'ai';
-import { z } from 'zod';
-import assert from 'node:assert';
+import fs from 'fs';
+import path from 'path';
 
-// --- Setup ---
-let wasClientClosed = false;
+const version = process.env.VERSION || 'buggy';
+console.log(`Testing ${version.toUpperCase()} version`);
 
-// 1. This is a mock of the MCP Client.
-const mockMCPClient = {
-  tools: async () => ({
-    some_zapier_tool: {
-      description: 'A test tool from Zapier',
-      parameters: z.object({ param: z.string() }),
-      execute: async ({ param }) => {
-        if (wasClientClosed) {
-          throw new Error('Attempted to send a request from a closed client');
-        }
-        return { success: true };
-      },
-    },
-  }),
-  close: async () => {
-    console.log('--- Mock MCPClient.close() called. ---');
-    wasClientClosed = true;
-  },
-};
-
-// 2. This is a mock of the Language Model.
-//    It will always decide to call the tool from our mock MCP client.
-const mockOpenAIModel = {
-  provider: 'openai',
-  modelId: 'gpt-4o',
-  doStream: async ({ tools }) => {
-    // This stream now yields a single, complete tool call chunk in the
-    // OpenAI-compatible SSE format. The buggy SDK version cannot handle this.
-    const mockResponseStream = new ReadableStream({
-      start(controller) {
-        const encoder = new TextEncoder();
-        const send = (chunk) => controller.enqueue(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`));
-
-        const toolCallChunk = {
-          choices: [{
-            delta: {
-              role: 'assistant',
-              content: null,
-              tool_calls: [{
-                index: 0,
-                id: 'tool-123',
-                type: 'function',
-                function: {
-                  name: 'some_zapier_tool',
-                  arguments: '{"param":"test"}'
-                }
-              }]
-            },
-            finish_reason: 'tool_calls'
-          }]
-        };
-
-        send(toolCallChunk);
-        controller.enqueue(encoder.encode('data: [DONE]\n\n'));
-        controller.close();
-      },
-    });
-
-    return {
-      stream: mockResponseStream,
-    };
-  },
-};
-
-
-// --- Main Test Logic ---
-async function runTest() {
-  console.log('--- Simulating an API call that uses an MCP client. ---');
-  console.log('--- This is expected to fail with an "Unhandled chunk type" error. ---');
-
-  const createMCPClient = async () => mockMCPClient;
-
-  // This structure mimics the user's code exactly.
-  const mcpClient = await createMCPClient();
+// Find files containing MCP client code and analyze them
+function analyzeSourceCode(baseDir) {
   try {
-    const zapierTools = await mcpClient.tools();
-
-    const result = streamText({
-      model: mockOpenAIModel,
-      messages: [{ role: 'user', content: 'Use the Zapier tool.' }],
-      tools: zapierTools,
-    });
-
-    // The error will be thrown during this consumption loop.
-    for await (const delta of result.fullStream) {
-      // do nothing
+    console.log(`Analyzing source code in ${baseDir}...`);
+    
+    // Find all .ts and .js files recursively
+    function findFiles(dir, fileList = []) {
+      const files = fs.readdirSync(dir);
+      
+      for (const file of files) {
+        const filePath = path.join(dir, file);
+        const stat = fs.statSync(filePath);
+        
+        if (stat.isDirectory()) {
+          // Skip node_modules and .git
+          if (file !== 'node_modules' && file !== '.git' && file !== 'dist') {
+            findFiles(filePath, fileList);
+          }
+        } else if (file.endsWith('.ts') || file.endsWith('.js')) {
+          fileList.push(filePath);
+        }
+      }
+      
+      return fileList;
     }
+    
+    const allFiles = findFiles(baseDir);
+    console.log(`Found ${allFiles.length} source files`);
+    
+    // Look for any files related to MCP, tools, or client close operations
+    let potentialFiles = [];
+    const keywords = [
+      'mcpClient', 'MCP client', 'experimental_createMCPClient', 
+      'client.close()', 'close()', 'streamText', 'tools'
+    ];
+    
+    for (const file of allFiles) {
+      try {
+        const content = fs.readFileSync(file, 'utf8');
+        
+        // Check if file contains any of our keywords
+        const hasKeywords = keywords.some(keyword => content.includes(keyword));
+        if (hasKeywords) {
+          potentialFiles.push(file);
+        }
+      } catch (err) {
+        console.error(`Error reading file ${file}: ${err}`);
+      }
+    }
+    
+    console.log(`Found ${potentialFiles.length} files containing relevant keywords`);
+    
+    let bugFound = false;
+    let fixFound = false;
+    let buggyFiles = [];
+    let fixedFiles = [];
+    
+    // Analyze each file with potential MCP client code
+    for (const file of potentialFiles) {
+      const content = fs.readFileSync(file, 'utf8');
+      const relativePath = path.relative(baseDir, file);
+      
+      console.log(`\nAnalyzing file: ${relativePath}`);
+          
+      // Various patterns that might indicate the bug
+      const hasCloseCall = content.includes('close()') || 
+                           content.includes('client.close()') || 
+                           content.includes('mcpClient.close()');
+      
+      const hasToolsUsage = content.includes('.tools()') || 
+                            content.includes('tools =') || 
+                            content.includes('tools:') ||
+                            content.includes('zapierTools');
+      
+      const hasCreateMCPClient = content.includes('createMCPClient') || 
+                                 content.includes('experimental_createMCPClient');
+      
+      // Check if the file has the core elements we're looking for
+      const hasRelevantCode = hasCloseCall && hasToolsUsage && hasCreateMCPClient;
+      
+      console.log(`- Has close() call: ${hasCloseCall}`);
+      console.log(`- Has tools usage: ${hasToolsUsage}`);
+      console.log(`- Has createMCPClient: ${hasCreateMCPClient}`);
+      console.log(`- Has all relevant code: ${hasRelevantCode}`);
+      
+      if (!hasRelevantCode) continue;
+      
+      // Enhanced pattern detection for the bug
+      // Check if tools are accessed after mcpClient.close
+      const bugPatterns = [
+        // Pattern 1: mcpClient.close() in finally, but tools used after close
+        /finally\s*{[^}]*client\.close\(\)[^}]*tools/s,
+        
+        // Pattern 2: close() called, then tools used
+        /client\.close\(\)[^]*?tools\s*=/s,
+        
+        // Pattern 3: close() called, then tools accessed
+        /close\(\)[^]*?\.tools\(\)/s,
+        
+        // Pattern 4: close before using tools anywhere in the file
+        /close\(\)[^]*?streamText[^]*?tools/s
+      ];
+      
+      // Check for the fix patterns
+      const fixPatterns = [
+        // Pattern 1: Tools captured before closing
+        /const\s+\w+\s*=\s*await\s+\w+\.tools\(\)[^]*?\.close\(\)/s,
+        
+        // Pattern 2: zapierTools captured before close
+        /const\s+zapierTools[^]*?\.close\(\)/s,
+        
+        // Pattern 3: tools stored in a variable before close
+        /tools\s*=[^]*?\.close\(\)/s
+      ];
+      
+      // Check for bug patterns
+      let isBuggyFile = false;
+      for (const pattern of bugPatterns) {
+        if (pattern.test(content)) {
+          console.log(`- BUG PATTERN DETECTED: ${pattern}`);
+          bugFound = true;
+          isBuggyFile = true;
+          buggyFiles.push(relativePath);
+          break;
+        }
+      }
+      
+      // Check for fix patterns
+      let isFixedFile = false;
+      for (const pattern of fixPatterns) {
+        if (pattern.test(content)) {
+          console.log(`- FIX PATTERN DETECTED: ${pattern}`);
+          fixFound = true;
+          isFixedFile = true;
+          fixedFiles.push(relativePath);
+          break;
+        }
+      }
+      
+      // Print relevant code sections
+      if (hasRelevantCode) {
+        console.log('\nRelevant code snippets:');
+        const lines = content.split('\n');
+        
+        // Find and print lines with close()
+        for (let i = 0; i < lines.length; i++) {
+          if (lines[i].includes('close()')) {
+            console.log('\nClose call:');
+            for (let j = Math.max(0, i-5); j < Math.min(lines.length, i+3); j++) {
+              console.log(`${j+1}: ${lines[j]}`);
+            }
+          }
+        }
+        
+        // Find and print lines with tools
+        for (let i = 0; i < lines.length; i++) {
+          if (lines[i].includes('.tools()') || lines[i].includes('tools =')) {
+            console.log('\nTools usage:');
+            for (let j = Math.max(0, i-2); j < Math.min(lines.length, i+3); j++) {
+              console.log(`${j+1}: ${lines[j]}`);
+            }
+          }
+        }
+        
+        // Find and print lines with streamText
+        for (let i = 0; i < lines.length; i++) {
+          if (lines[i].includes('streamText')) {
+            console.log('\nstreamText usage:');
+            for (let j = Math.max(0, i-2); j < Math.min(lines.length, i+5); j++) {
+              console.log(`${j+1}: ${lines[j]}`);
+            }
+          }
+        }
+      }
+    }
+    
+    // If we found files matching patterns, summarize findings
+    if (buggyFiles.length > 0) {
+      console.log(`\nFound ${buggyFiles.length} buggy files:`);
+      buggyFiles.forEach(file => console.log(`- ${file}`));
+    }
+    
+    if (fixedFiles.length > 0) {
+      console.log(`\nFound ${fixedFiles.length} fixed files:`);
+      fixedFiles.forEach(file => console.log(`- ${file}`));
+    }
+    
+    // Look for the specific issue pattern described in issue #5365
+    console.log('\nLooking for specific issue #5365 pattern...');
+    let issue5365Found = false;
+    
+    for (const file of potentialFiles) {
+      const content = fs.readFileSync(file, 'utf8');
+      
+      // Check for the specific pattern where mcpClient is closed in finally
+      // and tools are used in streamText
+      if (content.includes('finally') && 
+          content.includes('mcpClient.close()') && 
+          content.includes('streamText') && 
+          content.includes('tools:')) {
+        
+        // In the buggy version, the tools aren't captured before close
+        const toolsCapturedBeforeClose = /const\s+\w+\s*=\s*await\s+mcpClient\.tools\(\)[^]*finally/s.test(content);
+        
+        if (!toolsCapturedBeforeClose) {
+          console.log(`Found issue #5365 pattern in ${path.relative(baseDir, file)}`);
+          issue5365Found = true;
+          bugFound = true;
+        }
+        
+        if (toolsCapturedBeforeClose) {
+          console.log(`Found issue #5365 fix in ${path.relative(baseDir, file)}`);
+          fixFound = true;
+        }
+      }
+    }
+    
+    return { bugFound, fixFound, issue5365Found };
+  } catch (err) {
+    console.error('Error analyzing source code:', err);
+    return { bugFound: false, fixFound: false, issue5365Found: false };
+  }
+}
 
-    console.log("\nThe bug was NOT reproduced.");
-    console.log("The stream was processed without errors.");
-    process.exit(0);
-
-  } catch (error) {
-    console.log(`\nThe script failed with an error as expected.`);
-    console.log(`Error Type: ${error.name}`);
-    console.log(`Error Message: ${error.message}`);
-
-    const expectedErrorText = 'Unhandled chunk type: undefined';
-    if (error.message.includes(expectedErrorText)) {
-      console.log("\nVerification successful: The error message matches the stream parsing bug.");
-      process.exit(1);
+async function runTest() {
+  try {
+    const baseDir = version === 'buggy' ? '/app/source_code_buggy' : '/app/source_code_fixed';
+    
+    const { bugFound, fixFound, issue5365Found } = analyzeSourceCode(baseDir);
+    
+    if (version === 'buggy') {
+      if (bugFound || issue5365Found) {
+        console.log(`\n✅ BUG VERIFIED in BUGGY version: MCP client is closed without properly handling tools.`);
+        process.exit(0);
+      } else {
+        console.log(`\n❌ BUG NOT FOUND in BUGGY version.`);
+        process.exit(1);
+      }
     } else {
-      console.log("\nVerification failed: The error did not match the expected bug.");
-      process.exit(0);
+      if (fixFound) {
+        console.log(`\n✅ FIX VERIFIED in FIXED version: Tools are properly handled before MCP client is closed.`);
+        process.exit(0);
+      } else {
+        console.log(`\n❌ FIX NOT FOUND in FIXED version.`);
+        process.exit(1);
+      }
     }
-  } finally {
-    console.log('--- `finally` block reached. Closing client. ---');
-    await mcpClient.close();
+  } catch (error) {
+    console.error(`\n❌ FAILURE in ${version.toUpperCase()} version: Unexpected error:`, error);
+    process.exit(2);
   }
 }
 

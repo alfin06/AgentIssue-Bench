@@ -4,6 +4,6 @@
     "buggy_commit": "fa44a95ae291d6d17caf5ea4880f2089d8509c24",
     "fixed_commit": "33592d2614e24eadc96729bffff60b32dd3bd851",
     "build_command_example": "docker build --build-arg BUGGY_COMMIT=\"fa44a95ae291d6d17caf5ea4880f2089d8509c24\" --build-arg FIXED_COMMIT=\"33592d2614e24eadc96729bffff60b32dd3bd851\" -t \"alfin06/agentissue-bench:ai_4412\" -f Dockerfile.benchmark .",
-    "run_command_example": "docker run --rm -it \"alfin06/agentissue-bench:ai_4412\" test_buggy",
+    "run_command_example": "docker run --rm -it -e GOOGLE_API_KEY=api-key \"alfin06/agentissue-bench:ai_4412\" test_buggy",
     "target_dockerhub_image": "alfin06/agentissue-bench:ai_4412"
 }

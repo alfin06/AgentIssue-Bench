@@ -1,40 +1,63 @@
-FROM python:3.10-slim
+FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install git and required build tools with robust retry logic
-RUN apt-get update && \
-    # Try the installation up to 5 times with increasing delays
+# Retry apt-get install up to 5 times if it fails, and use --fix-missing
+RUN set -eux; \
     for i in 1 2 3 4 5; do \
-        echo "Attempt $i of 5" && \
-        apt-get install -y --no-install-recommends \
-            git \
-            build-essential \
-            cmake \
-            gcc \
-            g++ \
-            curl \
-        && break || \
-        if [ $i -lt 5 ]; then \
-            echo "Retrying in $(($i * 5)) seconds..." && \
-            sleep $(($i * 5)); \
-        else \
-            echo "Installation failed after 5 attempts" && \
-            exit 1; \
-        fi; \
-    done && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+        apt-get update && \
+        apt-get install -y --no-install-recommends --fix-missing git build-essential cmake gcc g++ curl ca-certificates && \
+        apt-get clean && \
+        rm -rf /var/lib/apt/lists/* && \
+        break || sleep 5; \
+    done
 
-# Accept build arguments for commits
 ARG BUGGY_COMMIT
 ARG FIXED_COMMIT
 ENV BUGGY_COMMIT=${BUGGY_COMMIT} FIXED_COMMIT=${FIXED_COMMIT}
 
-# We'll skip installing llama-cpp-python since it's not needed for our test
-ENV SKIP_LLAMA_CPP_PYTHON=1
+RUN git clone https://github.com/microsoft/autogen.git /app/source_code_buggy && \
+    cd /app/source_code_buggy && \
+    git -c advice.detachedHead=false checkout ${BUGGY_COMMIT} --force
 
-# Copy the reproduction script and entrypoint
+RUN git clone https://github.com/microsoft/autogen.git /app/source_code_fixed && \
+    cd /app/source_code_fixed && \
+    git -c advice.detachedHead=false checkout ${FIXED_COMMIT} --force
+
+# Install dependencies for buggy version
+RUN pip install --upgrade pip && \
+    for pkg in autogen-core autogen-agentchat autogen-ext; do \
+      if [ -d "/app/source_code_buggy/python/packages/$pkg" ]; then \
+        cd "/app/source_code_buggy/python/packages/$pkg" && \
+        pip install -e .; \
+      fi \
+    done
+
+# Install dependencies for fixed version
+RUN pip install --upgrade pip && \
+    for pkg in autogen-core autogen-agentchat autogen-ext; do \
+      if [ -d "/app/source_code_fixed/python/packages/$pkg" ]; then \
+        cd "/app/source_code_fixed/python/packages/$pkg" && \
+        pip install -e .; \
+      fi \
+    done
+
+    RUN pip install --upgrade pip grpcio && \
+    for pkg in autogen-core autogen-agentchat autogen-ext; do \
+      if [ -d "/app/source_code_buggy/python/packages/$pkg" ]; then \
+        cd "/app/source_code_buggy/python/packages/$pkg" && \
+        pip install -e .; \
+      fi \
+    done
+
+RUN pip install --upgrade pip grpcio && \
+    for pkg in autogen-core autogen-agentchat autogen-ext; do \
+      if [ -d "/app/source_code_fixed/python/packages/$pkg" ]; then \
+        cd "/app/source_code_fixed/python/packages/$pkg" && \
+        pip install -e .; \
+      fi \
+    done
+
 COPY reproduce.py /opt/reproduce.py
 COPY run_test_entrypoint.sh /usr/local/bin/run_test_entrypoint.sh
 RUN chmod +x /usr/local/bin/run_test_entrypoint.sh

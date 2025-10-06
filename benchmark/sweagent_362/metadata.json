@@ -1,9 +1,9 @@
 {
     "issue_github_url": "https://github.com/princeton-nlp/SWE-agent/issues/362",
     "repo_url": "https://github.com/SWE-agent/SWE-agent.git",
-    "buggy_commit": "d73331b9faf5e6bf5d4961c3eebaafc5bba7355e",
-    "fixed_commit": "12ce5e56656ac99e7eb3642c1344574753488010",
-    "build_command_example": "docker build --build-arg BUGGY_COMMIT=d73331b9faf5e6bf5d4961c3eebaafc5bba7355e --build-arg FIXED_COMMIT=12ce5e56656ac99e7eb3642c1344574753488010 -t alfin06/agentissue-bench:sweagent_362 -f Dockerfile.benchmark .",
+    "buggy_commit": "63ced8ded95005098ebbae37480f77da40dc9681",
+    "fixed_commit": "93a48bfe4bfb886c7d32e56a30d23595bd50cb38",
+    "build_command_example": "docker build --build-arg BUGGY_COMMIT=63ced8ded95005098ebbae37480f77da40dc9681 --build-arg FIXED_COMMIT=93a48bfe4bfb886c7d32e56a30d23595bd50cb38 -t alfin06/agentissue-bench:sweagent_362 -f Dockerfile.benchmark .",
     "run_command_example": "docker run --rm -it alfin06/agentissue-bench:sweagent_362 test_buggy",
     "target_dockerhub_image": "alfin06/agentissue-bench:sweagent_362",
     "title": "React: Toggling input methods copies over input",

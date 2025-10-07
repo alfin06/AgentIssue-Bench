@@ -1,5 +1,4 @@
 #!/bin/bash
-# filepath: d:\Projects\AgentIssue-Bench\reproduction_workspace\failure_triggering_tests\autogen_5124\run_test_entrypoint.sh
 set -eo pipefail
 
 SOURCE_BUGGY="/app/source_code_buggy"
@@ -35,6 +34,24 @@ run_test() {
   return $exit_code
 }
 
+apply_patch() {
+  local patch_file="$2"
+  if [ ! -d "$SOURCE_BUGGY" ]; then
+    echo "Cloning buggy source first..."
+    # You may need to add your clone logic here
+    exit 2
+  fi
+  echo "Applying patch: $patch_file"
+  cd "$SOURCE_BUGGY"
+  git apply "$patch_file"
+  cd /app
+  echo "✅ Patch applied"
+}
+
+test_patched() {
+  run_test "patched" "$SOURCE_BUGGY"
+}
+
 case "$1" in
   test_buggy)
     echo "=== Testing BUGGY Version (Commit: ${BUGGY_COMMIT}) ==="
@@ -44,10 +61,16 @@ case "$1" in
     echo "=== Testing FIXED Version (Commit: ${FIXED_COMMIT}) ==="
     run_test "fixed" "$SOURCE_FIXED"
     ;;
+  apply_patch)
+    apply_patch "$@"
+    ;;
+  test_patched)
+    test_patched
+    ;;
   bash)
     exec /bin/bash
     ;;
   help|*)
-    echo "Usage: docker run <image_name> [test_buggy|test_fixed|bash|help]"
+    echo "Usage: docker run <image_name> [test_buggy|test_fixed|apply_patch <patch_file>|test_patched|bash|help]"
     ;;
 esac

@@ -80,10 +80,25 @@ def run_command(command, logfile, timeout=None, skip_on_fail=False):
             raise
 
 if __name__ == "__main__":
+    # Prompt user for API keys and URLs
+    OPENAI_API_KEY = input("Enter your OPENAI_API_KEY: ").strip()
+    OPENAI_API_BASE = input("Enter your OPENAI_API_BASE (or leave blank): ").strip()
+    BASE_URL = OPENAI_API_BASE
+    SERPERDEV_API_KEY = input("Enter your SERPERDEV_API_KEY: ").strip()
+    GOOGLE_API_KEY = input("Enter your GOOGLE_API_KEY: ").strip()
+
     print(">>> Removing all existing Docker images...\n")
     subprocess.run("sudo docker rmi -f $(sudo docker images -q) || true", shell=True)
     print("\n>>> All existing images removed.\n")
     time.sleep(2)
+
+    env_vars = (
+        f"-e OPENAI_API_KEY={OPENAI_API_KEY} "
+        f"-e OPENAI_API_BASE={OPENAI_API_BASE} "
+        f"-e BASE_URL={BASE_URL} "
+        f"-e SERPERDEV_API_KEY={SERPERDEV_API_KEY} "
+        f"-e GOOGLE_API_KEY={GOOGLE_API_KEY} "
+    )
 
     for idx, tag in enumerate(TAGS, start=1):
         print(f"\n===== [{idx}/{len(TAGS)}] Processing {tag} =====\n")
@@ -91,8 +106,8 @@ if __name__ == "__main__":
         with open(log_path, "w", encoding="utf-8") as logfile:
             image = f"alfin06/agentissue-bench:{tag}"
             run_command(f"sudo docker pull {image}", logfile, timeout=600, skip_on_fail=True)
-            run_command(f"sudo docker run --rm \"{image}\" test_buggy", logfile, timeout=600, skip_on_fail=True)
-            run_command(f"sudo docker run --rm \"{image}\" test_fixed", logfile, timeout=600, skip_on_fail=True)
+            run_command(f"sudo docker run --rm {env_vars}\"{image}\" test_buggy", logfile, timeout=600, skip_on_fail=True)
+            run_command(f"sudo docker run --rm {env_vars}\"{image}\" test_fixed", logfile, timeout=600, skip_on_fail=True)
 
         print(f"\n>>> Finished {tag}. Log saved to: {log_path}\n")
         time.sleep(1)

@@ -1,0 +1,21 @@
+diff --git a/haystack/components/generators/chat/openai.py b/haystack/components/generators/chat/openai.py
+index 52f7c934..077392f2 100644
+--- a/haystack/components/generators/chat/openai.py
++++ b/haystack/components/generators/chat/openai.py
+@@ -373,10 +373,12 @@ class OpenAIChatGenerator:
+ 
+         openai_tools = {}
+         if tools:
+-            tool_definitions = [
+-                {"type": "function", "function": {**t.tool_spec, **({"strict": tools_strict} if tools_strict else {})}}
+-                for t in tools
+-            ]
++            tool_definitions = []
++            for t in tools:
++                function_spec = {**t.tool_spec}
++                if tools_strict:
++                    function_spec["parameters"]["additionalProperties"] = False
++                tool_definitions.append({"type": "function", "function": function_spec})
+             openai_tools = {"tools": tool_definitions}
+ 
+         is_streaming = streaming_callback is not None

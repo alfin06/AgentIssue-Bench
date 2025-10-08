@@ -86,6 +86,9 @@ with open(LOG_FILE, "w", encoding="utf-8") as log:
         global_success += success_count
         global_total += total_count
 
+        # Remove the docker image for this tag
+        subprocess.run(["docker", "rmi", docker_image], check=False)
+
     msg = "\n=== Global Patch Testing Summary ==="
     print(msg)
     log.write(msg + "\n")

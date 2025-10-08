@@ -14,7 +14,7 @@
 Through a multi-step filtering process—including failure reproduction, patch reproduction, and non-flakiness verification—we collect 50 reproducible agents issues, which form ***AGENTISSUE-BENCH***.
 
 Each issue is containerized as a Docker image and hosted on Docker Hub:
-🔗 **[Docker Hub Repository](https://hub.docker.com/r/llmagents/agentissue-bench/tags)**
+🔗 **[Docker Hub Repository](https://hub.docker.com/r/alfin06/agentissue-bench/tags)**
 
 To retrieve the images for all issues, run:
 ```
@@ -33,6 +33,10 @@ To remove a specific image and container by tag:
 ```
 $ python remove_images.py --tag <tag>
 ```
+To test the issues in ***AGENTISSUE-BENCH***:
+```
+$ python test_agentissue_bench.py
+```
 
 ## 📊 Results
 
@@ -47,7 +51,25 @@ The following table presents the overall results of SE agents on AgentIssue-Benc
 The following figure shows the distribution of ***AgentIssue-Bench***:
 <img src="output\images\pie.png" alt="pie" />
 
-## 🔧 Patch Generation
+## 🧪 Patch Evaluation
+
+To evaluate generated patches in ***AGENTISSUE-BENCH***:
+
+1. Create a directory named `Patches`:
+```
+mkdir Patches
+```
+2. Place your patch files inside subdirectories named by tag, e.g.:
+```
+Patches/{tag_name}/your_patch_files.patch
+```
+3. Run the evaluation script:
+```
+python eval_patches.py
+```
+4. You can see the result in `patch_eval.log`
+
+<!-- ## 🔧 Patch Generation
 
 We evaluate the capabilities of 3 state-of-the-art SE agents on ***AGENTISSUE-BENCH***, collecting the patches they generate to resolve real-world agent issues.
 
@@ -90,7 +112,7 @@ $ conda create -n swe_agent python=3.12
 $ conda activate swe_agent
 $ chmod +x gen_patches_all.sh
 $ ./gen_patches_all.sh
-```
+``` -->
 
 ## 📁 Generated Patches
 

@@ -1,0 +1,12 @@
+diff --git a/examples/next-fastapi/api/utils/types.py b/examples/next-fastapi/api/utils/types.py
+index 5c467d8dc..ec6648d8f 100644
+--- a/examples/next-fastapi/api/utils/types.py
++++ b/examples/next-fastapi/api/utils/types.py
+@@ -10,5 +10,5 @@ class ClientAttachment(BaseModel):
+ class ToolInvocation(BaseModel):
+     toolCallId: str
+     toolName: str
+-    args: dict
+-    result: dict
++    args: dict[str, str]
++    result: dict[str, str]

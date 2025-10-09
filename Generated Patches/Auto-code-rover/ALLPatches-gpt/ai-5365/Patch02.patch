@@ -1,0 +1,35 @@
+diff --git a/examples/next-fastapi/api/index.py b/examples/next-fastapi/api/index.py
+index c6e9430d5..13efe8db4 100644
+--- a/examples/next-fastapi/api/index.py
++++ b/examples/next-fastapi/api/index.py
+@@ -1,5 +1,6 @@
+ import os
+ import json
++import atexit
+ from typing import List
+ from pydantic import BaseModel
+ from dotenv import load_dotenv
+@@ -18,6 +19,13 @@ client = OpenAI(
+     api_key=os.environ.get("OPENAI_API_KEY"),
+ )
+ 
++def close_client():
++    global client
++    if client is not None:
++        client.close()
++
++atexit.register(close_client)
++
+ 
+ class Request(BaseModel):
+     messages: List[ClientMessage]
+@@ -29,6 +37,9 @@ available_tools = {
+ 
+ 
+ def stream_text(messages: List[ClientMessage], protocol: str = 'data'):
++    global client
++    if client is None:
++        raise RuntimeError("Client is not open or has been closed unexpectedly.")
+     stream = client.chat.completions.create(
+         messages=messages,
+         model="gpt-4o",

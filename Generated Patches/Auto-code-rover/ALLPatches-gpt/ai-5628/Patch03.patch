@@ -1,0 +1,14 @@
+diff --git a/examples/next-fastapi/api/utils/prompt.py b/examples/next-fastapi/api/utils/prompt.py
+index 6674b85e0..50e536dda 100644
+--- a/examples/next-fastapi/api/utils/prompt.py
++++ b/examples/next-fastapi/api/utils/prompt.py
+@@ -45,7 +45,8 @@ def convert_to_openai_messages(messages: List[ClientMessage]):
+                     'type': 'function',
+                     'function': {
+                         'name': tool_invocation.toolName,
+-                        'arguments': json.dumps(tool_invocation.args)
++                        # Handle additional properties by not stringifying the args object
++                        'arguments': json.dumps(tool_invocation.args, default=lambda o: o if isinstance(o, (str, int, float, bool, type(None))) else str(o))
+                     }
+                 }
+                 for tool_invocation in message.toolInvocations]

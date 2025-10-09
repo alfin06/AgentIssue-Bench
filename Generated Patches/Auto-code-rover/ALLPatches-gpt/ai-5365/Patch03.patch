@@ -1,0 +1,64 @@
+diff --git a/examples/next-fastapi/api/index.py b/examples/next-fastapi/api/index.py
+index c6e9430d5..1b3f8d6f4 100644
+--- a/examples/next-fastapi/api/index.py
++++ b/examples/next-fastapi/api/index.py
+@@ -29,31 +29,37 @@ available_tools = {
+ 
+ 
+ def stream_text(messages: List[ClientMessage], protocol: str = 'data'):
+-    stream = client.chat.completions.create(
+-        messages=messages,
+-        model="gpt-4o",
+-        stream=True,
+-        tools=[{
+-            "type": "function",
+-            "function": {
+-                "name": "get_current_weather",
+-                "description": "Get the current weather in a given location",
+-                "parameters": {
+-                    "type": "object",
+-                    "properties": {
+-                        "location": {
+-                            "type": "string",
+-                            "description": "The city and state, e.g. San Francisco, CA",
++    if not client or client.is_closed():
++        raise RuntimeError("Client is not initialized or is closed.")
++        
++    try:
++        stream = client.chat.completions.create(
++            messages=messages,
++            model="gpt-4o",
++            stream=True,
++            tools=[{
++                "type": "function",
++                "function": {
++                    "name": "get_current_weather",
++                    "description": "Get the current weather in a given location",
++                    "parameters": {
++                        "type": "object",
++                        "properties": {
++                            "location": {
++                                "type": "string",
++                                "description": "The city and state, e.g. San Francisco, CA",
++                            },
++                            "unit": {
++                                "type": "string",
++                                "enum": ["celsius", "fahrenheit"]},
+                         },
+-                        "unit": {
+-                            "type": "string",
+-                            "enum": ["celsius", "fahrenheit"]},
++                        "required": ["location", "unit"],
+                     },
+-                    "required": ["location", "unit"],
+                 },
+-            },
+-        }]
+-    )
++            }]
++        )
++    finally:
++        client.close()
+ 
+     # When protocol is set to "text", you will send a stream of plain text chunks
+     # https://sdk.vercel.ai/docs/ai-sdk-ui/stream-protocol#text-stream-protocol

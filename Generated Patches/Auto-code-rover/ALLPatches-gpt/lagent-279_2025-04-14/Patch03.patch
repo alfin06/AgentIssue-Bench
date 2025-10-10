@@ -7,11 +7,11 @@ index 699165d..0013edb 100644
          keywords=['artificial general intelligence', 'agent', 'agi', 'llm'],
          url='https://github.com/InternLM/lagent',
 -        install_requires=parse_requirements('requirements/runtime.txt'),
-+        install_requires=parse_requirements('requirements/runtime.txt') + ['tenacity'],
++        install_requires=parse_requirements('requirements/') + ['optional.txt'],
          extras_require={
 -            'all': parse_requirements('requirements.txt'),
 -            'optional': parse_requirements('requirements/optional.txt'),
-+            'all': parse_requirements('requirements.txt') + ['tenacity'],
-+            'optional': parse_requirements('requirements/optional.txt') + ['tenacity'],
++            'all': parse_requirements('requirements.txt'),
++            'optional': parse_requirements('requirements/optional.txt'),
          },
      )

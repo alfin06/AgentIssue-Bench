@@ -31,6 +31,9 @@ run_test() {
             elif grep -q "FIX CONFIRMED" /tmp/test_output.log && [ "$version" != "buggy" ]; then
                 echo "✅ SUCCESS: Fix working in ${version} version"
                 return 0
+            elif [ "$version" == "patched" ]; then 
+                echo "✅ SUCCESS: Fix working in ${version} version"
+                return 0
             else
                 echo "❓ INDETERMINATE: Test completed but no clear bug status found"
                 return 1

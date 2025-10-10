@@ -42,4 +42,3 @@ index 0000000..656448a
 +)
 +
 +print("Generated prompt:", prompt)
-\ No newline at end of file

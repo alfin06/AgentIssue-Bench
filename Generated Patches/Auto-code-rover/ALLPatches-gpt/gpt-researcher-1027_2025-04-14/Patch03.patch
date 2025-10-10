@@ -9,5 +9,3 @@ index 611e065a..ac8071ef 100644
 +            # Removed language argument if it ever exists
 +            **{k: v for k, v in config.llm_kwargs.items() if k != "language"}
          )
- 
-         print(f"\n🤖 Calling {config.smart_llm_model}...\n")

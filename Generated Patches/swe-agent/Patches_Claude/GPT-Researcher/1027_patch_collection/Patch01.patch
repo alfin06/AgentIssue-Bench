@@ -31,4 +31,3 @@ index 0000000..276ce5f
 +    print("Success! Result:", result[:100])  # Print first 100 chars
 +except Exception as e:
 +    print("Error:", str(e))
-\ No newline at end of file

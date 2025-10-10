@@ -6,7 +6,7 @@ index ac0b85c..e8b828d 100644
  distro
  filelock
  func_timeout
--griffe<1.0
+-griffe
 +griffe>=0.25.0,<1.0
  json5
  jsonschema

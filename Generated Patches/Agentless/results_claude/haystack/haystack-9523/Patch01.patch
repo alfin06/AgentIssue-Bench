@@ -1,0 +1,22 @@
+diff --git a/haystack/tools/component_tool.py b/haystack/tools/component_tool.py
+index 14b9c86..e68e84c 100644
+--- a/haystack/tools/component_tool.py
++++ b/haystack/tools/component_tool.py
+@@ -248,13 +248,10 @@ class ComponentTool(Tool):
+                 deserialized_outputs[key] = deserialized_config
+             inner_data["outputs_to_state"] = deserialized_outputs
+ 
+-        if (
+-            inner_data.get("outputs_to_string") is not None
+-            and inner_data["outputs_to_string"].get("handler") is not None
+-        ):
+-            inner_data["outputs_to_string"]["handler"] = deserialize_callable(
+-                inner_data["outputs_to_string"]["handler"]
+-            )
++        if inner_data.get("outputs_to_string") is not None:
++            outputs_to_string = inner_data["outputs_to_string"]
++            if isinstance(outputs_to_string, dict) and outputs_to_string.get("handler") is not None:
++                outputs_to_string["handler"] = deserialize_callable(outputs_to_string["handler"])
+ 
+         return cls(
+             component=component,

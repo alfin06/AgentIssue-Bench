@@ -1,0 +1,32 @@
+diff --git a/examples/next-fastapi/api/index.py b/examples/next-fastapi/api/index.py
+index a2ed7fb..2c50614 100644
+--- a/examples/next-fastapi/api/index.py
++++ b/examples/next-fastapi/api/index.py
+@@ -14,11 +14,6 @@ load_dotenv(".env.local")
+ 
+ app = FastAPI()
+ 
+-client = OpenAI(
+-    api_key=os.environ.get("OPENAI_API_KEY"),
+-)
+-
+-
+ class Request(BaseModel):
+     messages: List[ClientMessage]
+ 
+@@ -29,6 +24,9 @@ available_tools = {
+ 
+ 
+ def stream_text(messages: List[ClientMessage], protocol: str = 'data'):
++    client = OpenAI(
++        api_key=os.environ.get("OPENAI_API_KEY"),
++    )
+     stream = client.chat.completions.create(
+         messages=messages,
+         model="gpt-4o",
+@@ -132,4 +130,4 @@ async def handle_chat_data(request: Request, protocol: str = Query('data')):
+ 
+     response = StreamingResponse(stream_text(openai_messages, protocol))
+     response.headers['x-vercel-ai-data-stream'] = 'v1'
+-    return response
++    return response

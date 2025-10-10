@@ -1,0 +1,17 @@
+diff --git a/haystack/components/generators/chat/openai.py b/haystack/components/generators/chat/openai.py
+index e6dbefa..c31b87a 100644
+--- a/haystack/components/generators/chat/openai.py
++++ b/haystack/components/generators/chat/openai.py
+@@ -374,7 +374,11 @@ class OpenAIChatGenerator:
+         openai_tools = {}
+         if tools:
+             tool_definitions = [
+-                {"type": "function", "function": {**t.tool_spec, **({"strict": tools_strict} if tools_strict else {})}}
++                {
++                    "type": "function",
++                    "function": t.tool_spec,
++                    **({"strict": tools_strict} if tools_strict is not None else {})
++                }
+                 for t in tools
+             ]
+             openai_tools = {"tools": tool_definitions}

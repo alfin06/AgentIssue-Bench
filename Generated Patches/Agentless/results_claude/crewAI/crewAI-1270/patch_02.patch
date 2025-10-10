@@ -35,3 +35,4 @@ index cf045ec..6dba65d 100644
  
          def _get_all_functions(self):
              return {
+                

@@ -1,0 +1,19 @@
+diff --git a/haystack/tools/component_tool.py b/haystack/tools/component_tool.py
+index 01069d9..40b588f 100644
+--- a/haystack/tools/component_tool.py
++++ b/haystack/tools/component_tool.py
+@@ -103,12 +103,8 @@ class ComponentTool(Tool):
+             )
+             raise ValueError(message)
+ 
+-        if getattr(component, "__haystack_added_to_pipeline__", None):
+-            msg = (
+-                "Component has been added to a pipeline and can't be used to create a ComponentTool. "
+-                "Create ComponentTool from a non-pipeline component instead."
+-            )
+-            raise ValueError(msg)
++        if getattr(component, "__haystack_added_to_pipeline__", False):
++            component.__haystack_added_to_pipeline__ = True
+ 
+         # Create the tools schema from the component run method parameters
+         tool_schema = self._create_tool_parameters_schema(component)

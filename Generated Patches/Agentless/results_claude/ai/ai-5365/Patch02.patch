@@ -1,0 +1,15 @@
+diff --git a/examples/next-fastapi/api/index.py b/examples/next-fastapi/api/index.py
+index a2ed7fb..4e65aa3 100644
+--- a/examples/next-fastapi/api/index.py
++++ b/examples/next-fastapi/api/index.py
+@@ -28,6 +28,10 @@ available_tools = {
+ }
+ 
+ 
++from openai import OpenAI
++
++client = OpenAI()
++
+ def stream_text(messages: List[ClientMessage], protocol: str = 'data'):
+     stream = client.chat.completions.create(
+         messages=messages,

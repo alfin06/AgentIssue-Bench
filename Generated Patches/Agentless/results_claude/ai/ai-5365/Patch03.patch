@@ -1,0 +1,16 @@
+diff --git a/examples/next-fastapi/api/index.py b/examples/next-fastapi/api/index.py
+index a2ed7fb..a397203 100644
+--- a/examples/next-fastapi/api/index.py
++++ b/examples/next-fastapi/api/index.py
+@@ -76,9 +76,9 @@ def stream_text(messages: List[ClientMessage], protocol: str = 'data'):
+         for chunk in stream:
+             for choice in chunk.choices:
+                 if choice.finish_reason == "stop":
+-                    continue
++                    break
+ 
+-                elif choice.finish_reason == "tool_calls":
++                if choice.finish_reason == "tool_calls":
+                     for tool_call in draft_tool_calls:
+                         yield '9:{{"toolCallId":"{id}","toolName":"{name}","args":{args}}}\n'.format(
+                             id=tool_call["id"],

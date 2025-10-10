@@ -8,9 +8,6 @@ index da2647e..b38ec1c 100644
  
 -            if target_id is None:
 -                # Handle the case where the target is not found
-+            argument_value = prompt[argument_key]
-+            prompt_arguments = prompt.copy()
-+            del prompt_arguments[argument_key]
 +            
 +            # If target_id is None and prompt_type is chain, we'll create a placeholder chain
 +            if target_id is None and prompt_type == "chain":

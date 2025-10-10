@@ -31,4 +31,3 @@ index 0000000..ad24cf3
 +    print(result)
 +except Exception as e:
 +    print(f"Error: {e}")
-\ No newline at end of file

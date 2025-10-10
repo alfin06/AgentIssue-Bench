@@ -49,6 +49,3 @@ index 0000000..c0e3592
 +                print("Command is correctly saved.")
 +            else:
 +                print("Command is not saved.")
-+else:
-+    print("Failed to fetch extensions.", response.json())
-\ No newline at end of file

@@ -41,8 +41,3 @@ index 0000000..2700da1
 +
 +# Simulate selecting and saving commands
 +select_and_save_commands(agent_name, commands_to_select)
-+
-+# Verify the commands are saved correctly
-+verify_commands(agent_name, commands_to_select)
-+
-+print("Reproduction script executed successfully.")

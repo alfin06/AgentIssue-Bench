@@ -7,8 +7,6 @@ index 0000000..1fb9383
 +import asyncio
 +from agixt.Agent import Agent
 +from agixt.Extensions import Extensions
-+from agixt.DB import get_session, Command, Extension, AgentCommand, AgentModel, User
-+from agixt.Globals import DEFAULT_USER
 +
 +async def main():
 +    # Create test agent
@@ -55,4 +53,3 @@ index 0000000..1fb9383
 +
 +if __name__ == "__main__":
 +    asyncio.run(main())
-\ No newline at end of file

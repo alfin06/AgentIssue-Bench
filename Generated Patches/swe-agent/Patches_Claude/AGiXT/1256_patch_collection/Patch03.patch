@@ -5,8 +5,6 @@ index 0000000..e1abedb
 +++ b/reproduce_issue.py
 @@ -0,0 +1,47 @@
 +from agixt.Agent import Agent, add_agent
-+from agixt.DB import get_session, Command, Extension
-+import logging
 +
 +# Set up logging
 +logging.basicConfig(level="INFO")

@@ -29,7 +29,3 @@ index 0000000..2f8bf02
 +    agent_commands = session.query(agent.AgentCommand).filter_by(agent_id=agent.agent_id).all()
 +    for command in agent_commands:
 +        print(f"Command: {command.command_id}, State: {command.state}")
-+
-+if __name__ == "__main__":
-+    reproduce_issue()
-\ No newline at end of file

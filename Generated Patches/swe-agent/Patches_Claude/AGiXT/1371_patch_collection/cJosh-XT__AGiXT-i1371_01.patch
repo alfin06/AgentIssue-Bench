@@ -14,7 +14,7 @@ index da2647e..76a7315 100644
                  .filter(ChainStepArgument.chain_step_id == step.id)
                  .all()
              )
- 
+            user = await get_user_from_context(info)
              prompt_args = {}
 -            for argument, chain_step_argument in arguments:
 -                prompt_args[argument.name] = chain_step_argument.value

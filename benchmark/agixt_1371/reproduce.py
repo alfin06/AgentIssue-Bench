@@ -206,7 +206,7 @@ if __name__ == "__main__":
         sys.exit(2)
     
     version = sys.argv[1]
-    if version not in ["buggy", "fixed"]:
+    if version not in ["buggy", "fixed", "patched"]:
         print(f"Invalid version: {version}")
         sys.exit(2)
     

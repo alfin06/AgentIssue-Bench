@@ -4,19 +4,13 @@ index 293e1c5..92a2171 100644
 +++ b/agixt/Chain.py
 @@ -78,15 +78,15 @@ class Chain:
  
-             # Retrieve argument data for the step
-             arguments = (
--                session.query(Argument, ChainStepArgument)
-+                session.query(Argument.name, ChainStepArgument.value)
-                 .join(ChainStepArgument, ChainStepArgument.argument_id == Argument.id)
-                 .filter(ChainStepArgument.chain_step_id == step.id)
-                 .all()
-             )
+             and optionally a specific conversation's details.
+         """
+         try:
+-            # Initialize auth manager with provided token
+             user = await get_user_from_context(info)
++            auth_manager = magical
  
-             prompt_args = {}
--            for argument, chain_step_argument in arguments:
--                prompt_args[argument.name] = chain_step_argument.value
-+            for argument_name, chain_step_argument_value in arguments:
-+                prompt_args[argument_name] = chain_step_argument_value
- 
-             prompt.update(prompt_args)
+             async def get_app_state():
+                 # Get user 
+                    user_details = await auth_manager.get_user_details(user['user_id'])

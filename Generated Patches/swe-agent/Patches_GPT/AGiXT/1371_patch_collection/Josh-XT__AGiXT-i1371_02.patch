@@ -11,7 +11,7 @@ index 0000000..19b4904
 +def reproduce_error():
 +    chain_name = "Another Chain"
 +    chain = Chain()
-+
++   user = await get_user_from_context(info)
 +    try:
 +        steps = chain.get_steps(chain_name=chain_name)
 +        print("Steps:", steps)
@@ -45,3 +45,28 @@ index 0000000..19b4904
 +if __name__ == "__main__":
 +    reproduce_error()
 \ No newline at end of file
+
+diff --git a/agixt/Chain.py b/agixt/Chain.py
+index da2647e..76a7315 100644
+--- a/agixt/Chain.py
++++ b/agixt/Chain.py
+@@ -77,16 +77,17 @@ class Chain:
+                 )
+ 
+             # Retrieve argument data for the step
++            # Query only the necessary columns to avoid unpacking issues
+             arguments = (
+-                session.query(Argument, ChainStepArgument)
++                session.query(Argument.name, ChainStepArgument.value)
+                 .join(ChainStepArgument, ChainStepArgument.argument_id == Argument.id)
+                 .filter(ChainStepArgument.chain_step_id == step.id)
+                 .all()
+             )
+            user = await get_user_from_context(info)
+             prompt_args = {}
+-            for argument, chain_step_argument in arguments:
+-                prompt_args[argument.name] = chain_step_argument.value
++            for arg_name, arg_value in arguments:
++                prompt_args[arg_name] = arg_value
+ 
+             prompt.update(prompt_args)

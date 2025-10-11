@@ -22,4 +22,3 @@ index 0000000..b8678c7
 +    print("Short-term memory reset successfully.")
 +except Exception as e:
 +    print(f"Error resetting short-term memory: {e}")
-\ No newline at end of file

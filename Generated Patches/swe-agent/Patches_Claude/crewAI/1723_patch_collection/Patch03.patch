@@ -19,4 +19,3 @@ index 0000000..a153c8c
 +    print("Successfully reset short-term memory!")
 +except Exception as e:
 +    print(f"Error: {e}")
-\ No newline at end of file

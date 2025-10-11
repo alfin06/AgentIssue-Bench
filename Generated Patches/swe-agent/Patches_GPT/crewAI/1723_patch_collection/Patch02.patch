@@ -19,4 +19,3 @@ index 0000000..7378e73
 +    print("Memory reset successfully.")
 +except Exception as e:
 +    print(f"An error occurred: {e}")
-\ No newline at end of file

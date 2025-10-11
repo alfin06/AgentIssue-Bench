@@ -20,4 +20,3 @@ index 0000000..69c88a7
 +    print("Reset successful.")
 +except Exception as e:
 +    print(f"Error during reset: {e}")
-\ No newline at end of file

@@ -23,4 +23,3 @@ index 0000000..5bcea8d
 +
 +if __name__ == "__main__":
 +    asyncio.run(main())
-\ No newline at end of file

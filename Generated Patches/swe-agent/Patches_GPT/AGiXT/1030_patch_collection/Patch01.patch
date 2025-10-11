@@ -1,0 +1,19 @@
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..6276696
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1,13 @@
++from agixt.Websearch import Websearch
++import asyncio
++
++async def test_websearch_agent():
++    websearch = Websearch()
++    try:
++        await websearch.websearch_agent(websearch_depth="invalid_string")
++        print("Test passed: No TypeError occurred.")
++    except TypeError as e:
++        print(f"Test failed: {e}")
++
++if __name__ == "__main__":
++    asyncio.run(test_websearch_agent())

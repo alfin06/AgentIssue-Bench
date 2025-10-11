@@ -1,8 +1,8 @@
-diff --git a/agixt/Interactions.py b/agixt/Interactions.py
+diff --git a/agixt/WebSearch.py b/agixt/WebSearch.py
 index 9ad2fb20..8e005255 100644
---- a/agixt/Interactions.py
-+++ b/agixt/Interactions.py
-@@ -420,7 +420,7 @@ class Interactions:
+--- a/agixt/WebSearch.py
++++ b/agixt/WebSearch.py
+@@ -420,7 +420,7 @@ class WebSearch:
              if search_string != "":
                  await self.websearch.websearch_agent(
                      user_input=search_string,

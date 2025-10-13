@@ -18,6 +18,10 @@ def run_test(version):
     root = f"/app/source_code_{version}"
     file_path = os.path.join(root, "camel", "agents", "chat_agent.py")
 
+    if not os.path.exists(file_path):
+        print(f"Error: {file_path} not found.")
+        return 1
+
     has_hardcode = check_hardcode(file_path)
 
     if version == "buggy":

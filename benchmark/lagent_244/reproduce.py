@@ -16,7 +16,6 @@ def check_dependency_constraints():
     """Check dependency constraints in the project files"""
     print("\nChecking dependency constraints...")
     
-    # Check various dependency files
     dependency_files = [
         os.path.join(source_dir, "optional.txt"),
         os.path.join(source_dir, "runtime.txt"),
@@ -24,36 +23,21 @@ def check_dependency_constraints():
         os.path.join(source_dir, "setup.py")
     ]
     
-    transformers_constraint = None
-    
     for file_path in dependency_files:
         if os.path.exists(file_path):
             print(f"Checking {os.path.basename(file_path)}...")
             with open(file_path, 'r') as f:
                 content = f.read()
-                
-                # Look for transformers constraint
-                if "transformers" in content:
-                    import re
-                    # Match patterns like: transformers>=4.34, transformers>=4.34,<=4.40, etc.
-                    constraint_match = re.search(r'transformers([>=<\.,0-9]+)', content)
-                    if constraint_match:
-                        transformers_constraint = constraint_match.group(0)
-                        file_with_constraint = os.path.basename(file_path)
-                        print(f"Found transformers constraint in {file_with_constraint}: {transformers_constraint}")
-    
-    # For fixed version, we expect a version constraint like transformers<=4.40 or similar
-    if version == "fixed":
-        if transformers_constraint and ("<=4.40" in transformers_constraint or "<4.41" in transformers_constraint):
-            print("✅ Found upper version constraint for transformers in fixed version")
-            return True
-    else:  # For buggy version
-        if transformers_constraint and ("<=4.40" in transformers_constraint or "<4.41" in transformers_constraint):
-            print("❓ Upper version constraint already exists in buggy version")
-            return False
-        else:
-            print("✅ No upper version constraint for transformers in buggy version (as expected)")
-            return True
+                if (version == "fixed" or version =="patched") and "transformers>=4.34,<=4.40" in content:
+                    print("✅ PATCH VERIFIED")
+                    return True
+                # For buggy version, ensure the constraint does not exist
+                if version == "buggy" and "transformers>=4.34,<=4.40" not in content:
+                    print("✅ BUG REPRODUCED: No upper version constraint for transformers in buggy version (as expected)")
+                    return True
+    # If not found, return False
+    print("❌ Required constraint not found")
+    return False
 
 def test_with_transformers_version():
     """Create a simple test script to demonstrate the bug with transformers 4.41+"""

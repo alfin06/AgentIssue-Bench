@@ -1,9 +1,9 @@
 {
     "issue_github_url": "https://github.com/camel-ai/camel/issues/88",
     "repo_url": "https://github.com/camel-ai/camel.git",
-    "buggy_commit": "ba3ec7603ebc735600e32379df235e627c4141c8",
-    "fixed_commit": "5a2e4e2e4cb21711c9f9d07c53029328ed44394a",
-    "build_command_example": "docker build --build-arg BUGGY_COMMIT=ba3ec7603ebc735600e32379df235e627c4141c8 --build-arg FIXED_COMMIT=5a2e4e2e4cb21711c9f9d07c53029328ed44394a -t alfin06/agentissue-bench:camel_88 -f Dockerfile.benchmark .",
+    "buggy_commit": "d78560d3a21926cafc4a2fc3d9fe3865af2ba5f4",
+    "fixed_commit": "76ca54fc89ad027b2431cebb54869ef3058259e1",
+    "build_command_example": "docker build --build-arg BUGGY_COMMIT=d78560d3a21926cafc4a2fc3d9fe3865af2ba5f4 --build-arg FIXED_COMMIT=76ca54fc89ad027b2431cebb54869ef3058259e1 -t alfin06/agentissue-bench:camel_88 -f Dockerfile.benchmark .",
     "run_command_example": "docker run --rm -it -e OPENAI_API_KEY='your-key' alfin06/agentissue-bench:camel_88 test_buggy",
     "target_dockerhub_image": "alfin06/agentissue-bench:camel_88",
     "title": "Fix hard coded `self.update_messages(output_messages[0])`",

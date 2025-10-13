@@ -34,14 +34,12 @@ RUN pip install --no-cache-dir torch transformers==4.40.0
 
 # Copy test files
 COPY reproduce.py /opt/reproduce.py
-COPY run_test_entrypoint.sh /opt/run_test_entrypoint.sh
+COPY run_test_entrypoint.sh /usr/local/bin/run_test_entrypoint.sh
 COPY metadata.json /opt/metadata.json
-
-# Make the entry point script executable
-RUN chmod +x /opt/run_test_entrypoint.sh
+RUN chmod +x /usr/local/bin/run_test_entrypoint.sh
 
 # Set the entrypoint
-ENTRYPOINT ["/opt/run_test_entrypoint.sh"]
+ENTRYPOINT ["/usr/local/bin/run_test_entrypoint.sh"]
 
 # Default command
 CMD ["help"]

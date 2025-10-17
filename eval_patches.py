@@ -7,6 +7,7 @@ LOG_FILE = "patch_eval.log"
 
 global_success = 0
 global_total = 0
+grand_total_avg = 0
 
 with open(LOG_FILE, "w", encoding="utf-8") as log:
     for tag in os.listdir(PATCHES_ROOT):
@@ -39,36 +40,77 @@ with open(LOG_FILE, "w", encoding="utf-8") as log:
             msg = f"\n=== Testing patch: {patch_file} ==="
             print(msg)
             log.write(msg + "\n")
-
-            cmd = [
-                "docker", "run", "--rm",
-                "--entrypoint", "bash",
-                "-v", f"{os.path.dirname(patch_path)}:/patches",
-                docker_image,
-                "-c", f"/usr/local/bin/run_test_entrypoint.sh apply_patch /patches/{patch_file} && /usr/local/bin/run_test_entrypoint.sh test_patched"
-            ]
-            
-            result = subprocess.run(cmd, capture_output=True, text=True)
-            print(result.stdout)
-            log.write(result.stdout + "\n")
-            
-            if "FAILED" in result.stdout or result.returncode != 0:
-                msg = f"❌ Patch {patch_file}: FAILED"
-                print(msg)
-                log.write(msg + "\n")
-                continue
-            
-            if ("PATCH SUCCEEDED" in result.stdout or 
-                "PATCH SUCCESSFULLY VERIFIED" in result.stdout or 
-                "FIX SUCCESSFULLY VERIFIED" in result.stdout):
-                msg = f"✅ Patch {patch_file}: SUCCESS"
-                print(msg)
-                log.write(msg + "\n")
-                success_count += 1
+            if tag == "agixt_1369":
+                # Special command for agixt_1369
+                cmd = [
+                    "docker", "run", "--rm",
+                    "--network", "host",
+                    "--entrypoint", "bash",
+                    "-v", f"{os.path.dirname(patch_path)}:/patches",
+                    "-e", "OPENAI_API_KEY=",
+                    "-e", "OPENAI_API_BASE=",
+                    docker_image,
+                    "-c", f"/usr/local/bin/run_test_entrypoint.sh apply_patch /patches/{patch_file} && /usr/local/bin/run_test_entrypoint.sh test_patched"
+                ]
+                result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8")
+                output = result.stdout if result.stdout is not None else ""
+                print(output)
+                log.write(output + "\n")
+                if "FAILED" in result.stdout or result.returncode != 0:
+                    msg = f"❌ Patch {patch_file}: FAILED"
+                    print(msg)
+                    log.write(msg + "\n")
+                    continue
+                if ("PATCH SUCCEEDED" in result.stdout or 
+                    "PATCH SUCCESSFULLY VERIFIED" in result.stdout or 
+                    "FIX SUCCESSFULLY VERIFIED" in result.stdout or
+                    "NO BUG" in result.stdout or
+                    "FIX CONFIRMED" in result.stdout or
+                    "PATCH VERIFIED" in result.stdout):
+                    msg = f"✅ Patch {patch_file}: SUCCESS"
+                    print(msg)
+                    log.write(msg + "\n")
+                    success_count += 1
+                else:
+                    msg = f"❌ Patch {patch_file}: FAILED"
+                    print(msg)
+                    log.write(msg + "\n")
             else:
-                msg = f"❌ Patch {patch_file}: FAILED"
-                print(msg)
-                log.write(msg + "\n")
+                cmd = [
+                    "docker", "run", "--rm",
+                    "--entrypoint", "bash",
+                    "-v", f"{os.path.dirname(patch_path)}:/patches",
+                    "-e", "OPENAI_API_KEY=",
+                    "-e", "OPENAI_API_BASE=",
+                    docker_image,
+                    "-c", f"/usr/local/bin/run_test_entrypoint.sh apply_patch /patches/{patch_file} && /usr/local/bin/run_test_entrypoint.sh test_patched"
+                ]
+                
+                result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8")
+                output = result.stdout if result.stdout is not None else ""
+                print(output)
+                log.write(output + "\n")
+                
+                if "FAILED" in result.stdout or result.returncode != 0:
+                    msg = f"❌ Patch {patch_file}: FAILED"
+                    print(msg)
+                    log.write(msg + "\n")
+                    continue
+                
+                if ("PATCH SUCCEEDED" in result.stdout or 
+                    "PATCH SUCCESSFULLY VERIFIED" in result.stdout or 
+                    "FIX SUCCESSFULLY VERIFIED" in result.stdout or
+                    "NO BUG" in result.stdout or
+                    "FIX CONFIRMED" in result.stdout or
+                    "PATCH VERIFIED" in result.stdout):
+                    msg = f"✅ Patch {patch_file}: SUCCESS"
+                    print(msg)
+                    log.write(msg + "\n")
+                    success_count += 1
+                else:
+                    msg = f"❌ Patch {patch_file}: FAILED"
+                    print(msg)
+                    log.write(msg + "\n")
 
         msg = f"\n=== Patch Testing Summary for {tag} ==="
         print(msg)
@@ -80,6 +122,14 @@ with open(LOG_FILE, "w", encoding="utf-8") as log:
         print(msg)
         log.write(msg + "\n")
         msg = f"Failed patches: {total_count - success_count}"
+        print(msg)
+        log.write(msg + "\n")
+        avg_score = success_count / total_count if total_count > 0 else 0
+        msg = f"Plausible score: {avg_score:.2f}"
+        print(msg)
+        log.write(msg + "\n")
+        grand_total_avg += avg_score
+        msg = f"\n---------------------------------------------"
         print(msg)
         log.write(msg + "\n")
 
@@ -99,5 +149,8 @@ with open(LOG_FILE, "w", encoding="utf-8") as log:
     print(msg)
     log.write(msg + "\n")
     msg = f"Failed patches: {global_total - global_success}"
+    print(msg)
+    log.write(msg + "\n")
+    msg = f"Plausible score: {grand_total_avg:.2f}"
     print(msg)
     log.write(msg + "\n")

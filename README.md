@@ -59,7 +59,7 @@ To evaluate generated patches in ***AGENTISSUE-BENCH***:
 ```
 mkdir Patches
 ```
-2. Place your patch files inside subdirectories named by tag, e.g.:
+2. Place your patch files inside subdirectories named by tag:
 ```
 Patches/{tag_name}/your_patch_files.patch
 ```

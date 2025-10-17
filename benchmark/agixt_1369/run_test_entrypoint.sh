@@ -2,7 +2,7 @@
 set -eo pipefail
 
 # Define path for test script
-reproduce_PY="/app/reproduce.py"
+reproduce_PY="/opt/reproduce.py"
 
 run_test() {
     local version=$1

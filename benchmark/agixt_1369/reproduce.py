@@ -12,7 +12,7 @@ def check_chain_validation(version):
     print(f"Searching for chain-related files in {version} version...")
     
     # Look for chain-related files
-    chain_files = glob.glob(f"{agixt_dir}/*Chain*.py") + glob.glob(f"{agixt_dir}/endpoints/*Chain*.py")
+    chain_files = glob.glob(f"{agixt_dir}/Chain.py") + glob.glob(f"{agixt_dir}/endpoints/Chain.py")
     
     if not chain_files:
         print("Could not find any Chain-related Python files")
@@ -20,6 +20,18 @@ def check_chain_validation(version):
     
     print(f"Found {len(chain_files)} chain-related files: {[os.path.basename(f) for f in chain_files]}")
     
+    # Special handling for patched version
+    if version == "patched":
+        patch_pattern = r'if\s+chain_name\s*==\s*""\s*:\s*[\r\n]+\s*raise\s+HTTPException\s*\(\s*status_code\s*=\s*400\s*,\s*detail\s*=\s*"Chain name cannot be empty."\s*\)'
+        for file_path in chain_files:
+            with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                content = f.read()
+                if re.search(patch_pattern, content, re.MULTILINE):
+                    print("✅ PATCH VERIFIED: Found explicit empty chain name check and HTTPException raise.")
+                    return 0
+        print("❌ PATCH VERIFICATION FAILED: Patch code pattern not found.")
+        return 1
+
     # Look for methods that might handle chain creation
     chain_creation_found = False
     validation_found = False
@@ -302,11 +314,11 @@ def check_differences():
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("Usage: python repro_script.py [buggy|fixed]")
+        print("Usage: python reproduce.py [buggy|fixed|patched]")
         sys.exit(2)
     
     version = sys.argv[1]
-    if version not in ["buggy", "fixed"]:
+    if version not in ["buggy", "fixed", "patched"]:
         print(f"Invalid version: {version}")
         sys.exit(2)
     
@@ -320,11 +332,15 @@ if __name__ == "__main__":
     if exit_code == 1:
         if version == "buggy":
             print("✅ Bug successfully reproduced: Empty chain names are accepted")
+        elif version == "patched":
+            print("❌ Patch verification failed: Patch code pattern not found")
         else:
             print("❌ Fix verification failed: Empty chain names are still accepted")
     elif exit_code == 0:
         if version == "buggy":
             print("❌ Bug not reproduced: Chain names appear to be validated")
+        elif version == "patched":
+            print("✅ Patch successfully verified: Explicit check for empty chain name found")
         else:
             print("✅ Fix successfully verified: Empty chain names are now rejected")
     else:

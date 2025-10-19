@@ -1,0 +1,25 @@
+diff --git a/mle/model.py b/mle/model.py
+index 5a6461a..c28d2d4 100644
+--- a/mle/model.py
++++ b/mle/model.py
+@@ -56,7 +56,9 @@ class OllamaModel(Model):
+         Args:
+             chat_history: The context (chat history).
+         """
+-        return self.client.chat(model=self.model, messages=chat_history)['message']['content']
++        import json
++        response = self.client.chat(model=self.model, messages=chat_history)
++        return json.dumps(response)
+ 
+     def stream(self, chat_history, **kwargs):
+         """
+@@ -69,7 +71,8 @@ class OllamaModel(Model):
+                 messages=chat_history,
+                 stream=True
+         ):
+-            yield chunk['message']['content']
++            import json
++            yield json.dumps(chunk)
+ 
+ 
+ class OpenAIModel(Model):

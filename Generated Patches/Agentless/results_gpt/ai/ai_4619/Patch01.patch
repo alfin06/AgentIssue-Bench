@@ -1,0 +1,22 @@
+diff --git a/examples/next-fastapi/api/utils/prompt.py b/examples/next-fastapi/api/utils/prompt.py
+index 1be89c3..427292e 100644
+--- a/examples/next-fastapi/api/utils/prompt.py
++++ b/examples/next-fastapi/api/utils/prompt.py
+@@ -65,11 +65,10 @@ def convert_to_openai_messages(messages: List[ClientMessage]):
+ 
+             openai_messages.extend(tool_results)
+ 
+-            continue
+-
+-        openai_messages.append({
+-            "role": message.role,
+-            "content": parts
+-        })
++            # Add the original message content even if there are tool invocations
++            openai_messages.append({
++                "role": message.role,
++                "content": parts
++            })
+ 
+-    return openai_messages
++    return openai_messages

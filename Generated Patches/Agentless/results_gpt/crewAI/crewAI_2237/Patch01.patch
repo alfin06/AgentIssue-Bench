@@ -1,0 +1,24 @@
+diff --git a/src/crewai/agent.py b/src/crewai/agent.py
+index 5ad923b..7870063 100644
+--- a/src/crewai/agent.py
++++ b/src/crewai/agent.py
+@@ -243,14 +243,17 @@ class Agent(BaseAgent):
+                     task=task,
+                 ),
+             )
+-            result = self.agent_executor.invoke(
++            response = self.agent_executor.invoke(
+                 {
+                     "input": task_prompt,
+                     "tool_names": self.agent_executor.tools_names,
+                     "tools": self.agent_executor.tools_description,
+                     "ask_for_human_input": task.human_input,
+                 }
+-            )["output"]
++            )
++            if "output" not in response or not response["output"].strip():
++                raise ValueError("Invalid LLM output: Output is missing or empty.")
++            result = response["output"]
+         except Exception as e:
+             if e.__class__.__module__.startswith("litellm"):
+                 # Do not retry on litellm errors

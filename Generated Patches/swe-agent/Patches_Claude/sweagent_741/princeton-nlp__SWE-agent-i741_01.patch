@@ -43,4 +43,3 @@ index 0000000..275c8ea
 +
 +if __name__ == "__main__":
 +    check_build()
-\ No newline at end of file

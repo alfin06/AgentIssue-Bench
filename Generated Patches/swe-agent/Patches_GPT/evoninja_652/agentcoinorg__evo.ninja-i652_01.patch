@@ -33,4 +33,3 @@ index 0000000..2475aae
 +
 +if __name__ == "__main__":
 +    test_example_prompt()
-\ No newline at end of file

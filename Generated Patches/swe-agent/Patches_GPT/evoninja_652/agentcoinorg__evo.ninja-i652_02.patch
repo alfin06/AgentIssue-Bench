@@ -38,4 +38,3 @@ index 0000000..829275e
 +finally:
 +    # Close the WebDriver
 +    driver.quit()
-\ No newline at end of file

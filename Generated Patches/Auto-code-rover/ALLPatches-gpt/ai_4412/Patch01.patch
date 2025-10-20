@@ -1,0 +1,26 @@
+diff --git a/examples/next-fastapi/api/index.py b/examples/next-fastapi/api/index.py
+index c6e9430d5..578137cbd 100644
+--- a/examples/next-fastapi/api/index.py
++++ b/examples/next-fastapi/api/index.py
+@@ -107,7 +107,7 @@ def stream_text(messages: List[ClientMessage], protocol: str = 'data'):
+                                 {"id": id, "name": name, "arguments": ""})
+ 
+                         else:
+-                            draft_tool_calls[draft_tool_calls_index]["arguments"] += arguments
++                            draft_tool_calls[draft_tool_calls_index]["arguments"] += json.loads(arguments) if arguments else {}
+ 
+                 else:
+                     yield '0:{text}\n'.format(text=json.dumps(choice.delta.content))
+diff --git a/examples/next-fastapi/api/utils/prompt.py b/examples/next-fastapi/api/utils/prompt.py
+index 6674b85e0..9629fa57f 100644
+--- a/examples/next-fastapi/api/utils/prompt.py
++++ b/examples/next-fastapi/api/utils/prompt.py
+@@ -45,7 +45,7 @@ def convert_to_openai_messages(messages: List[ClientMessage]):
+                     'type': 'function',
+                     'function': {
+                         'name': tool_invocation.toolName,
+-                        'arguments': json.dumps(tool_invocation.args)
++                        'arguments': tool_invocation.args
+                     }
+                 }
+                 for tool_invocation in message.toolInvocations]

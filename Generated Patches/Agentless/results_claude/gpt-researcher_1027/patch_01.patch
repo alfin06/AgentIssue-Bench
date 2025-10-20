@@ -14,9 +14,3 @@ index 0af1fde..251bfdb 100644
      return f"""
  Context:
  "{context}"
-@@ -454,4 +458,4 @@ def get_prompt_by_report_type(report_type):
-             UserWarning,
-         )
-         prompt_by_type = report_type_mapping.get(default_report_type)
--    return prompt_by_type
-+    return prompt_by_type

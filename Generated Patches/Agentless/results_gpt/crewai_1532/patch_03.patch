@@ -20,12 +20,12 @@ diff --git a/src/crewai/telemetry/telemetry.py b/src/crewai/telemetry/telemetry.
 index 27bf17b..9581285 100644
 --- a/src/crewai/telemetry/telemetry.py
 +++ b/src/crewai/telemetry/telemetry.py
-@@ -47,6 +47,8 @@ class Telemetry:
- 
-     def __init__(self):
-         self.ready = False
-+        if os.getenv("OTEL_SDK_DISABLED", "false").lower() == "true":
-+            return
-         self.trace_set = False
-         try:
-             telemetry_endpoint = "https://telemetry.crewai.com:4319"
+@@ -21,6 +21,8 @@ class Telemetry:
+
+    def __init__(self):
+        self.ready = False
+        if os.getenv("OTEL_SDK_DISABLED", "false").lower() == "true":
+            return
+        self.trace_set = False
+        try:
+            telemetry_endpoint = "https://telemetry.crewai.com:4319"

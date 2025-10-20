@@ -12,7 +12,7 @@ TAGS = [
     "agixt_1369", "crewai_1753",
     "agixt_1371", "crewai_1824",
     "ai_5628", "crewai_1934",
-    "haystack_9487", "evoninja_504",
+    "haystack_9523", "evoninja_504",
     "ai_5365", "evoninja_515",
     "haystack_8912", "evoninja_525",
     "evoninja_594", "evoninja_652",
@@ -32,18 +32,18 @@ TAGS = [
     "gpt-engineer_1197", "gpt-researcher_1027"
 ]
 
-ADDITIONAL_TAGS = [
-    "ai_3953", "crewai_2237",
-    "ai_4411", "crewai_2127",
-    "ai_4412", "crewai_2150",
-    "ai_4446", "haystack_9313",
-    "ai_4619", , "haystack_9523",
-    "ai_6510", "haystack_9193",
-    "langgraphjs_1217", "mle_agent_173",
-    "mastra_4331", "openmanus_1113",
-    "openmanus_1140", "openmanus_1143",
-    "openmanus_11099", "openmanus_1155"    
-]
+# ADDITIONAL_TAGS = [
+#     "ai_3953", "crewai_2237",
+#     "ai_4411", "crewai_2127",
+#     "ai_4412", "crewai_2150",
+#     "ai_4446", "haystack_9313",
+#     "ai_4619", , "haystack_9487",
+#     "ai_6510", "haystack_9193",
+#     "langgraphjs_1217", "mle_agent_173",
+#     "mastra_4331", "sweagent_333",
+#     "ai_5380", "openmanus_1143",
+#     "ai_4761", "ai_2705"    
+# ]
 
 LOG_DIR = "logs"
 os.makedirs(LOG_DIR, exist_ok=True)
@@ -82,7 +82,7 @@ def run_command(command, logfile, timeout=None, skip_on_fail=False):
 if __name__ == "__main__":
     # Prompt user for API keys and URLs
     OPENAI_API_KEY = input("Enter your OPENAI_API_KEY: ").strip()
-    OPENAI_API_BASE = input("Enter your OPENAI_API_BASE (or leave blank): ").strip()
+    OPENAI_API_BASE = input("Enter your OPENAI_API_BASE: ").strip()
     BASE_URL = OPENAI_API_BASE
     SERPERDEV_API_KEY = input("Enter your SERPERDEV_API_KEY: ").strip()
     GOOGLE_API_KEY = input("Enter your GOOGLE_API_KEY: ").strip()
@@ -97,7 +97,7 @@ if __name__ == "__main__":
         f"-e OPENAI_API_BASE={OPENAI_API_BASE} "
         f"-e BASE_URL={BASE_URL} "
         f"-e SERPERDEV_API_KEY={SERPERDEV_API_KEY} "
-        f"-e GOOGLE_API_KEY={GOOGLE_API_KEY} "
+        f"-e GOOGLE_GENERATIVE_AI_API_KEY={GOOGLE_API_KEY} "
     )
 
     for idx, tag in enumerate(TAGS, start=1):

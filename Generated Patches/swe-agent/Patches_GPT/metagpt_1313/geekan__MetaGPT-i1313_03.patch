@@ -1,0 +1,49 @@
+diff --git a/metagpt/schema.py b/metagpt/schema.py
+index 52badcc..29b3bd0 100644
+--- a/metagpt/schema.py
++++ b/metagpt/schema.py
+@@ -240,6 +240,7 @@ class Message(BaseModel):
+     sent_from: str = Field(default="", validate_default=True)
+     send_to: set[str] = Field(default={MESSAGE_ROUTE_TO_ALL}, validate_default=True)
+     metadata: Dict[str, Any] = Field(default_factory=dict)  # metadata for `content` and `instruct_content`
++    restricted_to: Optional[set[str]] = Field(default=None, validate_default=True)
+ 
+     @field_validator("id", mode="before")
+     @classmethod
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..687221b
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1,30 @@
++import asyncio
++from metagpt.ext.werewolf.roles import Villager, Werewolf, Guard, Seer, Witch
++from metagpt.ext.werewolf.roles.human_player import prepare_human_player
++from metagpt.ext.werewolf.werewolf_game import WerewolfGame
++from metagpt.logs import logger
++
++async def reproduce_error():
++    game = WerewolfGame()
++    game_setup, players = game.env.init_game_setup(
++        role_uniq_objs=[Villager, Werewolf, Guard, Seer, Witch],
++        num_werewolf=2,
++        num_villager=2,
++        shuffle=True,
++        add_human=False,
++        use_reflection=True,
++        use_experience=False,
++        use_memory_selection=False,
++        new_experience_version="",
++        prepare_human_player=prepare_human_player
++    )
++    logger.info(f"{game_setup}")
++
++    players = [Villager(), Werewolf(), Guard(), Seer(), Witch()]
++    game.hire(players)
++    game.invest(20.0)
++    game.run_project(game_setup)
++    await game.run(n_round=5)
++
++if __name__ == "__main__":
++    asyncio.run(reproduce_error())
+\ No newline at end of file

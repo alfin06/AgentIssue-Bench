@@ -1,0 +1,77 @@
+diff --git a/python/packages/autogen-core/src/autogen_core/__init__.py b/python/packages/autogen-core/src/autogen_core/__init__.py
+index 0198544..2d9cc33 100644
+--- a/python/packages/autogen-core/src/autogen_core/__init__.py
++++ b/python/packages/autogen-core/src/autogen_core/__init__.py
+@@ -1,6 +1,6 @@
+ import importlib.metadata
+ 
+-__version__ = importlib.metadata.version("autogen_core")
++__version__ = "0.0.0"
+ 
+ from ._agent import Agent
+ from ._agent_id import AgentId
+diff --git a/python/reproduce_error.py b/python/reproduce_error.py
+new file mode 100644
+index 0000000..fa156c5
+--- /dev/null
++++ b/python/reproduce_error.py
+@@ -0,0 +1,58 @@
++import asyncio
++import datetime
++from autogen_core.models import ChatCompletionClient, SystemMessage, UserMessage
++from autogen_core.tools import BaseTool
++from autogen_core import CancellationToken
++
++class DummyTool(BaseTool):
++    def __init__(self):
++        super().__init__(
++            input_model=None,
++            output_model=None,
++            name="dummy_tool",
++            description="A dummy tool for testing."
++        )
++
++    async def run(self, args, cancellation_token: CancellationToken):
++        return "Dummy response"
++
++async def reproduce_error():
++    class DummyChatCompletionClient(ChatCompletionClient):
++        async def create(self, messages, *, tools=[], json_output=None, extra_create_args={}, cancellation_token=None):
++            # Simulate the error by adding an unexpected property
++            messages.append({"tool_responses": "unexpected_property"})
++            raise ValueError("Simulated openai.BadRequestError: Additional properties are not allowed ('tool_responses' was unexpected)")
++
++        async def close(self):
++            pass
++
++        def actual_usage(self):
++            pass
++
++        def total_usage(self):
++            pass
++
++        def count_tokens(self, messages, *, tools=[]):
++            return 0
++
++        def remaining_tokens(self, messages, *, tools=[]):
++            return 0
++
++        @property
++        def model_info(self):
++            return {}
++
++    client = DummyChatCompletionClient()
++    tools = [DummyTool()]
++    messages = [
++        SystemMessage(content="System message"),
++        UserMessage(content="User message")
++    ]
++
++    try:
++        await client.create(messages, tools=tools)
++    except ValueError as e:
++        print("Error reproduced:", e)
++
++if __name__ == "__main__":
++    asyncio.run(reproduce_error())
+\ No newline at end of file

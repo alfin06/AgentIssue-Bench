@@ -1,0 +1,17 @@
+diff --git a/reproduce_enum_error.py b/reproduce_enum_error.py
+new file mode 100644
+index 0000000..cff4789
+--- /dev/null
++++ b/reproduce_enum_error.py
+@@ -0,0 +1,11 @@
++from enum import Enum
++from src.crewai.utilities.crew_json_encoder import CrewJSONEncoder
++import json
++
++class CrewStatus(Enum):
++    TODO = "To Do"
++    SUCCESSFUL = "Successful"
++    FAILED = "Failed"
++
++output = {"status": CrewStatus.SUCCESSFUL}
++print(json.dumps(output, cls=CrewJSONEncoder))

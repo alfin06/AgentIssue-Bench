@@ -1,0 +1,7 @@
+diff --git a/test_websearch_agent.py b/test_websearch_agent.py
+new file mode 100644
+index 0000000..d231b58
+--- /dev/null
++++ b/test_websearch_agent.py
+@@ -0,0 +1 @@
++from agixt.Websearch import Websearch

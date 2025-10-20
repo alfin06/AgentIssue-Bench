@@ -1,0 +1,43 @@
+diff --git a/python/packages/autogen-studio/pyproject.toml b/python/packages/autogen-studio/pyproject.toml
+index 3272972..3ad9443 100644
+--- a/python/packages/autogen-studio/pyproject.toml
++++ b/python/packages/autogen-studio/pyproject.toml
+@@ -36,6 +36,8 @@ dependencies = [
+     "autogen-agentchat>=0.4.9.2,<0.5",
+     "autogen-ext[magentic-one, openai, azure]>=0.4.2,<0.5",
+     "anthropic",
++    "tiktoken",
++    "loguru",
+ ]
+ optional-dependencies = {web = ["fastapi", "uvicorn"], database = ["psycopg"]}
+ 
+diff --git a/python/packages/autogen-studio/requirements.txt b/python/packages/autogen-studio/requirements.txt
+index 9c558e3..0d44b18 100644
+--- a/python/packages/autogen-studio/requirements.txt
++++ b/python/packages/autogen-studio/requirements.txt
+@@ -1 +1,2 @@
+-.
++tiktoken
++loguru
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..fe66767
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1,16 @@
++import subprocess
++
++def run_autogenstudio():
++    try:
++        import tiktoken
++        print("tiktoken is installed.")
++    except ImportError:
++        print("tiktoken is not installed.")
++
++    try:
++        subprocess.run(["autogenstudio", "ui", "--port", "8081"], check=True)
++    except subprocess.CalledProcessError as e:
++        print(f"Error running autogenstudio: {e}")
++
++if __name__ == "__main__":
++    run_autogenstudio()

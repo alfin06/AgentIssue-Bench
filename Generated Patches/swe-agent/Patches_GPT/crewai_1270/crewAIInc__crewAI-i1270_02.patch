@@ -1,0 +1,61 @@
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..baaff68
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1,21 @@
++import os
++from pathlib import Path
++
++# Create a sample YAML file with Chinese characters
++file_path = Path('test_agent.yaml')
++content = 'name: 测试\nage: 25'
++
++with open(file_path, 'w', encoding='utf-8') as f:
++    f.write(content)
++
++# Simulate the load_yaml function
++from src.crewai.project.crew_base import CrewBase
++
++try:
++    result = CrewBase.load_yaml(file_path)
++    print('Loaded YAML:', result)
++except Exception as e:
++    print('Error:', e)
++
++# Clean up
++os.remove(file_path)
+diff --git a/src/crewai/project/crew_base.py b/src/crewai/project/crew_base.py
+index 53d3d5f..7eaaf09 100644
+--- a/src/crewai/project/crew_base.py
++++ b/src/crewai/project/crew_base.py
+@@ -104,10 +104,19 @@ def CrewBase(cls: T) -> T:
+                 )
+                 self.tasks_config = {}
+ 
++        import chardet
++
+         @staticmethod
+         def load_yaml(config_path: Path):
+             try:
+-                with open(config_path, "r", encoding="utf-8") as file:
++                # Detect file encoding
++                with open(config_path, 'rb') as file:
++                    raw_data = file.read()
++                    result = chardet.detect(raw_data)
++                    encoding = result['encoding']
++
++                # Load YAML with detected encoding
++                with open(config_path, 'r', encoding=encoding) as file:
+                     return yaml.safe_load(file)
+             except FileNotFoundError:
+                 print(f"File not found: {config_path}")
+diff --git a/test_agent.yaml b/test_agent.yaml
+new file mode 100644
+index 0000000..4ea31ca
+--- /dev/null
++++ b/test_agent.yaml
+@@ -0,0 +1,2 @@
++name: 测试
++age: 25
+\ No newline at end of file

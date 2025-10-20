@@ -1,0 +1,185 @@
+diff --git a/python/packages/autogen-core/src/autogen_core/__init__.py b/python/packages/autogen-core/src/autogen_core/__init__.py
+index 0198544..c57bfd5 100644
+--- a/python/packages/autogen-core/src/autogen_core/__init__.py
++++ b/python/packages/autogen-core/src/autogen_core/__init__.py
+@@ -1,135 +1 @@
+-import importlib.metadata
+-
+-__version__ = importlib.metadata.version("autogen_core")
+-
+-from ._agent import Agent
+-from ._agent_id import AgentId
+-from ._agent_instantiation import AgentInstantiationContext
+-from ._agent_metadata import AgentMetadata
+-from ._agent_proxy import AgentProxy
+-from ._agent_runtime import AgentRuntime
+-from ._agent_type import AgentType
+-from ._base_agent import BaseAgent
+-from ._cache_store import CacheStore, InMemoryStore
+-from ._cancellation_token import CancellationToken
+-from ._closure_agent import ClosureAgent, ClosureContext
+-from ._component_config import (
+-    Component,
+-    ComponentBase,
+-    ComponentFromConfig,
+-    ComponentLoader,
+-    ComponentModel,
+-    ComponentSchemaType,
+-    ComponentToConfig,
+-    ComponentType,
+-    is_component_class,
+-    is_component_instance,
+-)
+-from ._constants import (
+-    EVENT_LOGGER_NAME as EVENT_LOGGER_NAME_ALIAS,
+-)
+-from ._constants import (
+-    ROOT_LOGGER_NAME as ROOT_LOGGER_NAME_ALIAS,
+-)
+-from ._constants import (
+-    TRACE_LOGGER_NAME as TRACE_LOGGER_NAME_ALIAS,
+-)
+-from ._default_subscription import DefaultSubscription, default_subscription, type_subscription
+-from ._default_topic import DefaultTopicId
+-from ._image import Image
+-from ._intervention import (
+-    DefaultInterventionHandler,
+-    DropMessage,
+-    InterventionHandler,
+-)
+-from ._message_context import MessageContext
+-from ._message_handler_context import MessageHandlerContext
+-from ._routed_agent import RoutedAgent, event, message_handler, rpc
+-from ._serialization import (
+-    JSON_DATA_CONTENT_TYPE as JSON_DATA_CONTENT_TYPE_ALIAS,
+-)
+-from ._serialization import (
+-    PROTOBUF_DATA_CONTENT_TYPE as PROTOBUF_DATA_CONTENT_TYPE_ALIAS,
+-)
+-from ._serialization import (
+-    MessageSerializer,
+-    UnknownPayload,
+-    try_get_known_serializers_for_type,
+-)
+-from ._single_threaded_agent_runtime import SingleThreadedAgentRuntime
+-from ._subscription import Subscription
+-from ._subscription_context import SubscriptionInstantiationContext
+-from ._topic import TopicId
+-from ._type_prefix_subscription import TypePrefixSubscription
+-from ._type_subscription import TypeSubscription
+-from ._types import FunctionCall
+-
+-EVENT_LOGGER_NAME = EVENT_LOGGER_NAME_ALIAS
+-"""The name of the logger used for structured events."""
+-
+-ROOT_LOGGER_NAME = ROOT_LOGGER_NAME_ALIAS
+-"""The name of the root logger."""
+-
+-TRACE_LOGGER_NAME = TRACE_LOGGER_NAME_ALIAS
+-"""Logger name used for developer intended trace logging. The content and format of this log should not be depended upon."""
+-
+-JSON_DATA_CONTENT_TYPE = JSON_DATA_CONTENT_TYPE_ALIAS
+-"""The content type for JSON data."""
+-
+-PROTOBUF_DATA_CONTENT_TYPE = PROTOBUF_DATA_CONTENT_TYPE_ALIAS
+-"""The content type for Protobuf data."""
+-
+-__all__ = [
+-    "Agent",
+-    "AgentId",
+-    "AgentProxy",
+-    "AgentMetadata",
+-    "AgentRuntime",
+-    "BaseAgent",
+-    "CacheStore",
+-    "InMemoryStore",
+-    "CancellationToken",
+-    "AgentInstantiationContext",
+-    "TopicId",
+-    "Subscription",
+-    "MessageContext",
+-    "AgentType",
+-    "SubscriptionInstantiationContext",
+-    "MessageHandlerContext",
+-    "MessageSerializer",
+-    "try_get_known_serializers_for_type",
+-    "UnknownPayload",
+-    "Image",
+-    "RoutedAgent",
+-    "ClosureAgent",
+-    "ClosureContext",
+-    "message_handler",
+-    "event",
+-    "rpc",
+-    "FunctionCall",
+-    "TypeSubscription",
+-    "DefaultSubscription",
+-    "DefaultTopicId",
+-    "default_subscription",
+-    "type_subscription",
+-    "TypePrefixSubscription",
+-    "JSON_DATA_CONTENT_TYPE",
+-    "PROTOBUF_DATA_CONTENT_TYPE",
+-    "SingleThreadedAgentRuntime",
+-    "ROOT_LOGGER_NAME",
+-    "EVENT_LOGGER_NAME",
+-    "TRACE_LOGGER_NAME",
+-    "Component",
+-    "ComponentBase",
+-    "ComponentFromConfig",
+-    "ComponentLoader",
+-    "ComponentModel",
+-    "ComponentSchemaType",
+-    "ComponentToConfig",
+-    "ComponentType",
+-    "is_component_class",
+-    "is_component_instance",
+-    "DropMessage",
+-    "InterventionHandler",
+-    "DefaultInterventionHandler",
+-]
++__version__ = '0.0.0'
+diff --git a/python/packages/autogen-core/src/autogen_core/code_executor/_func_with_reqs.py b/python/packages/autogen-core/src/autogen_core/code_executor/_func_with_reqs.py
+index b236ea5..063bdb3 100644
+--- a/python/packages/autogen-core/src/autogen_core/code_executor/_func_with_reqs.py
++++ b/python/packages/autogen-core/src/autogen_core/code_executor/_func_with_reqs.py
+@@ -53,6 +53,13 @@ def __init__(
+             object.__setattr__(self, "imports", tuple(imports))
+         else:
+             object.__setattr__(self, "imports", imports)
++    def __hash__(self):
++        return hash((self.module, self.imports))
++
++    def __eq__(self, other):
++        if not isinstance(other, ImportFromModule):
++            return False
++        return self.module == other.module and self.imports == other.imports
+ 
+ 
+ Import = Union[str, ImportFromModule, Alias]
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..1567afa
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1,19 @@
++from autogen_core.code_executor._func_with_reqs import ImportFromModule, FunctionWithRequirements, build_python_functions_file
++
++def search_from_web(search_keyword: str):
++    pass
++
++# Define a function with requirements
++func_with_reqs = FunctionWithRequirements(
++    func=search_from_web,
++    python_packages=["requests", "urllib3"],
++    global_imports=["requests", "os", ImportFromModule("urllib.parse", ["urlencode"])]
++)
++
++# Attempt to build the Python functions file
++try:
++    result = build_python_functions_file([func_with_reqs])
++    print("Successfully built Python functions file:")
++    print(result)
++except TypeError as e:
++    print("Error:", e)
+\ No newline at end of file

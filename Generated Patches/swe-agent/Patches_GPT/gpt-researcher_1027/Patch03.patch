@@ -1,0 +1,52 @@
+diff --git a/gpt_researcher/prompts.py b/gpt_researcher/prompts.py
+index ac211f2..c973da4 100644
+--- a/gpt_researcher/prompts.py
++++ b/gpt_researcher/prompts.py
+@@ -368,6 +368,9 @@ Main Topic and Subtopic:
+ Using the latest information available, construct a detailed report on the subtopic: {current_subtopic} under the main topic: {main_topic}.
+ You must limit the number of subsections to a maximum of {max_subsections}.
+ 
++Language:
++Write the report in {language}. 
++
+ Content Focus:
+ - The report should focus on answering the question, be well-structured, informative, in-depth, and include facts and numbers if available.
+ - Use markdown syntax and follow the {report_format.upper()} format.
+diff --git a/test_script.py b/test_script.py
+new file mode 100644
+index 0000000..fccf5b6
+--- /dev/null
++++ b/test_script.py
+@@ -0,0 +1,32 @@
++from gpt_researcher.prompts import generate_subtopic_report_prompt
++
++# Test script to reproduce the error
++def test_generate_subtopic_report_prompt():
++    current_subtopic = "Impact of AI on healthcare"
++    existing_headers = ["Introduction", "AI in diagnostics"]
++    relevant_written_contents = ["AI has revolutionized diagnostics by enabling faster and more accurate results."]
++    main_topic = "Artificial Intelligence"
++    context = "AI is transforming various industries, including healthcare, by improving efficiency and outcomes."
++    report_format = "apa"
++    max_subsections = 3
++    total_words = 500
++    tone = None
++    language = "français"
++
++    prompt = generate_subtopic_report_prompt(
++        current_subtopic=current_subtopic,
++        existing_headers=existing_headers,
++        relevant_written_contents=relevant_written_contents,
++        main_topic=main_topic,
++        context=context,
++        report_format=report_format,
++        max_subsections=max_subsections,
++        total_words=total_words,
++        tone=tone,
++        language=language,
++    )
++
++    print(prompt)
++
++if __name__ == "__main__":
++    test_generate_subtopic_report_prompt()

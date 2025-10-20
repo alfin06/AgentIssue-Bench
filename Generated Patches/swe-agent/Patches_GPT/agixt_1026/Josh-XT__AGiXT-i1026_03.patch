@@ -1,0 +1,35 @@
+diff --git a/agixt/Interactions.py b/agixt/Interactions.py
+index 1ddf0f7..86456fd 100644
+--- a/agixt/Interactions.py
++++ b/agixt/Interactions.py
+@@ -1039,7 +1039,7 @@ class Interactions:
+ 
+             tts = False
+             if "tts" in kwargs:
+-                tts = str(kwargs["tts"]).lower() == "true"
++                tts = kwargs["tts"] if isinstance(kwargs["tts"], bool) else str(kwargs["tts"]).lower() == "true"
+             if "tts_provider" in agent_settings and tts == True:
+                 if (
+                     agent_settings["tts_provider"] != "None"
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..f735ede
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1,15 @@
++from agixt.Interactions import Interactions
++
++def test_tts_handling():
++    kwargs = {"tts": True}  # Boolean input
++    agent_settings = {"tts_provider": "SomeProvider"}
++
++    try:
++        interaction = Interactions()
++        interaction.some_method(kwargs=kwargs, agent_settings=agent_settings)  # Replace 'some_method' with the actual method name
++        print("Test passed: No error with boolean input for 'tts'.")
++    except AttributeError as e:
++        print(f"Test failed: {e}")
++
++if __name__ == "__main__":
++    test_tts_handling()
+\ No newline at end of file

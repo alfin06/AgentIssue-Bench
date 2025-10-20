@@ -1,0 +1,27 @@
+diff --git a/reproduce_enum_issue.py b/reproduce_enum_issue.py
+new file mode 100644
+index 0000000..6ed4aff
+--- /dev/null
++++ b/reproduce_enum_issue.py
+@@ -0,0 +1,20 @@
++from enum import Enum
++import json
++from crewai.utilities.crew_json_encoder import CrewJSONEncoder
++
++class CrewStatus(Enum):
++    TODO = "To Do"
++    SUCCESSFUL = "Successful"
++    FAILED = "Failed"
++
++# Simulate the output_pydantic containing an Enum field
++output_pydantic = {
++    "status": CrewStatus.SUCCESSFUL
++}
++
++try:
++    # Attempt to serialize using CrewJSONEncoder
++    serialized_output = json.dumps(output_pydantic, cls=CrewJSONEncoder)
++    print("Serialized Output:", serialized_output)
++except TypeError as e:
++    print("Error:", e)
+\ No newline at end of file

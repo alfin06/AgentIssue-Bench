@@ -1,0 +1,17 @@
+diff --git a/src/helpers/unitTests.js b/src/helpers/unitTests.js
+index 9f2b1a9..fd5a987 100644
+--- a/src/helpers/unitTests.js
++++ b/src/helpers/unitTests.js
+@@ -34,7 +34,11 @@ async function generateTestsForDirectory(args) {
+     process.stdout.write('\x1B[2J\x1B[0f');
+     if (errors.length) {
+         let errLogPath = `${path.resolve(PYTHAGORA_UNIT_DIR, 'errorLogs.log')}`;
+-        fs.writeFileSync(errLogPath, JSON.stringify(errors, null, 2));
++        const errLogDir = path.dirname(errLogPath);
++if (!fs.existsSync(errLogDir)) {
++    fs.mkdirSync(errLogDir, { recursive: true });
++}
++fs.writeFileSync(errLogPath, JSON.stringify(errors, null, 2));
+         console.error('There were errors encountered while trying to generate unit tests.\n');
+         console.error(`You can find logs here: ${errLogPath}`);
+     }

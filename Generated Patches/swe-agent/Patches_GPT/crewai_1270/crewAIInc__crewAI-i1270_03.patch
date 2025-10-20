@@ -1,0 +1,32 @@
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..367911e
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1 @@
++import yaml\n\n# Create a sample GBK-encoded YAML file\ncontent = "key: 中文内容".encode('gbk')\nwith open('sample_gbk.yaml', 'wb') as f:\n    f.write(content)\n\n# Attempt to load the YAML file\ntry:\n    with open('sample_gbk.yaml', 'r', encoding='utf-8') as f:\n        data = yaml.safe_load(f)\n    print(data)\nexcept UnicodeDecodeError as e:\n    print(f'Error: {e}')
+diff --git a/src/crewai/project/crew_base.py b/src/crewai/project/crew_base.py
+index 53d3d5f..6b6ae04 100644
+--- a/src/crewai/project/crew_base.py
++++ b/src/crewai/project/crew_base.py
+@@ -4,6 +4,7 @@ from pathlib import Path
+ from typing import Any, Callable, Dict, TypeVar, cast
+ 
+ import yaml
++import chardet
+ from dotenv import load_dotenv
+ 
+ load_dotenv()
+@@ -107,7 +108,11 @@ def CrewBase(cls: T) -> T:
+         @staticmethod
+         def load_yaml(config_path: Path):
+             try:
+-                with open(config_path, "r", encoding="utf-8") as file:
++                with open(config_path, "rb") as file:
++    raw_data = file.read()
++    detected_encoding = chardet.detect(raw_data)['encoding']
++
++with open(config_path, "r", encoding=detected_encoding) as file:
+                     return yaml.safe_load(file)
+             except FileNotFoundError:
+                 print(f"File not found: {config_path}")

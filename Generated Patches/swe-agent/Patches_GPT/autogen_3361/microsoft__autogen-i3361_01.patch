@@ -1,0 +1,67 @@
+diff --git a/python/packages/autogen-core/src/autogen_core/__init__.py b/python/packages/autogen-core/src/autogen_core/__init__.py
+index 0198544..ab3ad49 100644
+--- a/python/packages/autogen-core/src/autogen_core/__init__.py
++++ b/python/packages/autogen-core/src/autogen_core/__init__.py
+@@ -1,6 +1,9 @@
+ import importlib.metadata
+ 
+-__version__ = importlib.metadata.version("autogen_core")
++try:
++    __version__ = importlib.metadata.version("autogen_core")
++except importlib.metadata.PackageNotFoundError:
++    __version__ = "0.0.0"  # Default version if package metadata is not found
+ 
+ from ._agent import Agent
+ from ._agent_id import AgentId
+diff --git a/python/packages/autogen-core/src/autogen_core/code_executor/_func_with_reqs.py b/python/packages/autogen-core/src/autogen_core/code_executor/_func_with_reqs.py
+index b236ea5..a25af24 100644
+--- a/python/packages/autogen-core/src/autogen_core/code_executor/_func_with_reqs.py
++++ b/python/packages/autogen-core/src/autogen_core/code_executor/_func_with_reqs.py
+@@ -39,6 +39,13 @@ class Alias:
+ 
+ @dataclass(frozen=True)
+ class ImportFromModule:
++    def __hash__(self):
++        return hash((self.module, self.imports))
++
++    def __eq__(self, other):
++        if not isinstance(other, ImportFromModule):
++            return False
++        return self.module == other.module and self.imports == other.imports
+     module: str
+     imports: Tuple[Union[str, Alias], ...]
+ 
+diff --git a/python/reproduce_error.py b/python/reproduce_error.py
+new file mode 100644
+index 0000000..e71bf4e
+--- /dev/null
++++ b/python/reproduce_error.py
+@@ -0,0 +1,27 @@
++import sys
++import os
++
++# Add the autogen-core src directory to the Python path
++sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), 'packages', 'autogen-core', 'src')))
++
++from autogen_core.code_executor._func_with_reqs import with_requirements, ImportFromModule
++
++def main():
++    @with_requirements(
++        python_packages=["requests", "urllib3"],
++        global_imports=["requests", "os", ImportFromModule("urllib.parse", ["urlencode"])]
++    )
++    def search_from_web(search_keyword: str):
++        pass
++
++    funcs = [search_from_web]
++
++    try:
++        from autogen_core.code_executor._func_with_reqs import build_python_functions_file
++        build_python_functions_file(funcs)
++        print("No TypeError encountered. Fix is successful.")
++    except TypeError as e:
++        print(f"TypeError encountered: {e}")
++
++if __name__ == "__main__":
++    main()
+\ No newline at end of file

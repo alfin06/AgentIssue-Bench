@@ -1,0 +1,69 @@
+diff --git a/=1.4.4 b/=1.4.4
+new file mode 100644
+index 0000000..17f7f54
+--- /dev/null
++++ b/=1.4.4
+@@ -0,0 +1,5 @@
++Collecting appdirs
++  Using cached appdirs-1.4.4-py2.py3-none-any.whl.metadata (9.0 kB)
++Downloading appdirs-1.4.4-py2.py3-none-any.whl (9.6 kB)
++Installing collected packages: appdirs
++Successfully installed appdirs-1.4.4
+diff --git a/=2.4.2 b/=2.4.2
+new file mode 100644
+index 0000000..20dde4a
+--- /dev/null
++++ b/=2.4.2
+@@ -0,0 +1,20 @@
++Collecting pydantic
++  Using cached pydantic-2.11.2-py3-none-any.whl.metadata (64 kB)
++Collecting annotated-types>=0.6.0 (from pydantic)
++  Using cached annotated_types-0.7.0-py3-none-any.whl.metadata (15 kB)
++Collecting pydantic-core==2.33.1 (from pydantic)
++  Using cached pydantic_core-2.33.1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (6.8 kB)
++Collecting typing-extensions>=4.12.2 (from pydantic)
++  Using cached typing_extensions-4.13.1-py3-none-any.whl.metadata (3.0 kB)
++Collecting typing-inspection>=0.4.0 (from pydantic)
++  Using cached typing_inspection-0.4.0-py3-none-any.whl.metadata (2.6 kB)
++Downloading pydantic-2.11.2-py3-none-any.whl (443 kB)
++   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 443.3/443.3 kB 560.0 kB/s eta 0:00:00
++Downloading pydantic_core-2.33.1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (2.0 MB)
++   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.0/2.0 MB 3.0 MB/s eta 0:00:00
++Downloading annotated_types-0.7.0-py3-none-any.whl (13 kB)
++Downloading typing_extensions-4.13.1-py3-none-any.whl (45 kB)
++   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 45.7/45.7 kB 4.2 MB/s eta 0:00:00
++Downloading typing_inspection-0.4.0-py3-none-any.whl (14 kB)
++Installing collected packages: typing-extensions, annotated-types, typing-inspection, pydantic-core, pydantic
++Successfully installed annotated-types-0.7.0 pydantic-2.11.2 pydantic-core-2.33.1 typing-extensions-4.13.1 typing-inspection-0.4.0
+diff --git a/pyproject.toml b/pyproject.toml
+index 799efac..07017f2 100644
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -3,7 +3,7 @@ name = "crewai"
+ version = "0.108.0"
+ description = "Cutting-edge framework for orchestrating role-playing, autonomous AI agents. By fostering collaborative intelligence, CrewAI empowers agents to work together seamlessly, tackling complex tasks."
+ readme = "README.md"
+-requires-python = ">=3.10,<3.13"
++requires-python = ">=3.10,<3.14"
+ authors = [
+     { name = "Joao Moura", email = "joao@crewai.com" }
+ ]
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..ef63a18
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1,12 @@
++import subprocess
++import sys
++
++# Function to run pip install crewai
++def install_crewai():
++    try:
++        subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'crewai'])
++    except subprocess.CalledProcessError as e:
++        print(f"Error occurred: {e}")
++
++if __name__ == "__main__":
++    install_crewai()
+\ No newline at end of file

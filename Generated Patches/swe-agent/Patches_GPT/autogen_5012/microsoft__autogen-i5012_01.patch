@@ -1,0 +1,46 @@
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..43abc27
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1,11 @@
++import asyncio
++from autogen_agentchat.agents import AssistantAgent
++from autogen_ext.models.openai import OpenAIChatCompletionClient
++
++async def main() -> None:
++    model_client = OpenAIChatCompletionClient(model="gpt-4o")
++    agent = AssistantAgent("assistant", model_client=model_client)
++    print(await agent.run(task="Say 'Hello World!'"))
++    await model_client.close()
++
++asyncio.run(main())
+\ No newline at end of file
+diff --git a/reproduce_error_mock.py b/reproduce_error_mock.py
+new file mode 100644
+index 0000000..47e85db
+--- /dev/null
++++ b/reproduce_error_mock.py
+@@ -0,0 +1,21 @@
++import asyncio
++from unittest.mock import AsyncMock
++from autogen_agentchat.agents import AssistantAgent
++
++class MockOpenAIChatCompletionClient:
++    def __init__(self):
++        self.model_info = {"vision": False}
++
++    async def create(self, *args, **kwargs):
++        return {"choices": [{"message": {"role": "assistant", "content": "Hello World!"}, "finish_reason": "stop"}]}
++
++    async def close(self):
++        pass
++
++async def main() -> None:
++    model_client = MockOpenAIChatCompletionClient()
++    agent = AssistantAgent("assistant", model_client=model_client)
++    print(await agent.run(task="Say 'Hello World!'"))
++    await model_client.close()
++
++asyncio.run(main())
+\ No newline at end of file

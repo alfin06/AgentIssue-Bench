@@ -1,0 +1,74 @@
+diff --git a/camel/models/deepseek_model.py b/camel/models/deepseek_model.py
+index 4123e73..72d9974 100644
+--- a/camel/models/deepseek_model.py
++++ b/camel/models/deepseek_model.py
+@@ -148,11 +148,7 @@ class DeepSeekModel(OpenAICompatibleModel):
+             == "true"
+         ):
+             reasoning_content = response.choices[0].message.reasoning_content  # type: ignore[attr-defined]
+-            combined_content = (  # type: ignore[operator]
+-                f"<think>\n{reasoning_content}\n</think>\n"
+-                if reasoning_content
+-                else ""
+-            ) + response.choices[0].message.content
++            combined_content = response.choices[0].message.content
+ 
+             response = ChatCompletion.construct(
+                 id=response.id,
+diff --git a/test_remove_think.py b/test_remove_think.py
+new file mode 100644
+index 0000000..4a72fc2
+--- /dev/null
++++ b/test_remove_think.py
+@@ -0,0 +1,50 @@
++from camel.models.base_model import BaseModelBackend
++from camel.models.deepseek_model import DeepSeekModel
++from camel.messages import OpenAIMessage
++
++# Create a mock message with <think> tags
++messages = [
++    OpenAIMessage(role="user", content="Hello <think>thinking about response</think> world"),
++    OpenAIMessage(role="assistant", content="<think>Let me think...</think> Response here")
++]
++
++# Initialize the model backend
++model_backend = BaseModelBackend(model_type="mock")
++
++# Preprocess messages
++preprocessed_messages = model_backend.preprocess_messages(messages)
++
++# Print preprocessed messages
++print("Preprocessed Messages:")
++for msg in preprocessed_messages:
++    print(msg)
++
++# Initialize DeepSeekModel
++deepseek_model = DeepSeekModel(model_type="DEEPSEEK_REASONER")
++
++# Simulate post handle response
++response = {
++    "choices": [
++        {
++            "message": {
++                "role": "assistant",
++                "content": "Final response",
++                "reasoning_content": "Reasoning details"
++            },
++            "index": 0,
++            "finish_reason": "stop"
++        }
++    ],
++    "id": "test_id",
++    "created": 1234567890,
++    "model": "DEEPSEEK_REASONER",
++    "object": "chat.completion",
++    "usage": {}
++}
++
++# Post handle response
++handled_response = deepseek_model._post_handle_response(response)
++
++# Print handled response
++print("Handled Response:")
++print(handled_response)
+\ No newline at end of file

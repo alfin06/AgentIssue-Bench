@@ -1,0 +1,26 @@
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..8b608aa
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1,19 @@
++from camel.agents.chat_agent import ChatAgent
++from camel.messages import ChatMessage, SystemMessage
++from camel.typing import RoleType
++
++# Create a SystemMessage
++system_message = SystemMessage(role_name='TestRole', role_type=RoleType.USER)
++
++# Initialize ChatAgent
++chat_agent = ChatAgent(system_message=system_message)
++
++# Create a ChatMessage with an unexpected 'audio' argument
++input_message = ChatMessage(role_name='TestRole', role_type=RoleType.USER, meta_dict={}, role='user', content='Hello', audio='unexpected_audio_data')
++
++# Call the step method to reproduce the error
++try:
++    response = chat_agent.step(input_message)
++    print(response)
++except TypeError as e:
++    print(f"Caught an error: {e}")
+\ No newline at end of file

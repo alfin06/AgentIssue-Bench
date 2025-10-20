@@ -1,0 +1,27 @@
+diff --git a/python/packages/autogen-core/src/autogen_core/__init__.py b/python/packages/autogen-core/src/autogen_core/__init__.py
+index 0198544..9f22088 100644
+--- a/python/packages/autogen-core/src/autogen_core/__init__.py
++++ b/python/packages/autogen-core/src/autogen_core/__init__.py
+@@ -1,6 +1,5 @@
+ import importlib.metadata
+ 
+-__version__ = importlib.metadata.version("autogen_core")
+ 
+ from ._agent import Agent
+ from ._agent_id import AgentId
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..8d51b7b
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1,10 @@
++from autogen_core.code_executor import with_requirements, FunctionWithRequirements, Alias, ImportFromModule
++from autogen_core.code_executor._func_with_reqs import build_python_functions_file
++
++import pandas as pd
++
++@with_requirements(python_packages=['pandas'], global_imports=[Alias('pandas', 'pd')])
++def template_function():
++    return pd.Series([1, 2])
++
++functions_module = build_python_functions_file([template_function])

@@ -1,0 +1,66 @@
+diff --git a/python/packages/autogen-core/src/autogen_core/__init__.py b/python/packages/autogen-core/src/autogen_core/__init__.py
+index 0198544..6dd8d52 100644
+--- a/python/packages/autogen-core/src/autogen_core/__init__.py
++++ b/python/packages/autogen-core/src/autogen_core/__init__.py
+@@ -1,6 +1,3 @@
+-import importlib.metadata
+-
+-__version__ = importlib.metadata.version("autogen_core")
+ 
+ from ._agent import Agent
+ from ._agent_id import AgentId
+diff --git a/python/packages/autogen-core/src/autogen_core/retrieve_utils.py b/python/packages/autogen-core/src/autogen_core/retrieve_utils.py
+new file mode 100644
+index 0000000..2d26354
+--- /dev/null
++++ b/python/packages/autogen-core/src/autogen_core/retrieve_utils.py
+@@ -0,0 +1,27 @@
++def split_text_to_chunks(text, chunk_size, overlap=0):
++    """
++    Splits the text into chunks of specified size with optional overlap.
++
++    Parameters:
++    text (str): The text to be split.
++    chunk_size (int): The size of each chunk.
++    overlap (int): The number of characters to overlap between chunks.
++
++    Returns:
++    list: A list of text chunks.
++    """
++    if chunk_size <= 0:
++        raise ValueError("chunk_size must be greater than 0")
++    if overlap < 0:
++        raise ValueError("overlap must be non-negative")
++    if overlap >= chunk_size:
++        raise ValueError("overlap must be less than chunk_size")
++
++    chunks = []
++    start = 0
++    while start < len(text):
++        end = start + chunk_size
++        chunks.append(text[start:end])
++        start = end - overlap
++
++    return chunks
+diff --git a/python/test_split_text_to_chunks.py b/python/test_split_text_to_chunks.py
+new file mode 100644
+index 0000000..a38ca65
+--- /dev/null
++++ b/python/test_split_text_to_chunks.py
+@@ -0,0 +1,15 @@
++import sys
++sys.path.insert(0, '/microsoft__autogen.git/python/packages/autogen-core/src')
++from autogen_core.retrieve_utils import split_text_to_chunks
++
++def test_split_text_to_chunks():
++    text = "abcdefghijklmnopqrstuvwxyz"
++    chunk_size = 5
++    overlap = 2
++
++    chunks = split_text_to_chunks(text, chunk_size, overlap)
++
++    print("Chunks:", chunks)
++
++if __name__ == "__main__":
++    test_split_text_to_chunks()
+\ No newline at end of file

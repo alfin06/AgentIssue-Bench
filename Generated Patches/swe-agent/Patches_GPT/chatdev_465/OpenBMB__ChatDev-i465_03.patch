@@ -1,0 +1,37 @@
+diff --git a/camel/agents/chat_agent.py b/camel/agents/chat_agent.py
+index c824a15..d8d7a85 100644
+--- a/camel/agents/chat_agent.py
++++ b/camel/agents/chat_agent.py
+@@ -242,7 +242,7 @@ class ChatAgent(BaseAgent):
+                     raise RuntimeError("OpenAI returned unexpected struct")
+                 output_messages = [
+                     ChatMessage(role_name=self.role_name, role_type=self.role_type,
+-                                meta_dict=dict(), **dict(choice.message))
++                                meta_dict=dict(), audio=None, **dict(choice.message))
+                     for choice in response.choices
+                 ]
+                 info = self.get_info(
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..a69367e
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1,17 @@
++from camel.agents.chat_agent import ChatAgent
++from camel.messages.chat_messages import ChatMessage
++from camel.messages import SystemMessage
++from camel.typing import RoleType
++
++# Create a system message
++system_message = SystemMessage(role_name='TestRole', role_type=RoleType.USER, content='Test content')
++
++# Initialize ChatAgent
++chat_agent = ChatAgent(system_message=system_message)
++
++# Create a ChatMessage with an unexpected 'audio' argument
++try:
++    message = ChatMessage(role_name='TestRole', role_type=RoleType.USER, meta_dict={}, role='user', content='Hello', audio='audio_data')
++    chat_agent.step(message)
++except TypeError as e:
++    print(f"Caught an error: {e}")
+\ No newline at end of file

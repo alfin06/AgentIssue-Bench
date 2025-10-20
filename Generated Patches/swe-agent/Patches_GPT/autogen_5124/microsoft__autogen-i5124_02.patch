@@ -1,0 +1,33 @@
+diff --git a/python/packages/autogen-ext/src/autogen_ext/runtimes/grpc/_worker_runtime_host.py b/python/packages/autogen-ext/src/autogen_ext/runtimes/grpc/_worker_runtime_host.py
+index 04e9412..7e739ba 100644
+--- a/python/packages/autogen-ext/src/autogen_ext/runtimes/grpc/_worker_runtime_host.py
++++ b/python/packages/autogen-ext/src/autogen_ext/runtimes/grpc/_worker_runtime_host.py
+@@ -34,7 +34,12 @@ def start(self) -> None:
+         """Start the server in a background task."""
+         if self._serve_task is not None:
+             raise RuntimeError("Host runtime is already started.")
+-        self._serve_task = asyncio.create_task(self._serve())
++        try:
++    loop = asyncio.get_running_loop()
++except RuntimeError:
++    loop = asyncio.new_event_loop()
++    asyncio.set_event_loop(loop)
++self._serve_task = asyncio.create_task(self._serve())
+ 
+     async def stop(self, grace: int = 5) -> None:
+         """Stop the server."""
+diff --git a/python/reproduce_error.py b/python/reproduce_error.py
+new file mode 100644
+index 0000000..a45ac80
+--- /dev/null
++++ b/python/reproduce_error.py
+@@ -0,0 +1,8 @@
++from autogen_ext.runtimes.grpc._worker_runtime_host import GrpcWorkerAgentRuntimeHost
++
++def main():
++    host = GrpcWorkerAgentRuntimeHost(address="0.0.0.0:50051")
++    host.start()  # Start a host service in the background.
++
++if __name__ == "__main__":
++    main()
+\ No newline at end of file

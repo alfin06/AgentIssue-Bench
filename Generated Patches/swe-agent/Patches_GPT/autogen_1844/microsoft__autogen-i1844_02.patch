@@ -1,0 +1,74 @@
+diff --git a/python/packages/autogen-core/src/autogen_core/__init__.py b/python/packages/autogen-core/src/autogen_core/__init__.py
+index 0198544..fd9a49f 100644
+--- a/python/packages/autogen-core/src/autogen_core/__init__.py
++++ b/python/packages/autogen-core/src/autogen_core/__init__.py
+@@ -1,6 +1,6 @@
+-import importlib.metadata
++# import importlib.metadata
+ 
+-__version__ = importlib.metadata.version("autogen_core")
++# __version__ = importlib.metadata.version("autogen_core")
+ 
+ from ._agent import Agent
+ from ._agent_id import AgentId
+diff --git a/python/packages/autogen-core/src/autogen_core/utils/__init__.py b/python/packages/autogen-core/src/autogen_core/utils/__init__.py
+index c5c0cfd..fe12241 100644
+--- a/python/packages/autogen-core/src/autogen_core/utils/__init__.py
++++ b/python/packages/autogen-core/src/autogen_core/utils/__init__.py
+@@ -1,3 +1,5 @@
+ from ._json_to_pydantic import schema_to_pydantic_model
+ 
+-__all__ = ["schema_to_pydantic_model"]
++from .text_utils import split_text_to_chunks
++
++__all__ = ["schema_to_pydantic_model", "split_text_to_chunks"]
+diff --git a/python/packages/autogen-core/src/autogen_core/utils/text_utils.py b/python/packages/autogen-core/src/autogen_core/utils/text_utils.py
+new file mode 100644
+index 0000000..1c8e76b
+--- /dev/null
++++ b/python/packages/autogen-core/src/autogen_core/utils/text_utils.py
+@@ -0,0 +1,27 @@
++def split_text_to_chunks(text, chunk_size, overlap):
++    """
++    Splits the input text into chunks of specified size with optional overlap.
++
++    Args:
++        text (str): The input text to be split.
++        chunk_size (int): The size of each chunk.
++        overlap (int): The number of overlapping characters between consecutive chunks.
++
++    Returns:
++        list: A list of text chunks.
++    """
++    if chunk_size <= 0:
++        raise ValueError("chunk_size must be greater than 0")
++    if overlap < 0:
++        raise ValueError("overlap must be non-negative")
++    if overlap >= chunk_size:
++        raise ValueError("overlap must be less than chunk_size")
++
++    chunks = []
++    start = 0
++    while start < len(text):
++        end = start + chunk_size
++        chunks.append(text[start:end])
++        start = end - overlap
++
++    return chunks
+\ No newline at end of file
+diff --git a/reproduce_split_text_to_chunks.py b/reproduce_split_text_to_chunks.py
+new file mode 100644
+index 0000000..22b3c07
+--- /dev/null
++++ b/reproduce_split_text_to_chunks.py
+@@ -0,0 +1,10 @@
++from autogen_core.utils import split_text_to_chunks
++
++# Example text
++text = "abcdefghijklmnopqrstuvwxyz"
++chunk_size = 5
++overlap = 2
++
++# Split text into chunks
++chunks = split_text_to_chunks(text, chunk_size, overlap)
++print("Chunks:", chunks)

@@ -1,0 +1,7 @@
+diff --git a/reproduce_error.py b/reproduce_error.py
+new file mode 100644
+index 0000000..8243411
+--- /dev/null
++++ b/reproduce_error.py
+@@ -0,0 +1 @@
++from lagent.actions.ipython_interpreter import AsyncIPythonInterpreter, IPythonInterpreter

@@ -1,0 +1,16 @@
+diff --git a/camel/toolkits/twitter_toolkit.py b/camel/toolkits/twitter_toolkit.py
+index a16d353..a96aaf5 100644
+--- a/camel/toolkits/twitter_toolkit.py
++++ b/camel/toolkits/twitter_toolkit.py
+@@ -18,7 +18,10 @@ from http.client import responses
+ from typing import Any, Dict, List, Optional, Union
+ 
+ import requests
+-from requests_oauthlib import OAuth1
++try:
++    from requests_oauthlib import OAuth1
++except ImportError:
++    OAuth1 = None
+ 
+ from camel.logger import get_logger
+ from camel.toolkits import FunctionTool

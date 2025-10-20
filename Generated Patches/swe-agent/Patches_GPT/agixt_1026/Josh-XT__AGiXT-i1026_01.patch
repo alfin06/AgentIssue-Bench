@@ -1,0 +1,13 @@
+diff --git a/agixt/XT.py b/agixt/XT.py
+index d173ede..ab4f670 100644
+--- a/agixt/XT.py
++++ b/agixt/XT.py
+@@ -231,7 +231,7 @@ class AGiXT:
+                 injected_memories = 100
+             del kwargs["context_results"]
+         if "tts" in kwargs:
+-            voice_response = str(kwargs["tts"]).lower() == "true"
++            voice_response = kwargs["tts"] if isinstance(kwargs["tts"], bool) else str(kwargs["tts"]).lower() == "true"
+             del kwargs["tts"]
+         if "conversation_name" in kwargs:
+             del kwargs["conversation_name"]

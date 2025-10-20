@@ -1,1 +1,0 @@
-https://github.com/deepset-ai/haystack/commit/67a8f1249be45422662d9e661bb558a9adde5e8c

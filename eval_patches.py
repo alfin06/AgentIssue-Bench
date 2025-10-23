@@ -57,8 +57,8 @@ with open(LOG_FILE, "w", encoding="utf-8") as log:
                 ]
                 result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8")
                 output = result.stdout if result.stdout is not None else ""
-                print(output)
-                log.write(output + "\n")
+                #print(output)
+                #log.write(output + "\n")
                 if "FAILED" in result.stdout or result.returncode != 0:
                     msg = f"❌ Patch {patch_file}: FAILED"
                     print(msg)
@@ -92,8 +92,8 @@ with open(LOG_FILE, "w", encoding="utf-8") as log:
                 try:
                     result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", timeout=300)
                     output = result.stdout if result.stdout is not None else ""
-                    print(output)
-                    log.write(output + "\n")
+                    #print(output)
+                    #log.write(output + "\n")
                 
                     if "FAILED" in result.stdout or result.returncode != 0:
                         msg = f"❌ Patch {patch_file}: FAILED"

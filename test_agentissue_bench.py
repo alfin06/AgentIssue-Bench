@@ -19,7 +19,7 @@ TAGS = [
     "autogen_4733", "autogen_4382",
     "autogen_4785", "autogen_4197",
     "autogen_5007", "lagent_239",
-    "autogen_5012", "lagent_244",
+    "ai_4411", "lagent_244",
     "autogen_5124", "lagent_279",
     "camel_1145", "autogen_3361",
     "camel_1273", "metagpt_1313",
@@ -34,7 +34,7 @@ TAGS = [
 
 # ADDITIONAL_TAGS = [
 #     "ai_3953", "crewai_2237",
-#     "ai_4411", "crewai_2127",
+#     "autogen_5012", "crewai_2127",
 #     "ai_4412", "crewai_2150",
 #     "ai_4446", "haystack_9313",
 #     "ai_4619", , "haystack_9487",

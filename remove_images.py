@@ -22,7 +22,7 @@ IMAGE_TAGS = [
     "autogen_4733", "autogen_4382",
     "autogen_4785", "autogen_4197",
     "autogen_5007", "lagent_239",
-    "autogen_5012", "lagent_244",
+    "ai_4411", "lagent_244",
     "autogen_5124", "lagent_279",
     "camel_1145", "autogen_3361",
     "camel_1273", "metagpt_1313",

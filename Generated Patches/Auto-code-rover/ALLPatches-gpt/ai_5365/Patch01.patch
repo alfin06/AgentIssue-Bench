@@ -1,0 +1,23 @@
+diff --git a/examples/next-fastapi/api/index.py b/examples/next-fastapi/api/index.py
+index c6e9430d5..06c999074 100644
+--- a/examples/next-fastapi/api/index.py
++++ b/examples/next-fastapi/api/index.py
+@@ -130,6 +130,15 @@ async def handle_chat_data(request: Request, protocol: str = Query('data')):
+     messages = request.messages
+     openai_messages = convert_to_openai_messages(messages)
+ 
+-    response = StreamingResponse(stream_text(openai_messages, protocol))
+-    response.headers['x-vercel-ai-data-stream'] = 'v1'
+-    return response
++    try:
++        response = StreamingResponse(stream_text(openai_messages, protocol))
++        response.headers['x-vercel-ai-data-stream'] = 'v1'
++        return response
++    except Exception as e:
++        # Handle any potential streaming errors
++        print(f"Error during streaming: {e}")
++    finally:
++        # Place cleanup logic for client/resource closure here if applicable
++        # If there's a client that needs to be closed post-stream 
++        if hasattr(mcpClient, 'close') and not mcpClient.closed: 
++            await mcpClient.close()

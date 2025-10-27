@@ -41,15 +41,14 @@ $ python test_agentissue_bench.py
 ## 📊 Results
 
 ### Overall Resoultion Rate
+The following figure shows the distribution of ***AgentIssue-Bench***:
+<img src="output\images\pie.png" alt="pie" />
 
 The following figure shows the resolution rate of AgentIssue-Bench v.s. traditional software issues:
 <img src="output\images\bar.png" alt="bar" />
 
-<!-- The following table presents the overall results of SE agents on AgentIssue-Bench:
-<img src="output\images\table_results.png" alt="table_results" /> -->
-
-The following figure shows the distribution of ***AgentIssue-Bench***:
-<img src="output\images\pie.png" alt="pie" />
+The following table presents the overall results of SE agents on AgentIssue-Bench:
+<img src="output\images\table_results.png" alt="table_results" />
 
 ## 🧪 Patch Evaluation
 

@@ -69,7 +69,8 @@ with open(LOG_FILE, "w", encoding="utf-8") as log:
                     "FIX SUCCESSFULLY VERIFIED" in result.stdout or
                     "NO BUG" in result.stdout or
                     "FIX CONFIRMED" in result.stdout or
-                    "PATCH VERIFIED" in result.stdout):
+                    "PATCH VERIFIED" in result.stdout or
+                    "patched succeeded" in result.stdout):
                     msg = f"✅ Patch {patch_file}: SUCCESS"
                     print(msg)
                     log.write(msg + "\n")

@@ -2,8 +2,8 @@ import requests
 import time
 import os
 import json
-import re # Import regular expressions
-from urllib.parse import urlparse # For creating issue IDs
+import re
+from urllib.parse import urlparse
 from dotenv import load_dotenv
 
 load_dotenv(override=True)
@@ -140,7 +140,7 @@ def search_github_issues(query, max_pages_per_repo=2, items_per_page=10):
 # --- Main Execution ---
 if __name__ == "__main__":
     TARGET_REPOSITORIES = [
-        "FoundationAgents/MetaGPT"
+        "crewAIInc/crewAI"
         # Add more "owner/repo" strings here
     ]
 
@@ -150,7 +150,7 @@ if __name__ == "__main__":
     custom_repro_terms = ["reproduce", "minimal example"] # 2 terms => 1 OR
     # Total operators: 1+1+1+2 = 5. This is within the limit.
     
-    date_filter = "2024-06-01" 
+    date_filter = "2025-01-01" 
     # MODIFIED: Added '-reason:duplicate' to exclude issues closed as duplicates.
     base_extra_qualifiers = f"is:issue state:closed -reason:duplicate updated:>={date_filter}"
 

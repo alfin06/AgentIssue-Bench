@@ -1,5 +1,17 @@
 import os
 import subprocess
+import uuid
+from dotenv import load_dotenv
+
+# Load environment variables from the .env file
+load_dotenv()
+
+# Extract the variables
+openai_api_key = os.getenv("OPENAI_API_KEY")
+openai_api_base = os.getenv("OPENAI_API_BASE")
+
+if not openai_api_key or not openai_api_base:
+    raise EnvironmentError("Missing configuration: OPENAI_API_KEY or OPENAI_API_BASE not found in .env file.")
 
 PATCHES_ROOT = "Patches"
 DOCKER_IMAGE_BASE = "alfin06/agentissue-bench"
@@ -43,15 +55,20 @@ with open(LOG_FILE, "w", encoding="utf-8") as log:
             docker_volumes = [
                 "-v", f"{os.path.dirname(patch_path)}:/patches"
             ]
+
+            # Generate a unique container name for strict isolation during cleanup
+            container_name = f"eval_{tag.replace('.', '_')}_{uuid.uuid4().hex[:8]}"
+
             if tag == "agixt_1369":
                 # Special command for agixt_1369
                 cmd = [
                     "docker", "run", "--rm",
+                    "--name", container_name,
                     "--network", "host",
                     "--entrypoint", "bash",
                     *docker_volumes,
-                    "-e", "OPENAI_API_KEY=api-key",
-                    "-e", "OPENAI_API_BASE=api-base-url",
+                    "-e", f"OPENAI_API_KEY={openai_api_key}",
+                    "-e", f"OPENAI_API_BASE={openai_api_base}",
                     docker_image,
                     "-c", f"/usr/local/bin/run_test_entrypoint.sh apply_patch /patches/{patch_file} && /usr/local/bin/run_test_entrypoint.sh test_patched"
                 ]
@@ -82,10 +99,11 @@ with open(LOG_FILE, "w", encoding="utf-8") as log:
             else:
                 cmd = [
                     "docker", "run", "--rm",
+                    "--name", container_name,
                     "--entrypoint", "bash",
                     *docker_volumes,
-                    "-e", "OPENAI_API_KEY=api-key",
-                    "-e", "OPENAI_API_BASE=api-base-url",
+                    "-e", f"OPENAI_API_KEY={openai_api_key}",
+                    "-e", f"OPENAI_API_BASE={openai_api_base}",
                     docker_image,
                     "-c", f"/usr/local/bin/run_test_entrypoint.sh apply_patch /patches/{patch_file} && /usr/local/bin/run_test_entrypoint.sh test_patched"
                 ]
@@ -93,8 +111,8 @@ with open(LOG_FILE, "w", encoding="utf-8") as log:
                 try:
                     result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", timeout=300)
                     output = result.stdout if result.stdout is not None else ""
-                    #print(output)
-                    #log.write(output + "\n")
+                    print(output)
+                    log.write(output + "\n")
                 
                     if "FAILED" in result.stdout or result.returncode != 0:
                         msg = f"❌ Patch {patch_file}: FAILED"
@@ -117,13 +135,11 @@ with open(LOG_FILE, "w", encoding="utf-8") as log:
                         print(msg)
                         log.write(msg + "\n")
                 except subprocess.TimeoutExpired:
-                    msg = f"❌ Patch {patch_file}: FAILED"
+                    msg = f"❌ Patch {patch_file}: FAILED (Timeout)"
                     print(msg)
                     log.write(msg + "\n")
-                    container_ids = subprocess.check_output("docker ps -q", shell=True, text=True).splitlines()
-                    for cid in container_ids:
-                        if cid.strip():
-                            subprocess.run(["docker", "rm", "-f", cid], check=False)
+                    # Target only the specifically named container associated with this evaluation process
+                    subprocess.run(["docker", "rm", "-f", container_name], check=False, capture_output=True)
                     continue
 
         msg = f"\n=== Patch Testing Summary for {tag} ==="
@@ -151,7 +167,7 @@ with open(LOG_FILE, "w", encoding="utf-8") as log:
         global_total += total_count
 
         # Remove the docker image for this tag and its containers
-        subprocess.run(["docker", "rmi", "-f", docker_image], check=False)
+        subprocess.run(["docker", "rmi", "-f", docker_image], check=False, capture_output=True)
 
     msg = "\n=== Global Patch Testing Summary ==="
     print(msg)
